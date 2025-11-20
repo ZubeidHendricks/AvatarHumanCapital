@@ -1,0 +1,570 @@
+# Avatar Human Capital (AHC) - AI-Powered HR Management Platform
+
+## System Overview
+
+Avatar Human Capital is a comprehensive, AI-powered Human Resources Management platform designed to automate and optimize the entire employee lifecycle—from recruitment to ongoing HR management. Built with cutting-edge AI agentic workflows, the system provides intelligent automation for HR processes while maintaining human oversight and control.
+
+## System Architecture
+
+### Technology Stack
+
+#### Frontend
+- **Framework**: Next.js 16 with Turbopack
+- **UI Library**: Fluent UI React Components
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: React Query (TanStack Query)
+- **Deployment**: Vercel
+
+#### Backend
+- **Framework**: FastAPI (Python)
+- **Database**: PostgreSQL (DigitalOcean Managed Database)
+- **AI/ML**: Groq LLaMA 3.1 70B, LangChain, LangGraph
+- **File Storage**: Local filesystem with cloud integration
+- **Deployment**: DigitalOcean App Platform
+
+#### Infrastructure
+- **Database Host**: aihr-postgres-do-user-23094081-0.g.db.ondigitalocean.com
+- **Backend API**: aihr-backend-hmew5.ondigitalocean.app
+- **Frontend**: Deployed on Vercel
+- **Version Control**: GitHub
+
+## Core Modules
+
+### 1. Recruitment & Selection
+
+**Purpose**: Automate the entire recruitment process from job posting to candidate selection.
+
+**Key Features**:
+- **Job Description Management**
+  - AI-powered job description generation
+  - Industry-standard template library
+  - Customizable JD templates
+  - Automated library updates
+
+- **Candidate Sourcing**
+  - Multi-platform job portal integration
+  - Automated job posting
+  - Candidate database management
+  - Resume parsing and extraction
+
+- **Candidate Screening**
+  - AI-powered resume analysis
+  - Skill matching algorithms
+  - Experience evaluation
+  - Automated ranking system
+  - Batch processing capabilities
+
+- **Interview Management**
+  - Automated interview scheduling
+  - Calendar integration
+  - Interview feedback collection
+  - Multi-stage interview tracking
+
+**AI Agents**:
+- Job Description Generator Agent
+- Candidate Screening Agent
+- Matching Engine Agent
+- Interview Coordinator Agent
+
+**Workflow Status**: ✅ Fully Implemented
+
+---
+
+### 2. Integrity Evaluation (IE)
+
+**Purpose**: Comprehensive background verification and candidate assessment.
+
+**Key Features**:
+- **Consent Management**
+  - Digital consent forms
+  - Biometric data collection
+  - GDPR/POPIA compliance
+  - Audit trail maintenance
+
+- **Background Checks**
+  - Criminal record verification
+  - Credit history checks
+  - Qualification verification
+  - Employment history validation
+  - Professional reference checks
+
+- **Vendor Integration**
+  - Multi-vendor ecosystem support
+  - SLA monitoring
+  - Automated data extraction
+  - API integrations
+
+- **Risk Assessment**
+  - Automated risk scoring
+  - Red flag identification
+  - Comprehensive reporting
+  - Decision support system
+
+**AI Agents**:
+- Consent Processing Agent
+- Verification Coordinator Agent
+- Risk Assessment Agent
+- Report Generation Agent
+
+**Workflow Status**: 🔨 Partially Implemented (Framework ready, vendor integrations pending)
+
+---
+
+### 3. Employee Onboarding
+
+**Purpose**: Streamline new employee onboarding from offer acceptance to day-one readiness.
+
+**Key Features**:
+- **Welcome Process**
+  - Automated welcome emails
+  - Employee handbook distribution
+  - Benefits package communication
+  - Company introduction materials
+
+- **Documentation Management**
+  - Digital document signing (e-signatures)
+  - Tax form collection
+  - Banking details processing
+  - Contract management
+  - NDA handling
+
+- **Access & Equipment**
+  - IT equipment provisioning
+  - Access code distribution
+  - System account creation
+  - Facility access coordination
+
+- **Orientation**
+  - Company introduction scheduling
+  - Department introductions
+  - Training schedule creation
+  - Onboarding progress tracking
+
+**AI Agents**:
+- Welcome Automation Agent
+- Document Processing Agent
+- IT Provisioning Agent
+- Orientation Coordinator Agent
+
+**Workflow Status**: 🔨 Partially Implemented (Core features ready, integrations pending)
+
+---
+
+### 4. HR Management
+
+**Purpose**: Ongoing employee management, performance tracking, and HR operations.
+
+**Key Features**:
+- **Performance Management**
+  - KPI setting and tracking
+  - Performance review scheduling
+  - 360-degree feedback collection
+  - Performance improvement plans
+  - Goal setting and monitoring
+
+- **Training & Development**
+  - Training needs analysis
+  - Training program management
+  - Learning management system integration
+  - Skill development tracking
+  - Certification management
+
+- **Payroll Administration**
+  - Payroll processing automation
+  - Leave management
+  - Benefits administration
+  - Bonus and incentive calculation
+  - Payslip generation
+
+- **Employee Relations**
+  - Employee feedback collection
+  - Satisfaction surveys
+  - Grievance management
+  - Employee engagement tracking
+  - Exit interviews
+
+**AI Agents**:
+- Performance Evaluation Agent
+- Training Coordinator Agent
+- Payroll Processing Agent
+- Employee Engagement Agent
+
+**Workflow Status**: 🔨 Partially Implemented (Dashboard and core features ready)
+
+---
+
+## AI Agentic Architecture
+
+### LangGraph Workflow Engine
+
+The system uses LangGraph to orchestrate complex multi-agent workflows:
+
+```python
+StateGraph Architecture:
+├── Job Posting Agent
+├── Candidate Screening Agent
+├── Interview Scheduling Agent
+├── Background Check Agent
+├── Onboarding Agent
+└── HR Operations Agent
+```
+
+### Agent Capabilities
+
+1. **Autonomous Decision Making**
+   - Context-aware processing
+   - Multi-step reasoning
+   - Conditional branching
+   - Error handling and recovery
+
+2. **Inter-Agent Communication**
+   - Shared state management
+   - Message passing
+   - Workflow coordination
+   - Data synchronization
+
+3. **Learning & Adaptation**
+   - Performance monitoring
+   - Workflow optimization
+   - Pattern recognition
+   - Continuous improvement
+
+### AI Models
+
+- **Primary**: Groq LLaMA 3.1 70B (High-speed inference)
+- **Fallback**: OpenAI GPT-4 (Complex reasoning)
+- **Use Cases**:
+  - Resume parsing
+  - Job description generation
+  - Candidate matching
+  - Report generation
+  - Natural language queries
+
+---
+
+## Data Storage & Management
+
+### Database Schema
+
+**Core Tables**:
+- `jobs` - Job postings and requirements
+- `candidates` - Candidate profiles and applications
+- `interviews` - Interview schedules and feedback
+- `employees` - Employee records
+- `workflow_states` - Workflow execution states
+- `documents` - Document metadata and links
+- `audit_logs` - System audit trails
+
+### Data Security
+
+- **Encryption**: SSL/TLS for data in transit
+- **Access Control**: Role-based permissions
+- **Compliance**: GDPR, POPIA ready
+- **Backups**: Automated daily backups
+- **Audit**: Comprehensive audit logging
+
+---
+
+## User Interface
+
+### Dashboard Features
+
+1. **Main Dashboard**
+   - Real-time metrics
+   - Workflow status
+   - Quick actions
+   - Recent activity
+
+2. **Jobs Management**
+   - Job creation and editing
+   - Application tracking
+   - Candidate pipeline view
+   - Bulk operations
+
+3. **Candidates View**
+   - Candidate database
+   - Advanced filtering
+   - Detailed profiles
+   - Document management
+
+4. **Interviews**
+   - Calendar view
+   - Schedule management
+   - Feedback collection
+   - Interview analytics
+
+5. **Automation Dashboard**
+   - Workflow visualization
+   - Module status
+   - Process metrics
+   - Configuration management
+
+6. **AI Chat Assistant**
+   - Natural language queries
+   - HR policy Q&A
+   - Process guidance
+   - Report generation
+
+---
+
+## Implementation Status
+
+### ✅ Completed Features
+
+1. **Frontend Application**
+   - Landing page with full system capabilities
+   - Login/Authentication UI
+   - Dashboard with metrics
+   - Jobs management interface
+   - Candidates management interface
+   - Interviews management interface
+   - Automation workflow visualization
+   - AI chat assistant
+
+2. **Backend APIs**
+   - Authentication endpoints
+   - Job posting CRUD operations
+   - Candidate management APIs
+   - Interview management APIs
+   - File upload handling
+   - Workflow execution APIs
+   - Database models and migrations
+
+3. **AI Integration**
+   - Groq LLaMA integration
+   - Resume parsing
+   - Job description generation
+   - Candidate screening workflow
+   - Interview scheduling automation
+
+4. **Infrastructure**
+   - PostgreSQL database setup
+   - DigitalOcean backend deployment
+   - GitHub repository
+   - CI/CD pipeline basics
+
+### 🔨 In Progress
+
+1. **Integrity Evaluation Module**
+   - Background check vendor integrations
+   - Automated verification workflows
+   - Risk scoring algorithms
+
+2. **Onboarding Module**
+   - E-signature integration
+   - IT system integrations
+   - Equipment provisioning automation
+
+3. **HR Management Module**
+   - Performance review workflows
+   - Training management system
+   - Payroll system integration
+
+4. **Advanced Features**
+   - Multi-tenancy support
+   - Advanced analytics
+   - Mobile application
+   - Reporting engine
+
+### 📋 Planned Features
+
+1. **Enhanced AI Capabilities**
+   - Predictive analytics
+   - Sentiment analysis
+   - Chatbot improvements
+   - Voice interface
+
+2. **Integrations**
+   - Calendar systems (Google, Outlook)
+   - Email platforms
+   - Payroll systems
+   - Job portals
+   - Background check vendors
+
+3. **Compliance**
+   - GDPR compliance tools
+   - POPIA compliance
+   - Audit reporting
+   - Data retention policies
+
+4. **Enterprise Features**
+   - SSO integration
+   - Advanced permissions
+   - Custom workflows
+   - White-labeling
+
+---
+
+## API Endpoints
+
+### Base URL
+- Production: `https://aihr-backend-hmew5.ondigitalocean.app/api/v1`
+- Local: `http://localhost:8000/api/v1`
+
+### Authentication
+```
+POST /auth/login
+POST /auth/register
+POST /auth/refresh
+GET  /auth/me
+```
+
+### Jobs
+```
+GET    /jobs/
+POST   /jobs/
+GET    /jobs/{id}
+PUT    /jobs/{id}
+DELETE /jobs/{id}
+```
+
+### Candidates
+```
+GET    /candidates/
+POST   /candidates/
+GET    /candidates/{id}
+PUT    /candidates/{id}
+DELETE /candidates/{id}
+POST   /candidates/upload-resume
+```
+
+### Interviews
+```
+GET    /interviews/
+POST   /interviews/
+GET    /interviews/{id}
+PUT    /interviews/{id}
+DELETE /interviews/{id}
+```
+
+### Workflow
+```
+POST /workflow/complete-recruitment-flow
+GET  /workflow/workflow-status/{job_id}
+POST /workflow/screen-candidates
+POST /workflow/create-interviews
+```
+
+---
+
+## Environment Configuration
+
+### Frontend (.env.local)
+```env
+NEXT_PUBLIC_API_URL=https://aihr-backend-hmew5.ondigitalocean.app/api/v1
+NEXT_PUBLIC_APP_NAME=Avatar Human Capital
+```
+
+### Backend (.env)
+```env
+DATABASE_URL=postgresql://user:pass@host:port/dbname
+GROQ_API_KEY=gsk_...
+OPENAI_API_KEY=sk-...
+SECRET_KEY=...
+```
+
+---
+
+## Deployment
+
+### Frontend (Vercel)
+1. Connected to GitHub repository
+2. Automatic deployments on push to main
+3. Environment variables configured
+4. Custom domain ready
+
+### Backend (DigitalOcean)
+1. App Platform deployment
+2. PostgreSQL managed database
+3. Environment variables configured
+4. Automatic HTTPS
+
+---
+
+## System Capabilities Summary
+
+### Recruitment & Selection (RACI)
+- ✅ Understand customer's hiring needs
+- ✅ UI for hiring communications
+- ✅ AI-powered job description compilation
+- ✅ Job description libraries
+- 🔨 Job search vendor ecosystem
+- ✅ AI candidate screening
+- ✅ Candidate ranking
+- ✅ Customer proposals and reporting
+
+### Integrity Evaluation (RACI)
+- ✅ UI for candidate data collection
+- ✅ Data sourcing and storage
+- 🔨 IE vendor ecosystem integration
+- 🔨 Background check automation
+- 🔨 Risk assessment workflows
+- 🔨 IE reporting system
+
+### Onboarding (RACI)
+- 🔨 Onboarding communications UI
+- 🔨 Employee handbooks automation
+- 🔨 Digital paperwork processing
+- 🔨 IT/Finance department integration
+- 🔨 Access and equipment workflows
+- 🔨 Orientation automation
+
+### HR Management (RACI)
+- ✅ Staff training UI
+- 🔨 Performance management system
+- 🔨 Payroll administration integration
+- 🔨 Employee relations tracking
+- 🔨 KPI dashboards
+- 🔨 Satisfaction surveys
+
+---
+
+## Support & Documentation
+
+### Resources
+- GitHub Repository: https://github.com/ZubeidHendricks/chet
+- API Documentation: `/api/docs` (Swagger UI)
+- System Documentation: This file
+
+### Key Contacts
+- **System Name**: Avatar Human Capital (AHC)
+- **Client**: Datavision
+- **Platform**: AI-Powered HR Management System
+
+---
+
+## Future Roadmap
+
+### Q1 2025
+- Complete Integrity Evaluation module
+- Vendor integrations (background checks)
+- Enhanced reporting engine
+- Mobile responsiveness improvements
+
+### Q2 2025
+- Complete Onboarding module
+- IT/Finance system integrations
+- E-signature implementation
+- Advanced analytics dashboard
+
+### Q3 2025
+- Complete HR Management module
+- Payroll system integration
+- Performance review workflows
+- Training management system
+
+### Q4 2025
+- Multi-tenancy support
+- Enterprise features
+- Advanced AI capabilities
+- White-label options
+
+---
+
+## Conclusion
+
+Avatar Human Capital represents a comprehensive, AI-powered approach to HR management, leveraging cutting-edge AI agentic workflows to automate complex HR processes while maintaining the human touch where it matters most. The system is designed for scale, security, and continuous improvement, positioning it as a leading solution in the HR technology space.
+
+**Built with pride by the AHC Development Team**
+**Powered by AI | Built for Humans**

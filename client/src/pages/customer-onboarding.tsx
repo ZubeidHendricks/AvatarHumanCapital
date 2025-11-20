@@ -19,7 +19,8 @@ import {
   ArrowRight,
   ArrowLeft,
   UploadCloud,
-  Lock
+  Lock,
+  BookOpen
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
@@ -34,8 +35,7 @@ export default function CustomerOnboarding() {
       recruitment: true,
       integrity: true,
       onboarding: true,
-      executive: true,
-      finance: false
+      hr_management: true
     }
   });
 
@@ -204,11 +204,10 @@ export default function CustomerOnboarding() {
 
                   <div className="grid gap-4">
                     {[
-                      { id: "recruitment", title: "Recruitment Agent", desc: "Sourcing, Screening, RAG-based Matching", icon: UserPlus },
-                      { id: "integrity", title: "Integrity Agent", desc: "Background Checks, Biometrics, Risk Scoring", icon: ShieldCheck },
-                      { id: "onboarding", title: "Onboarding Agent", desc: "Provisioning, Welcome Flows, Doc Mgmt", icon: CheckCircle2 },
-                      { id: "executive", title: "Executive Dashboard", desc: "Real-time KPIs, Financial Alerts, Risk Monitor", icon: LayoutDashboard },
-                      { id: "finance", title: "Finance Automation", desc: "Zoho Integration, Payroll Sync, Expense Approval", icon: CreditCard },
+                      { id: "recruitment", title: "Recruitment & Selection", desc: "Job Mgmt, Sourcing, Screening, Interviews", icon: UserPlus },
+                      { id: "integrity", title: "Integrity Evaluation (IE)", desc: "Background Verification, Risk Assessment", icon: ShieldCheck },
+                      { id: "onboarding", title: "Employee Onboarding", desc: "Welcome, Docs, IT Provisioning, Orientation", icon: CheckCircle2 },
+                      { id: "hr_management", title: "HR Management", desc: "Performance, Training, Payroll (Zoho), Relations", icon: LayoutDashboard },
                     ].map((module) => (
                       <div key={module.id} className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
                         <div className="flex items-center gap-4">
@@ -241,6 +240,21 @@ export default function CustomerOnboarding() {
                   </div>
 
                   <div className="grid gap-4 max-w-lg mx-auto">
+                    
+                    <div className="p-4 rounded-lg border border-white/10 bg-white/5 space-y-4">
+                       <div className="flex items-center gap-3">
+                         <div className="w-8 h-8 bg-[#0080FF] rounded flex items-center justify-center font-bold text-white">DO</div>
+                         <div className="flex-1">
+                           <h4 className="text-sm font-medium">DigitalOcean Backend</h4>
+                           <p className="text-xs text-muted-foreground">aihr-backend-hmew5.ondigitalocean.app</p>
+                         </div>
+                       </div>
+                       <div className="flex items-center justify-between text-xs text-muted-foreground bg-black/20 p-2 rounded">
+                          <span>Status:</span>
+                          <span className="text-green-400 flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"/> Connected</span>
+                       </div>
+                    </div>
+
                     <div className="p-4 rounded-lg border border-white/10 bg-white/5 space-y-4">
                        <div className="flex items-center gap-3">
                          <div className="w-8 h-8 bg-[#0077b5] rounded flex items-center justify-center font-bold text-white">in</div>

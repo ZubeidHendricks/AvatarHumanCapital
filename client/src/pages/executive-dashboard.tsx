@@ -32,7 +32,8 @@ import {
   Download, 
   Share2,
   Calendar,
-  ArrowUpRight
+  ArrowUpRight,
+  Database
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -83,7 +84,16 @@ export default function ExecutiveDashboard() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Executive Overview</h1>
+            <div className="flex items-center gap-3 mb-2">
+               <h1 className="text-3xl font-bold tracking-tight">Executive Overview</h1>
+               <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30 text-xs flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  Live: DigitalOcean
+               </Badge>
+               <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/30 text-xs">
+                  Groq LLaMA 3.1 70B
+               </Badge>
+            </div>
             <p className="text-muted-foreground">Real-time enterprise intelligence & strategic insights</p>
           </div>
           <div className="flex items-center gap-3">
