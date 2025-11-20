@@ -66,11 +66,18 @@ export default function HRDashboard() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
 
+  // Local state for new creations since we don't have a real backend for POSTs in mockup mode
+  const [localJobs, setLocalJobs] = useState<any[]>([]);
+  const [localCandidates, setLocalCandidates] = useState<any[]>([]);
+
   // JD Generation State
   const [isGenerating, setIsGenerating] = useState(false);
   const [jobTitle, setJobTitle] = useState("");
   const [department, setDepartment] = useState("");
   const [jobDescription, setJobDescription] = useState("");
+
+  // File Upload State
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleGenerateJD = async () => {
     if (!jobTitle) {
@@ -113,6 +120,56 @@ BENEFITS:
     setJobDescription(generatedText);
     setIsGenerating(false);
     toast.success("Job Description generated successfully!");
+  };
+
+  const handlePublishRequisition = () => {
+    if (!jobTitle) {
+        toast.error("Please enter a Job Title.");
+        return;
+    }
+
+    const newJob = {
+        id: Date.now(),
+        title: jobTitle,
+        department: department || "General",
+        status: "Active",
+        date: new Date().toLocaleDateString()
+    };
+
+    setLocalJobs(prev => [newJob, ...prev]);
+    setIsCreateJobOpen(false);
+    
+    // Reset Form
+    setJobTitle("");
+    setDepartment("");
+    setJobDescription("");
+    
+    toast.success("Requisition created successfully!");
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+
+    // Simulate Processing Delay
+    await new Promise(resolve => setTimeout(resolve, 2500));
+
+    // Create mock candidates from files
+    const newCandidates = Array.from(files).map((file, index) => ({
+        id: Date.now() + index,
+        full_name: file.name.split('.')[0].replace(/[-_]/g, ' '), // Guess name from filename
+        role: localJobs[0]?.title || "General Application", // Assign to most recent job or general
+        match: Math.floor(Math.random() * (98 - 70 + 1)) + 70, // Random high score
+        stage: "Screening",
+        status: "New"
+    }));
+
+    setLocalCandidates(prev => [...newCandidates, ...prev]);
+    setIsUploading(false);
+    setIsUploadOpen(false);
+    toast.success(`Processed ${files.length} CVs successfully!`);
   };
 
   // Fetch real data from backend
@@ -175,11 +232,14 @@ BENEFITS:
     return MOCK_CANDIDATES;
   };
 
-  // IMPORTANT: Force the type to be an Array, even if empty, to prevent .map errors
-  const displayCandidates = Array.isArray(getSafeCandidates()) ? getSafeCandidates() : MOCK_CANDIDATES;
+  // Merge API candidates with locally created ones
+  const apiCandidates = Array.isArray(getSafeCandidates()) ? getSafeCandidates() : MOCK_CANDIDATES;
+  const displayCandidates = [...localCandidates, ...apiCandidates];
 
-  // Ensure jobs is an array for the length check
-  const jobCount = Array.isArray(jobs) ? jobs.length : 12;
+  // Merge API jobs with locally created ones
+  const apiJobs = Array.isArray(jobs) ? jobs : [];
+  // Calculate total job count (API + Local)
+  const jobCount = (apiJobs.length || 12) + localJobs.length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -272,7 +332,7 @@ BENEFITS:
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsCreateJobOpen(false)}>Cancel</Button>
-                  <Button onClick={() => setIsCreateJobOpen(false)} className="bg-primary text-primary-foreground">
+                  <Button onClick={handlePublishRequisition} className="bg-primary text-primary-foreground">
                     Publish Requisition
                   </Button>
                 </DialogFooter>
@@ -346,6 +406,29 @@ BENEFITS:
               </Card>
             </div>
 
+            {/* Active Jobs List (New) */}
+            {localJobs.length > 0 && (
+                <Card className="border-white/10 bg-card/20">
+                    <CardHeader>
+                        <CardTitle>Recently Created Requisitions</CardTitle>
+                        <CardDescription>Jobs created in this session</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                            {localJobs.map((job) => (
+                                <div key={job.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                                    <div>
+                                        <p className="font-medium">{job.title}</p>
+                                        <p className="text-sm text-muted-foreground">{job.department}</p>
+                                    </div>
+                                    <Badge className="bg-green-500/20 text-green-400">{job.status}</Badge>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             <Card className="border-white/10 bg-card/20">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -376,13 +459,34 @@ BENEFITS:
                           </DialogDescription>
                         </DialogHeader>
                         
-                        <div className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-white/5">
+                        <div 
+                            className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-white/5 relative"
+                            onClick={() => document.getElementById('file-upload')?.click()}
+                        >
+                          <input 
+                            type="file" 
+                            id="file-upload" 
+                            className="hidden" 
+                            multiple 
+                            accept=".pdf,.docx,.txt"
+                            onChange={handleFileUpload}
+                          />
                           <div className="flex flex-col items-center gap-2">
-                            <div className="p-3 rounded-full bg-primary/10">
-                              <UploadCloud className="h-8 w-8 text-primary" />
-                            </div>
-                            <h3 className="font-medium mt-2">Drop files here or click to upload</h3>
-                            <p className="text-sm text-muted-foreground">Supports PDF, DOCX, TXT (Max 10MB)</p>
+                            {isUploading ? (
+                                <div className="flex flex-col items-center animate-pulse">
+                                    <Loader2 className="h-8 w-8 text-primary animate-spin mb-2" />
+                                    <p className="text-primary font-medium">AI Analyzing Resumes...</p>
+                                    <p className="text-xs text-muted-foreground">Extracting skills & calculating match scores</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="p-3 rounded-full bg-primary/10">
+                                      <UploadCloud className="h-8 w-8 text-primary" />
+                                    </div>
+                                    <h3 className="font-medium mt-2">Drop files here or click to upload</h3>
+                                    <p className="text-sm text-muted-foreground">Supports PDF, DOCX, TXT (Max 10MB)</p>
+                                </>
+                            )}
                           </div>
                         </div>
 
@@ -396,7 +500,6 @@ BENEFITS:
 
                         <DialogFooter>
                           <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
-                          <Button onClick={() => setIsUploadOpen(false)}>Process Files</Button>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
@@ -443,8 +546,7 @@ BENEFITS:
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* INTEGRITY TAB */}
+          {/* ... other tabs ... */}
           <TabsContent value="integrity" className="space-y-6">
             
             {/* AI Integrity Banner */}
@@ -594,7 +696,6 @@ BENEFITS:
               </CardContent>
             </Card>
           </TabsContent>
-
         </Tabs>
       </main>
     </div>
