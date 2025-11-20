@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { candidateService } from "@/lib/api";
 import { Navbar } from "@/components/layout/navbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,13 +56,6 @@ const projectStatusData = [
   { name: "Completed", value: 8, color: "#3b82f6" },
 ];
 
-const recruitmentData = [
-  { name: "Applied", value: 450 },
-  { name: "Screened", value: 120 },
-  { name: "Interviewed", value: 45 },
-  { name: "Offered", value: 18 },
-  { name: "Hired", value: 15 },
-];
 
 const riskAlerts = [
   { id: 1, severity: "high", message: "Contract #4922 expiring in 5 days", dept: "Legal" },
@@ -75,6 +70,42 @@ const whatsappFeed = [
 ];
 
 export default function ExecutiveDashboard() {
+  // Fetch real candidate data
+  const { data: candidates, isLoading: loadingCandidates } = useQuery({
+    queryKey: ['candidates'],
+    queryFn: candidateService.getAll,
+    retry: 1,
+  });
+
+  // Calculate recruitment funnel metrics from real data
+  // Using stage field as canonical source to avoid double-counting
+  // Note: Total count is displayed in the stats card above, not in the funnel chart
+  const recruitmentData = useMemo(() => {
+    if (!candidates || candidates.length === 0) {
+      return [
+        { name: "Screening", value: 0 },
+        { name: "Shortlisted", value: 0 },
+        { name: "Interview", value: 0 },
+        { name: "Offer", value: 0 },
+        { name: "Hired", value: 0 },
+      ];
+    }
+
+    const screening = candidates.filter(c => c.stage === "Screening").length;
+    const shortlisted = candidates.filter(c => c.stage === "Shortlisted").length;
+    const interview = candidates.filter(c => c.stage === "Interview").length;
+    const offer = candidates.filter(c => c.stage === "Offer").length;
+    const hired = candidates.filter(c => c.stage === "Hired").length;
+
+    return [
+      { name: "Screening", value: screening },
+      { name: "Shortlisted", value: shortlisted },
+      { name: "Interview", value: interview },
+      { name: "Offer", value: offer },
+      { name: "Hired", value: hired },
+    ];
+  }, [candidates]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
@@ -130,13 +161,13 @@ export default function ExecutiveDashboard() {
             chartData={[20, 22, 21, 24, 23, 25, 25]}
           />
           <StatsCard 
-            title="Total Headcount" 
-            value="142" 
-            trend="+8" 
+            title="Total Candidates" 
+            value={loadingCandidates ? "..." : String(candidates?.length || 0)} 
+            trend={`${recruitmentData.find(d => d.name === "Shortlisted")?.value || 0} shortlisted`} 
             trendUp={true} 
             icon={Users} 
             color="text-purple-400" 
-            chartData={[120, 125, 128, 130, 135, 138, 142]}
+            chartData={[0, 0, 0, 0, 0, 0, candidates?.length || 0]}
           />
           <StatsCard 
             title="Critical Risks" 
@@ -245,8 +276,11 @@ export default function ExecutiveDashboard() {
           {/* Recruitment Funnel */}
           <Card className="bg-card/20 border-white/10 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle>Talent Pipeline</CardTitle>
-              <CardDescription>Monthly recruitment funnel</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                Talent Pipeline
+                {loadingCandidates && <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
+              </CardTitle>
+              <CardDescription>Real-time candidate funnel</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[250px] w-full">
@@ -254,7 +288,7 @@ export default function ExecutiveDashboard() {
                   <BarChart layout="vertical" data={recruitmentData} margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
                     <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" stroke="#888" width={80} />
+                    <YAxis dataKey="name" type="category" stroke="#888" width={90} />
                     <Tooltip 
                       cursor={{fill: 'rgba(255,255,255,0.05)'}}
                       contentStyle={{ backgroundColor: '#1a1a1a', borderColor: 'rgba(255,255,255,0.1)' }} 
