@@ -1,0 +1,627 @@
+HR & OPERATIONAL ADVISORY SERVICES 
+
+CUSTOMER REQUIREMENTS
+SCOPE
+1.Executive Dashboard &Communication
+•Develop aconsolidated business dashboard forexecutives integrating company -wide
+updates, project status, financial data &alerts .
+•WhatsApp groups tobeorganized &connected todashboard feeds forreal-time
+insights .
+•Dashboard must include KPIs, contract timelines &compliance indicators .
+2.Finance Department Enhancements
+•Enhance Zoho Finance tosupport automation forpayment requests, approvals &bank
+integration .
+•Implement API&VPN connections forsecure cloud -based processing .
+•Objective :eliminate missed payments &automate financial tracking .
+3.Operations &Project Execution
+•Operations team delays tobeaddressed viaautomation &implementation tools .
+•Build Contract Management System with automatic alerts forearly &late submissions .
+•Develop tools forperformance measurement, KPItracking &compliance monitoring .
+•Integrate Fleet Management (70 vehicles) –automate maintenance, asset
+management &health checks (5%financed) .
+4.Business Development &Tendering
+•Implement aTender Management System tosend, rank &document tenders .
+•Automate document reading, ranking &table creation fortender evaluations .
+•Build resource library fortemplates, specs &submission documents .5.SHEQ (Safety, Health, Environment &Quality)
+•Consolidate oldSHEQ documents into aunified system .
+•Introduce riskalert &compliance tracking tools .
+•Enable response comparison tools forclient specifications toidentify unique ornon-
+compliant requirements .
+6.Performance &HRManagement
+•Initiate Performance Management System with qualitative KPItracking viaZoho .
+•Introduce Agent Assist AIforreport &write -upgeneration .
+•Integrate AItools (ChatGPT, Copilot, Manners) forimproved efficiency .
+•Automate timesheets with photo &face verification unlocking forattendance validation .
+7.IT,Cybersecurity &Infrastructure
+•Allsystems tobecloud -based with VPN -secured connections .
+•Enhance cybersecurity approvals forfinancial &operational requisitions .
+•Integrate server synchronization with Zoho &third -party APIs .
+8.Objectives &Expected Outcomes
+•Reduce manual systems &administrative delays .
+•Prevent penalties viaearly alert systems forsubmissions &contract expirations .
+•Improve traceability, decision -making &compliance visibility .
+•Develop aliveAI-driven tracker (Net Start Tracker) forreal-time project &fleet monitoring .
+•Create automated reports, dashboards aswell asriskalerts tooptimize time and efficiency .
+
+CUSTOMER REQUIREMENTS
+ACTION ITEMS
+ACTION ITEM REQUIRMENT / NEED
+1. Explore faster MIE check providers/alternatives Reduce verification times
+2. Draft automation plan for offers, NDAs & contracts Ensure compliance & efficiency
+3. Develop proposal for leave & payroll automation (incl. 
+WhatsApp integration)Cater to accessibility for blue -collar staff
+4. Design induction, mentorship & training programmes Incorporate into knowledge hub
+5. Implement digital performance management tool Align with staff development objectives
+6. Assess payroll system upgrade for remote access & backup Address current vulnerabilities
+7. Review and resolve API integration issues Critical for payroll and clock -in processes
+8. Develop roadmap for wage digitalisation Minimise manual dependency
+
+CUSTOMER REQUIREMENTS
+ACTION ITEMS
+ACTION ITEM REQUIRMENT / NEED
+9. Design Executive Dashboard & WhatsApp Integration
+10. Automate Zoho Finance & Bank Integration
+11. Develop Contract & Operations Management Tools
+12. Implement Tender Ranking & Resource Library
+13. Launch Performance & KPI Tracking
+14. Consolidate SHEQ & Risk Alert System
+15. Configure VPN & Cybersecurity APIs
+16. Design Executive Dashboard & WhatsApp Integration
+
+AUTOMATED SOLUTIONS
+RECRUITMENT & SELECTION -PROCES & WORKLFOW
+CUSTOMER SERVICE PROVIDER
+Source Candidates
+AUTOMATION
+AI –Agentic
+oEvaluate 
+candidates
+oMatch 
+candidates to 
+hiring needsAUTOMATION
+AI -Agentic
+oUI interfaceAUTOMATION
+AI –Agentic
+oCompile Job 
+Description
+oDevelop Job 
+Description 
+libraries AUTOMATION
+AI –Agentic
+oAccess Job 
+Search portals
+oFind potential 
+candidates
+DATA STORAGE + CONTEXT OPTIMIZATIONINTEGRITY 
+EVALUATIONDetermine Hiring 
+NeedsRECRUITMENT 
+STARTCompile Job 
+DescriptionScreen Candidates
+
+AUTOMATED SOLUTIONS
+RECRUITMENT & SELECTION -RACI
+SOLUTION SERVICE PROVIDER D8TAVISION
+DETERMINE HIRING NEEDS•Understand customer’s hiring needs •UI for all customer communications relating to hiring 
+needs
+COMPILE JOB DESCRIPTION•Compile detailed job description to 
+facilitate candidate search•AI agents & agentic workflows
+oCompile job description using industry standards & 
+libraries
+oBuild job description libraries
+oUpdate libraries
+oData storage
+FIND CANDIDATES•Establish Job Search Vendor Eco -
+system
+oService offering & SLA
+oSubscription
+oAutomated access•AI agents & agentic workflows
+oContext & prompt optimization for job search platforms
+oJob search platform submissions
+oJob search platform extractions
+oData storage
+ASSESS CANDIDATES•Match candidates to customer hiring 
+needs –Best fit•AI agents & agentic workflows
+oCompile summary of candidates & applications
+oRank suitability of candidates according to hiring needs of 
+customer
+oCompile customer proposals
+oReporting & dashboarding
+oData storage
+
+
+AUTOMATED SOLUTIONS
+INTEGRITY EVALUATION (IE) -PROCES & WORKLFOW 
+CUSTOMER SERVICE PROVIDER
+AUTOMATION
+AI -Agentic
+•Obtain Consent
+•Process 
+Fingerprints
+•Collate Personal 
+InfoAUTOMATION
+AI -Agentic
+oPerform background 
+checks: 
+₋Criminal
+₋Credit
+₋Qualifications
+₋Employment history
+₋ReferencesAUTOMATION
+AI -Agentic
+oEvaluate 
+background checks
+oVerify accuracy & 
+relevance
+oCompile Candidate 
+AssessmentYes NoEvaluate & Appoint 
+Candidates
+DATA STORAGE + CONTEXT OPTIMIZATIONONBOARDINGRECRUITMENT 
+& SELECTIONProcure Information 
+from CandidatesPerform Background 
+Checks
+Inform    
+Candidates
+
+AUTOMATED SOLUTIONS
+INTEGRITY EVALUATION (IE) –RACI 
+SOLUTION SERVICE PROVIDER D8TAVISION
+DETERMINING HIRING NEES•Understand customer’s existing standard 
+operating procedures & workflows
+•Procurement of candidate’s Bio & 
+personal data•UI for sourcing candidate’s finger prints & personal 
+data
+•AI agents & agentic workflows
+oData sourcing
+oData storage
+PERFORMING BACKGROUND 
+CHECKS•Understand customer’s IE Assessment 
+framework / requirement
+•Establish IE Vendor Eco -system
+oService offering & SLA
+oSubscription
+oAutomated access•AI agents & agentic workflows
+oContext & prompt optimization for enhanced IE 
+Assessment Framework
+oIE Vendor submissions
+oIE Vendor extractions
+oData storage
+EVALUATION OF 
+BACKGROUND CHECKS•Understand customer’s reporting 
+requirements
+•Understand customer’s Delegation of 
+Authority structures•AI agents & agentic workflows
+oVerification –IE Vendor extractions
+oRisk Assessment -candidate
+oIE Reporting –customer & candidate
+oData storage
+
+
+AUTOMATED SOLUTIONS
+ONBOARDING -PROCES & WORKLFOW
+CUSTOMER SERVICE PROVIDER
+Provide Access & 
+Equipment 
+AUTOMATION
+AI –Agentic
+oIntroduce the 
+company to 
+new appointee
+oEvaluate 
+orientation 
+processAUTOMATION
+AI -Agentic
+oSend Welcome 
+Letter
+oDistribute 
+Employee 
+Handbook
+oCommunicate 
+Company 
+Benefits AUTOMATION
+AI –Agentic
+oProcure 
+completed Tax 
+forms
+oProcure Banking 
+Details
+oProcure signed 
+Offer
+oProcure signed 
+Contracts
+oProcure signed 
+NDAAUTOMATION
+AI –Agentic
+oShare Access 
+Codes
+oProcure equipment
+oCoordinate 
+equipment set up
+DATA STORAGE + CONTEXT OPTIMIZATIONHR 
+MANAGEMENTWelcome New 
+AppointeeINTEGRITY 
+EVALUATIONComplete 
+PaperworkOrientation of New 
+Appointee
+INTEGRATION
+AI –Agentic
+oFinance
+oIT Dept
+
+AUTOMATED SOLUTIONS
+ONBOARDING -RACI
+SOLUTION SERVICE PROVIDER D8TAVISION
+WELCOME•Understand customer’s existing standard 
+operating procedures & workflows•UI for all onboarding communications with new 
+appointee
+•AI agents & agentic workflows
+oEmployee handbooks
+oEmployee benefits 
+PAPERWORK•Understand the scope of the paperwork 
+that needs to be completed, signed & 
+submitted
+oPre-onboarding
+oDay 1•AI agents & agentic workflows
+oSubmission of paperwork to new appointee
+oRetrieval of completed & signed paperwork
+oVerification of compliance & accuracy
+oData storage
+ACCESS & EQUIPMENT•Understand access requirements to the 
+premises
+•Understand standard equipment issue to 
+new appointees•AI agents & agentic workflows
+oWorks -order to IT Department
+oEquipment purchase order to Finance department
+oData storage
+ORIENTATION•Understand Orientation procedures & 
+evaluation requirements•AI agents & agentic workflows
+oCompany introduction to new appointee
+oOrientation evaluation
+
+
+AUTOMATED SOLUTIONS
+HR MANAGEMENT -PROCES & WORKLFOW
+AUTOMATION
+AI –Agentic
+oObtain 
+Employee 
+Feedback
+₋Concerns
+₋Suggestions
+oEvaluate Staff 
+Satisfaction 
+levelsAUTOMATION
+AI -Agentic
+oEvaluate Staff 
+Training 
+oCompile 
+management 
+reports
+oCreate & update 
+dashboardsAUTOMATION
+AI –Agentic
+oEvaluate Staff 
+Performance 
+against set KPI’s
+oCompile 
+management 
+reports
+oCreate & update 
+dashboardsAUTOMATION
+AI –Agentic
+oAdminister 
+payroll
+oAdminister Leave 
+Pay
+oAdminister Staff 
+Benefits
+DATA STORAGE + CONTEXT OPTIMIZATIONCUSTOMER SERVICE PROVIDER
+HR 
+MANAGEMENT 
+FINISHTraining & 
+IntegrationONBOARDINGPerformance 
+ManagementPayroll 
+AdministrationEmployee  
+Relations
+INTEGRATION
+AI –Agentic
+oFinance
+
+AUTOMATED SOLUTIONS
+HR MANAGEMENT -RACI
+SOLUTION SERVICE PROVIDER D8TAVISION
+TRAINING & INTEGRATION•Understand customer’s staff training & 
+development outcomes •UI for all communications relating to staff training 
+•AI agents & agentic workflows
+oEmployee evaluations of training received
+oData Storage
+PERFORMANCE MANAGEMENT•Understand customers KPI setting
+•Understand customers staff performance 
+benchmarks & minimum standards•AI agents & agentic workflows
+oPerformance evaluations
+oPerformance improvement suggestions 
+oBenchmarking internal & external
+oData storage
+PAYROL ADMINISTRATION•Understand standard staff benefits that are 
+offered by the customer to their staff
+•Understand bonus and incentive structures 
+and how they relate to KPI setting•AI agents & agentic workflows
+oAdministration of compensation & benefits
+oIntegration –Finance Department
+oData Storage
+EMPLOYEE RELATIONS•Understand the type of feedback that the 
+customer desires from their staff
+•Understand the purpose for the staff 
+feedback•AI agents & agentic workflows
+oEvaluation of staff feedback
+oDetermination of staff satisfaction levels
+oData Storage
+
+
+AUTOMATED SOLUTIONS
+TENDER MANAGEMENT -PROCES & WORKLFOW
+AUTOMATION
+AI –Agentic
+oSchedule 
+standard follow 
+up emails
+oAssimilate 
+tender 
+outcomes
+oCompile 
+management 
+reports
+oUpdate 
+DashboardsAUTOMATION
+AI -Agentic
+oCompile Meta 
+Data for key 
+metrics
+oPrioritise Tender 
+SubmissionsAUTOMATION
+AI –Agentic
+oAutofill 
+Template Docs 
+in alignment 
+with key metrics
+oCompile Tender 
+proposal
+oAggregate 
+required 
+documentsAUTOMATION
+AI –Agentic
+oAlign submission 
+to tender 
+instructions
+oConfirm 
+acceptance of 
+tender bid
+oCompile 
+management 
+reports
+oUpdate 
+Dashboards
+DATA STORAGE + CONTEXT OPTIMIZATIONCONTRACT 
+MANAGEMENTAssimilate Tender 
+RequirementsBUSINESS 
+DEVELOPMENTPrepare Tender 
+DocumentsSubmit Tender BidsFollow Up & 
+EvaluationCUSTOMER SERVICE PROVIDER
+
+AUTOMATED SOLUTIONS
+TENDER MANAGEMENT -RACI
+SOLUTION SERVICE PROVIDER D8TAVISION
+TENDER REQUIREMENTS•AI agents & agentic workflows
+oCompile Meta Data of Tender key metrics
+oData Storage
+PREPARE TENDER DOCUMENTS•Understand customer’s Tender process & 
+standard / template documents
+•Understand customer’s Workflow and DOA•AI agents & agentic workflows
+oAutofill required tender docs
+oCompile Tender Proposal
+oData Storage
+SUBMIT TENDER•Understand customer’s Tender process & 
+standard / template documents
+•Understand customer’s Workflow and DOA•AI agents & agentic workflows
+oMonitor tender compliance
+oConfirmation of acceptance of submission
+oCreate & update  reports
+oUpdate dashboards
+oData storage
+FOLLOW UP & EVALUATIONS•Understand customers follow up process 
+and timelines
+•Understand customers requirement for 
+assimilation of tender results•AI agents & agentic workflows
+oScheduled follow ups
+oAssimilation of outcomes
+oCreate reports
+oUpdate dashboards
+oData Storage
+
+
+AUTOMATED SOLUTIONS
+CONTRACT MANAGEMENT -PROCES & WORKLFOW
+AUTOMATION
+AI –Agentic
+oProcure required 
+goods & services
+oInitiate invoicing 
+against milestone 
+achievements
+oMonitor usage of 
+assets
+₋Vehicles
+₋EquipmentAUTOMATION
+AI -Agentic
+oCompile Meta 
+Data for key 
+metrics
+oCreate 
+DashboardsAUTOMATION
+AI –Agentic
+oMeasure 
+execution against 
+compliance 
+requirements
+oTrack compliance 
+risks
+oCompile 
+management 
+reports
+oUpdate 
+dashboardsAUTOMATION
+AI –Agentic
+oEvaluate 
+Performance 
+against key 
+metrics
+oCompile 
+management 
+reports
+oUpdate 
+dashboards
+DATA STORAGE + CONTEXT OPTIMIZATIONCONTRACT 
+MANAGEMENT 
+FINISHAssimilate Contractual 
+Obligations TENDER 
+MANAGEMENTManage Contractual 
+CompliancePerformance 
+ManagementWork ExecutionCUSTOMER SERVICE PROVIDER
+INTEGRATION
+AI –Agentic
+oFinance
+oProject Management
+oFleet Management
+
+AUTOMATED SOLUTIONS
+CONTRACT MANAGEMENT -RACI
+SOLUTION SERVICE PROVIDER D8TAVISION
+CONTRACTUAL OBLIGATIONS•Understand customer’s contract filing 
+storage structures / platforms•AI agents & agentic workflows
+oCompile Meta Data of contractual key metrics
+oCreate Dashboards
+oData Storage
+CONTRACT COMPLIANCE•Understand customer’s risk management 
+process and risk register format•AI agents & agentic workflows
+oCompile compliance framework
+oReporting & dashboarding
+oData Storage
+PERFORMANCE MANAGEMENT•Understand customers KPI setting
+•Understand customers staff performance 
+benchmarks & minimum standards•AI agents & agentic workflows
+oPerformance evaluations
+oPerformance improvement suggestions 
+oBenchmarking internal & external
+oReporting & dashboarding
+oData storage
+CONTRACT EXECUTION•Understand customers Procure -to-pay 
+process
+•Understand customers order to cash 
+process•AI agents & agentic workflows
+oProcurement of goods & services
+oInitiate progress invoicing & payments 
+oMonitor usage of vehicles & equipment
+oReporting & dashboarding
+oData Storage
+
+
+AUTOMATED SOLUTIONS
+SHEQ -PROCES & WORKLFOW
+AUTOMATION
+AI –Agentic
+oAssimilate 
+Performance & 
+Compliance
+oBenchmark against 
+industry standards
+oCompile 
+improvement 
+suggestions
+oCompile 
+management 
+reports
+oUpdate 
+dashboardsAUTOMATION
+AI -Agentic
+oFormulate Gap 
+Analysis
+oCompile Risk 
+Register
+oCreate 
+DashboardsAUTOMATION
+AI –Agentic
+oMeasure 
+execution against 
+compliance 
+requirements
+oTrack compliance 
+risks
+oCompile 
+management 
+reports
+oUpdate 
+dashboardsAUTOMATION
+AI –Agentic
+oEvaluate 
+Performance 
+against KPI’s
+oCompile 
+management 
+reports
+oUpdate 
+dashboards
+DATA STORAGE + CONTEXT OPTIMIZATIONSHEQ      
+FINISHAssimilate SHEQ 
+PoliciesSHEQ 
+STARTManage SHEQ 
+CompliancePerformance 
+ManagementContinuous 
+ImprovementCUSTOMER SERVICE PROVIDER
+
+AUTOMATED SOLUTIONS
+SHEQ -RACI
+SOLUTION SERVICE PROVIDER D8TAVISION
+SHEQ POLICIES•Understand customer’s SHEQ policy & 
+compliance standards
+•Understand gap between actual execution 
+& SHEQ policy•AI agents & agentic workflows
+oCompile compliance framework
+oFormulate Gap analysis
+oReporting & dashboarding
+oData Storage
+SHEQ COMPLIANCE•Understand customer’s monitoring & 
+measurement requirements•AI agents & agentic workflows
+oMeasure actual compliance against standards
+oReporting & dashboarding
+oData Storage
+PERFORMANCE MANAGEMENT•Understand customers KPI setting
+•Understand customers staff performance 
+benchmarks & minimum standards•AI agents & agentic workflows
+oPerformance evaluations against KPI’s
+oReporting & dashboarding
+oData storage
+CONTINUOUS IMPROVEMENT•Understand industry standards •AI agents & agentic workflows
+oBenchmark performance against industry standards
+oPerformance improvement suggestions 
+oReporting & Proposals
+oData Storage
+
+
+AI / Agentic Automation
+Data Integration
+On-Prem Data Storage
+Off-Prem Data Storage
+Cloud -BasedData Storage
+Business Integration
+Data Management Platform
+Data EnhancementData Aggregation
+Data Transformation
+Data Storage
+D8tavision
+AUTOMATED SOLUTIONS
+HOW WE DO IT –DATA /AI / BI
+
+
+Chett Maherry
+Mobile: +27 (0)82 828 6687
+Email: chett@cartacapital.co.zaTHANK YOU
+
