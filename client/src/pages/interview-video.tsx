@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Mic, Video, PhoneOff, Settings, MoreVertical, Volume2, Circle } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
