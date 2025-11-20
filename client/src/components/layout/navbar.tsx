@@ -65,13 +65,13 @@ export function Navbar() {
               <Link href="/interview/voice">
                 <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
                   <Mic className="w-4 h-4 mr-2 text-indigo-400" />
-                  <span>Voice Interview (Hume)</span>
+                  <span>Voice Interview (Chit-Chet)</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/interview/video">
                 <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
                   <Video className="w-4 h-4 mr-2 text-rose-400" />
-                  <span>Video Interview (Tavus)</span>
+                  <span>Video Interview (Cloned)</span>
                 </DropdownMenuItem>
               </Link>
               <DropdownMenuSeparator className="bg-white/10" />

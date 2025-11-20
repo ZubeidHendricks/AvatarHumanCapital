@@ -6,11 +6,11 @@ import { Mic, Video, PhoneOff, Settings, MoreVertical, Volume2, Circle } from "l
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 
-// Mock Tavus Video Player Component
-function TavusPlayer({ isPlaying }: { isPlaying: boolean }) {
+// Mock Cloned Video Player Component
+function ClonedPlayer({ isPlaying }: { isPlaying: boolean }) {
   return (
     <div className="relative w-full h-full bg-zinc-900 rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
-      {/* Placeholder for Tavus Video */}
+      {/* Placeholder for Cloned Video */}
       <div className="absolute inset-0 bg-gradient-to-b from-zinc-800 to-zinc-950">
         {/* Simulated Person */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-[90%]">
@@ -30,7 +30,7 @@ function TavusPlayer({ isPlaying }: { isPlaying: boolean }) {
       {/* Overlays */}
       <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 border border-white/5">
         <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-        <span className="text-xs font-medium text-white">Tavus AI Engine</span>
+        <span className="text-xs font-medium text-white">Cloned AI Engine</span>
       </div>
 
       <div className="absolute bottom-6 left-6 right-6">
@@ -89,7 +89,7 @@ export default function InterviewVideo() {
                  <div className="text-center space-y-2">
                    <h2 className="text-2xl font-bold">Ready for your final interview?</h2>
                    <p className="text-muted-foreground max-w-md">
-                     This session uses Tavus video cloning technology for a hyper-personalized experience.
+                     This session uses Cloned video cloning technology for a hyper-personalized experience.
                    </p>
                  </div>
                  <Button size="lg" onClick={() => setIsSessionActive(true)} className="bg-indigo-500 hover:bg-indigo-600 text-white">
@@ -97,7 +97,7 @@ export default function InterviewVideo() {
                  </Button>
               </div>
             ) : (
-              <TavusPlayer isPlaying={true} />
+              <ClonedPlayer isPlaying={true} />
             )}
             
             {/* Self View (Picture in Picture) */}
@@ -153,7 +153,7 @@ export default function InterviewVideo() {
                    <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-400">AI</div>
                    <div>
                      <p className="text-sm font-medium">Alex (Digital Twin)</p>
-                     <p className="text-xs text-muted-foreground">Tavus Gen-2 Model</p>
+                     <p className="text-xs text-muted-foreground">Cloned Gen-2 Model</p>
                    </div>
                  </div>
                </div>

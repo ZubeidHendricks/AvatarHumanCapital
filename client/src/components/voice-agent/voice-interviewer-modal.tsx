@@ -72,7 +72,7 @@ export function VoiceInterviewerModal() {
         <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="font-medium text-sm tracking-wide">Hume EVI Interface</span>
+            <span className="font-medium text-sm tracking-wide">Chit-Chet Interface</span>
           </div>
           <div className="flex items-center gap-2">
             <Badge className="bg-white/10 text-xs font-mono">{currentEmotion}</Badge>

@@ -69,7 +69,7 @@ export default function InterviewVoice() {
           </div>
           <div>
             <h1 className="font-medium text-sm text-white/90">Voice Interview Session</h1>
-            <p className="text-xs text-white/50">Powered by Hume EVI</p>
+            <p className="text-xs text-white/50">Powered by Chit-Chet</p>
           </div>
         </div>
         <Badge variant="outline" className="bg-white/5 border-white/10 text-white/70 px-3 py-1">

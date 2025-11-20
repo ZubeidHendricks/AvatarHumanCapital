@@ -37,7 +37,7 @@ export default function Home() {
                   <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20 group-hover:scale-110 transition-transform">
                     <Mic className="w-6 h-6 text-purple-400" />
                   </div>
-                  <CardTitle className="text-2xl">Hume Voice Interview</CardTitle>
+                  <CardTitle className="text-2xl">Chit-Chet Voice Interview</CardTitle>
                   <CardDescription>Stage 1: Empathic Screening</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -58,12 +58,12 @@ export default function Home() {
                   <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4 border border-indigo-500/20 group-hover:scale-110 transition-transform">
                     <Video className="w-6 h-6 text-indigo-400" />
                   </div>
-                  <CardTitle className="text-2xl">Tavus Video Interview</CardTitle>
+                  <CardTitle className="text-2xl">Cloned Video Interview</CardTitle>
                   <CardDescription>Stage 2: Deep Dive</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <p className="text-muted-foreground">
-                    Conduct personalized video interviews using digital twin technology. Tavus clones ask role-specific questions with human-like presence.
+                    Conduct personalized video interviews using digital twin technology. Cloned avatars ask role-specific questions with human-like presence.
                   </p>
                   <Link href="/interview/video">
                     <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white group-hover:shadow-lg group-hover:shadow-indigo-500/20">
