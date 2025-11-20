@@ -2,7 +2,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Hero } from "@/components/sections/hero";
 import { Services } from "@/components/sections/services";
 import { DashboardPreview } from "@/components/sections/dashboard-preview";
-import { AveryFeatures } from "@/components/sections/avery-features";
+import { AHCFeatures } from "@/components/sections/avery-features";
 import { Cpu, Mail, MapPin, Phone, Mic, Video, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,8 @@ export default function Home() {
       <main>
         <Hero />
         
-        {/* NEW: Avery/Recruitment AI Features Module */}
-        <AveryFeatures />
+        {/* NEW: AHC/Recruitment AI Features Module */}
+        <AHCFeatures />
 
         {/* NEW: Interview Suite Section */}
         <section className="py-24 bg-black/20 border-y border-white/5 relative overflow-hidden">

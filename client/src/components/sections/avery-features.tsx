@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Zap, Sparkles, Users, MessageSquare, Mail } from "lucide-react";
 
-export function AveryFeatures() {
+export function AHCFeatures() {
   return (
     <div className="w-full bg-black text-white py-20">
       <div className="container mx-auto px-6">
@@ -19,7 +19,7 @@ export function AveryFeatures() {
               Auto-evaluate
             </h2>
             <p className="text-xl text-gray-400 mb-8 leading-relaxed">
-              Avery evaluates candidates <span className="text-white font-semibold">10x faster</span> than your regular Recruiter, 
+              AHC evaluates candidates <span className="text-white font-semibold">10x faster</span> than your regular Recruiter, 
               and it reads the context like no one before to avoid biases and detect hidden gems.
             </p>
           </motion.div>
@@ -64,10 +64,10 @@ export function AveryFeatures() {
             <Badge className="mb-4 bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">SPEED</Badge>
             <h3 className="text-4xl font-bold mb-4">10x your screening speed.</h3>
             <p className="text-gray-400 text-lg mb-6">
-              No more CV scanning. Avery helps you identify talent at unprecedented speed. Intelligently.
+              No more CV scanning. AHC helps you identify talent at unprecedented speed. Intelligently.
             </p>
             <Button variant="outline" className="border-white/20 hover:bg-white hover:text-black transition-colors rounded-full px-8">
-              Try Avery free
+              Try AHC free
             </Button>
           </motion.div>
         </div>
@@ -85,7 +85,7 @@ export function AveryFeatures() {
               Spot hidden, growing, unusual talent, before your competitor does.
             </p>
             <Button variant="outline" className="border-white/20 hover:bg-white hover:text-black transition-colors rounded-full px-8">
-              Try Avery
+              Try AHC
             </Button>
           </motion.div>
 
@@ -140,7 +140,7 @@ export function AveryFeatures() {
             <Badge className="mb-4 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border-blue-500/20">FAIRNESS</Badge>
             <h3 className="text-4xl font-bold mb-4">Built to reduce, not amplify biases.</h3>
             <p className="text-gray-400 text-lg mb-6">
-              Avery’s matching algorithm aims for the best competence match, regardless of look or personality.
+              AHC’s matching algorithm aims for the best competence match, regardless of look or personality.
             </p>
             <Button variant="outline" className="border-white/20 hover:bg-white hover:text-black transition-colors rounded-full px-8">
               De-bias your hiring
@@ -159,7 +159,7 @@ export function AveryFeatures() {
              <Badge className="mb-6 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border-orange-500/20">OUTREACH</Badge>
              <h2 className="text-4xl font-bold mb-6">Augment your outreach</h2>
              <p className="text-gray-400 max-w-2xl mx-auto text-lg mb-8">
-               Get in contact with the best-fitting talent without leaving Avery. And with Agent Mode, you outreach to all suitable candidates in batch.
+               Get in contact with the best-fitting talent without leaving AHC. And with Agent Mode, you outreach to all suitable candidates in batch.
              </p>
              
              <div className="flex flex-col md:flex-row gap-8 justify-center items-center mb-10">
@@ -191,7 +191,7 @@ export function AveryFeatures() {
               <div>
                  <h2 className="text-4xl font-bold mb-6">Agentic Mode: hiring on auto-pilot.</h2>
                  <p className="text-gray-400 text-lg mb-8">
-                   Avery advanced Agentic Mode helps you enrich contacts, outreach shortlisted candidates, and even (video) interview.
+                   AHC advanced Agentic Mode helps you enrich contacts, outreach shortlisted candidates, and even (video) interview.
                  </p>
                  
                  <div className="space-y-6">
