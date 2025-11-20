@@ -93,15 +93,16 @@ export default function HRDashboard() {
   });
 
   // Safer data handling logic
-  // 1. If error, use mock
-  // 2. If loading, use empty (will show spinner)
-  // 3. If success but not array (e.g. empty object), use mock or empty
   const getSafeCandidates = () => {
     if (candidatesError) return MOCK_CANDIDATES;
     if (loadingCandidates) return [];
     
+    // Handle Backend Pagination Wrapper { total: 2, candidates: [...] }
+    if (candidates && !Array.isArray(candidates) && candidates.candidates && Array.isArray(candidates.candidates)) {
+        return candidates.candidates;
+    }
+
     // Critical Check: Ensure it is an array. 
-    // Sometimes 404s return an object that isn't caught as "error" if response parsing fails differently
     if (candidates && Array.isArray(candidates)) {
         return candidates;
     }
@@ -111,7 +112,7 @@ export default function HRDashboard() {
         console.warn("Unexpected candidates data structure:", candidates);
     }
     
-    // Default to mock data if data is present but invalid, or if we just want a safe fallback
+    // Default to mock data if data is present but invalid
     return MOCK_CANDIDATES;
   };
 
@@ -140,7 +141,7 @@ export default function HRDashboard() {
         </div>
 
         {/* Connection Error Alert */}
-        {(jobsError || candidatesError || (!loadingCandidates && candidates && !Array.isArray(candidates))) && (
+        {(jobsError || candidatesError || (!loadingCandidates && candidates && !Array.isArray(candidates) && !candidates.candidates)) && (
           <Alert variant="destructive" className="mb-6 border-red-500/20 bg-red-500/10 text-red-200">
             <WifiOff className="h-4 w-4" />
             <AlertTitle>Backend Connection Issue</AlertTitle>
@@ -241,14 +242,14 @@ export default function HRDashboard() {
                       // Use explicit array mapping
                       displayCandidates.map((candidate: any) => (
                         <div key={candidate.id || Math.random()} className="px-4 py-3 grid grid-cols-12 items-center border-t border-white/5 hover:bg-white/5 transition-colors">
-                          <div className="col-span-3 font-medium">{candidate.name || "Unknown Candidate"}</div>
+                          <div className="col-span-3 font-medium">{candidate.full_name || candidate.name || "Unknown Candidate"}</div>
                           <div className="col-span-3 text-sm text-muted-foreground">{candidate.role || "General Application"}</div>
                           <div className="col-span-2">
-                            <Badge className={`${(candidate.match || 0) > 90 ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'} border-0`}>
-                              {candidate.match || 0}% Match
+                            <Badge className={`${(candidate.match || candidate.overall_score || 0) > 90 ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'} border-0`}>
+                              {candidate.match || candidate.overall_score || 0}% Match
                             </Badge>
                           </div>
-                          <div className="col-span-2 text-sm">{candidate.stage || "New"}</div>
+                          <div className="col-span-2 text-sm">{candidate.stage || candidate.status || "New"}</div>
                           <div className="col-span-2 text-right">
                             <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                           </div>
