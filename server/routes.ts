@@ -163,16 +163,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log("Requesting Hume AI access token...");
+      
+      // Encode credentials as Basic Auth (base64 of "apiKey:secretKey")
+      const credentials = Buffer.from(`${HUMAI_API_KEY}:${HUMAI_SECRET_KEY}`).toString('base64');
+      
       const tokenResponse = await fetch("https://api.hume.ai/oauth2-cc/token", {
         method: "POST",
         headers: {
+          "Authorization": `Basic ${credentials}`,
           "Content-Type": "application/x-www-form-urlencoded"
         },
-        body: new URLSearchParams({
-          grant_type: "client_credentials",
-          client_id: HUMAI_API_KEY,
-          client_secret: HUMAI_SECRET_KEY
-        })
+        body: "grant_type=client_credentials"
       });
 
       if (!tokenResponse.ok) {
