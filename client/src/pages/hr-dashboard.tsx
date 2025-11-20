@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Link } from "wouter";
 import { 
   Users, 
   UserPlus, 
@@ -17,7 +18,8 @@ import {
   Search, 
   Filter,
   MoreHorizontal,
-  BrainCircuit
+  BrainCircuit,
+  Sparkles
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -73,6 +75,25 @@ export default function HRDashboard() {
 
           {/* RECRUITMENT TAB */}
           <TabsContent value="recruitment" className="space-y-6">
+            
+            {/* AI Agent Banner */}
+            <div className="rounded-lg bg-gradient-to-r from-primary/20 to-purple-500/20 border border-primary/20 p-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2 text-white">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  Need to find candidates fast?
+                </h3>
+                <p className="text-muted-foreground text-sm mt-1">
+                  Launch the AI Recruitment Agent to source, screen, and rank candidates using our RAG-powered engine.
+                </p>
+              </div>
+              <Link href="/recruitment-agent">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20">
+                  Launch AI Recruiter
+                </Button>
+              </Link>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="bg-card/30 border-white/10 backdrop-blur-sm">
                 <CardHeader className="pb-2">
