@@ -19,7 +19,8 @@ import {
   Filter,
   MoreHorizontal,
   BrainCircuit,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -164,6 +165,25 @@ export default function HRDashboard() {
 
           {/* INTEGRITY TAB */}
           <TabsContent value="integrity" className="space-y-6">
+            
+            {/* AI Integrity Banner */}
+            <div className="rounded-lg bg-gradient-to-r from-blue-900/20 to-cyan-500/20 border border-cyan-500/20 p-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2 text-white">
+                  <ShieldCheck className="w-5 h-5 text-cyan-400" />
+                  Perform automated background checks?
+                </h3>
+                <p className="text-muted-foreground text-sm mt-1">
+                  Activate the Integrity Agent to verify fingerprints, criminal records, and credit history instantly.
+                </p>
+              </div>
+              <Link href="/integrity-agent">
+                <Button className="bg-cyan-500 text-cyan-950 hover:bg-cyan-400 shadow-lg shadow-cyan-500/20">
+                  Start Integrity Check
+                </Button>
+              </Link>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-white/10 bg-card/20">
                 <CardHeader>
