@@ -30,7 +30,8 @@ import {
   UploadCloud,
   FileText,
   Plus,
-  Wand2
+  Wand2,
+  LayoutList
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -175,6 +176,7 @@ BENEFITS:
 
     setLocalCandidates(prev => [...newCandidates, ...prev]);
     setIsUploading(false);
+    setIsUploadOpen(false);
     setIsUploadOpen(false);
     toast.success(`Processed ${files.length} CVs successfully!`);
   };
@@ -451,6 +453,13 @@ BENEFITS:
                       <Input placeholder="Search candidates..." className="pl-9 w-[200px] bg-background/50 border-white/10" />
                     </div>
                     
+                    <Link href="/candidates-list">
+                      <Button variant="outline" className="gap-2 border-white/10 hover:bg-white/5">
+                        <LayoutList className="h-4 w-4" />
+                        View Details
+                      </Button>
+                    </Link>
+
                     <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
                       <DialogTrigger asChild>
                         <Button variant="outline" className="gap-2 border-primary/20 bg-primary/5 hover:bg-primary/10">
@@ -553,7 +562,8 @@ BENEFITS:
               </CardContent>
             </Card>
           </TabsContent>
-          {/* ... other tabs ... */}
+
+          {/* INTEGRITY TAB */}
           <TabsContent value="integrity" className="space-y-6">
             
             {/* AI Integrity Banner */}
