@@ -11,6 +11,8 @@ import IntegrityAgent from "@/pages/integrity-agent";
 import OnboardingAgent from "@/pages/onboarding-agent";
 import HRManagementAgent from "@/pages/hr-management-agent";
 import ExecutiveDashboard from "@/pages/executive-dashboard";
+import InterviewVoice from "@/pages/interview-voice";
+import InterviewVideo from "@/pages/interview-video";
 
 function Router() {
   return (
@@ -22,6 +24,8 @@ function Router() {
       <Route path="/integrity-agent" component={IntegrityAgent} />
       <Route path="/onboarding-agent" component={OnboardingAgent} />
       <Route path="/hr-management-agent" component={HRManagementAgent} />
+      <Route path="/interview/voice" component={InterviewVoice} />
+      <Route path="/interview/video" component={InterviewVideo} />
       <Route component={NotFound} />
     </Switch>
   );
