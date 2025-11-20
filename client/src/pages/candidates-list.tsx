@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { candidateService, jobsService } from "@/lib/api";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,10 +23,12 @@ import {
   ArrowLeft,
   Bot,
   Send,
-  Copy
+  Copy,
+  Loader2,
+  Briefcase
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -140,46 +144,90 @@ const SA_LOCATIONS = [
 ];
 
 export default function CandidatesList() {
-  const [activeTab, setActiveTab] = useState("Candidates");
+  const [location] = useLocation();
+  const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const jobId = urlParams.get('jobId');
+
   const [activeCriteria, setActiveCriteria] = useState(CRITERIA);
-  const [activeCandidates, setActiveCandidates] = useState(CANDIDATES);
-  const [shortlistedCandidates, setShortlistedCandidates] = useState<any[]>(MOCK_SHORTLISTED);
-  const [location, setLocation] = useState("Johannesburg, Gauteng");
+  const [locationFilter, setLocationFilter] = useState("Johannesburg, Gauteng");
   
   // Invite Dialog State
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
   const [inviteLink, setInviteLink] = useState("");
 
+  // Fetch candidates and jobs from API
+  const { data: candidates, isLoading: loadingCandidates } = useQuery({
+    queryKey: ['candidates'],
+    queryFn: candidateService.getAll,
+    retry: 1,
+  });
+
+  const { data: jobs, isLoading: loadingJobs } = useQuery({
+    queryKey: ['jobs'],
+    queryFn: jobsService.getAll,
+    retry: 1,
+  });
+
+  // Find the current job if jobId is present
+  const currentJob = useMemo(() => {
+    if (!jobId || !jobs) return null;
+    return jobs.find((job: any) => job.id === jobId);
+  }, [jobId, jobs]);
+
+  // Filter candidates by jobId if present
+  const filteredCandidates = useMemo(() => {
+    if (!candidates) return [];
+    if (!jobId) return candidates;
+    return candidates.filter((c: any) => c.jobId === jobId);
+  }, [candidates, jobId]);
+
   const removeCriteria = (index: number) => {
     setActiveCriteria(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleShortlist = (id: number) => {
-    const candidate = activeCandidates.find(c => c.id === id);
+  const handleShortlist = (id: string) => {
+    const candidate = filteredCandidates.find(c => c.id === id);
     if (candidate) {
-        setActiveCandidates(prev => prev.filter(c => c.id !== id));
-        setShortlistedCandidates(prev => [...prev, { ...candidate, status: 'shortlisted' }]);
-        toast.success(`${candidate.name} moved to shortlisted`);
+        toast.success(`${candidate.fullName} moved to shortlisted`);
+        // TODO: Implement shortlist mutation with API
     }
   };
 
-  const handleRemoveCandidate = (id: number) => {
-    setActiveCandidates(prev => prev.filter(c => c.id !== id));
+  const handleRemoveCandidate = (id: string) => {
+    toast.success("Candidate removed");
+    // TODO: Implement delete mutation with API
   };
 
   const handleAIContact = (candidate: any) => {
     setSelectedCandidate(candidate);
-    setInviteLink(`${window.location.origin}/interview/voice?candidate=${encodeURIComponent(candidate.name)}`);
+    setInviteLink(`${window.location.origin}/interview/voice?candidate=${encodeURIComponent(candidate.fullName || 'candidate')}`);
     setInviteOpen(true);
   };
 
   const handleSendInvite = () => {
+    if (!selectedCandidate?.email) {
+      toast.error(`Cannot send invitation: No email address on file for ${selectedCandidate?.fullName || 'this candidate'}`);
+      return;
+    }
     setInviteOpen(false);
-    toast.success(`Interview invitation sent to ${selectedCandidate?.name}`);
+    toast.success(`Interview invitation sent to ${selectedCandidate.email}`);
   };
 
-  const displayList = activeTab === "Candidates" ? activeCandidates : shortlistedCandidates;
+  // Use real filtered candidates from API
+  const displayList = loadingCandidates ? [] : filteredCandidates;
+
+  // Helper function to get source color based on source type
+  const getSourceColor = (source: string) => {
+    const sourceColors: Record<string, string> = {
+      "Recruited": "text-blue-400 bg-blue-400/10",
+      "Uploaded": "text-green-400 bg-green-400/10",
+      "Referral": "text-purple-400 bg-purple-400/10",
+      "LinkedIn": "text-blue-500 bg-blue-500/10",
+      "Direct": "text-yellow-400 bg-yellow-400/10"
+    };
+    return sourceColors[source] || "text-gray-400 bg-gray-400/10";
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-foreground flex flex-col">
@@ -193,46 +241,68 @@ export default function CandidatesList() {
             {/* Header */}
             <div className="flex items-center gap-4">
                 <Link href="/hr-dashboard">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2 text-muted-foreground hover:text-white">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2 text-muted-foreground hover:text-white" data-testid="button-back-dashboard">
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                 </Link>
-                <div className="h-10 w-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                    a
-                </div>
-                <h1 className="text-xl font-bold text-white">Senior Back-End Developer</h1>
+                {loadingJobs ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                ) : currentJob ? (
+                  <>
+                    <div className="h-10 w-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                        {currentJob.title.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h1 className="text-xl font-bold text-white">{currentJob.title}</h1>
+                      <p className="text-xs text-muted-foreground">{currentJob.department}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="h-10 w-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                        A
+                    </div>
+                    <h1 className="text-xl font-bold text-white">All Candidates</h1>
+                  </>
+                )}
             </div>
 
-            {/* Feasibility Score */}
-            <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                    <span className="text-yellow-400 font-medium">Feasible to hire</span>
+            {/* Job Details - Only show when filtering by job */}
+            {currentJob && (
+              <>
+                {/* Feasibility Score */}
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-yellow-400 font-medium">Feasible to hire</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-yellow-400 w-3/4 rounded-full"></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>EXPECTED SALARY</span>
+                        <span className="text-white">
+                          {currentJob.salaryMin && currentJob.salaryMax 
+                            ? `R ${currentJob.salaryMin.toLocaleString()} - R ${currentJob.salaryMax.toLocaleString()}`
+                            : 'Not specified'}
+                        </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>CANDIDATES IN PIPELINE</span>
+                        <span className="text-white">{filteredCandidates.length} candidates</span>
+                    </div>
                 </div>
-                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-yellow-400 w-3/4 rounded-full"></div>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>EXPECTED SALARY</span>
-                    <span className="text-white">R 850,000 - R 1,200,000</span>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>EXPECTED CANDIDATES</span>
-                    <span className="text-white">10-30 candidates</span>
-                </div>
-            </div>
 
-            {/* Status Box */}
-            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 space-y-1">
-                <div className="flex items-center gap-2 text-green-400 font-medium text-sm">
-                    <Check className="h-4 w-4" /> Research complete
+                {/* Status Box */}
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 space-y-1">
+                    <div className="flex items-center gap-2 text-blue-400 font-medium text-sm">
+                        <Briefcase className="h-4 w-4" /> {currentJob.status}
+                    </div>
+                    <p className="text-xs text-blue-400/80">
+                        Showing candidates matched to this role.
+                    </p>
                 </div>
-                <p className="text-xs text-green-400/80">
-                    We reassessed all the candidates and found 4 new ones.
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                    AHC Deep Research ran for 28m 38s
-                </p>
-            </div>
+              </>
+            )}
 
             {/* Location */}
             <div className="space-y-4">
@@ -241,7 +311,7 @@ export default function CandidatesList() {
                     <div className="flex items-center justify-between text-sm text-gray-300">
                         <div className="flex items-center gap-2">
                             <div className="w-4 h-4 rounded-full border-2 border-gray-500"></div>
-                            {location}
+                            {locationFilter}
                         </div>
                         <X className="h-3 w-3 text-muted-foreground cursor-pointer" />
                     </div>
@@ -258,11 +328,11 @@ export default function CandidatesList() {
                         
                         {/* Dropdown (simulated) */}
                         <div className="hidden group-hover:block absolute top-full left-0 w-full mt-1 bg-[#1a1a1a] border border-white/10 rounded shadow-xl z-10 max-h-40 overflow-y-auto">
-                            {SA_LOCATIONS.filter(l => l !== location).map(loc => (
+                            {SA_LOCATIONS.filter(l => l !== locationFilter).map(loc => (
                                 <div 
                                     key={loc} 
                                     className="px-3 py-2 text-xs text-gray-400 hover:bg-white/10 hover:text-white cursor-pointer"
-                                    onClick={() => setLocation(loc)}
+                                    onClick={() => setLocationFilter(loc)}
                                 >
                                     {loc}
                                 </div>
@@ -318,45 +388,39 @@ export default function CandidatesList() {
             
             {/* Top Bar */}
             <div className="border-b border-white/10 px-6 h-14 flex items-center gap-8 bg-[#0a0a0a]">
-                <button 
-                    onClick={() => setActiveTab("Candidates")}
-                    className={`h-full border-b-2 px-2 text-sm font-medium transition-colors ${activeTab === "Candidates" ? "border-white text-white" : "border-transparent text-muted-foreground"}`}
-                >
-                    Candidates <span className="ml-1 text-xs bg-white/10 px-1.5 py-0.5 rounded-full">{activeCandidates.length}</span>
-                </button>
-                <button 
-                    onClick={() => setActiveTab("Shortlisted")}
-                    className={`h-full border-b-2 px-2 text-sm font-medium transition-colors ${activeTab === "Shortlisted" ? "border-white text-white" : "border-transparent text-muted-foreground"}`}
-                >
-                    Shortlisted <span className="ml-1 text-xs bg-white/10 px-1.5 py-0.5 rounded-full">{shortlistedCandidates.length}</span>
-                </button>
+                <div className="h-full border-b-2 border-white px-2 text-sm font-medium text-white flex items-center">
+                    {currentJob ? `Candidates for ${currentJob.title}` : 'All Candidates'} 
+                    <span className="ml-2 text-xs bg-white/10 px-1.5 py-0.5 rounded-full">
+                      {loadingCandidates ? '...' : displayList.length}
+                    </span>
+                </div>
             </div>
 
             {/* Filters Bar */}
             <div className="px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        Talent pools
+                        <span className="text-muted-foreground">Stage:</span>
                         <span className="text-white font-medium flex items-center gap-1 cursor-pointer">
-                            All <ChevronDown className="h-3 w-3" />
+                            All Stages <ChevronDown className="h-3 w-3" />
                         </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        Minimum match
+                        <span className="text-muted-foreground">Match:</span>
                         <span className="text-green-400 font-medium flex items-center gap-1 cursor-pointer">
-                            Good <ChevronDown className="h-3 w-3" />
+                            All <ChevronDown className="h-3 w-3" />
                         </span>
                     </div>
                 </div>
 
-                {activeTab === "Shortlisted" && (
+                {displayList.length > 0 && (
                     <Button 
                         size="sm" 
                         className="bg-white text-black hover:bg-gray-200 gap-2 font-medium"
-                        onClick={() => toast.success("AI Agent will interview all shortlisted candidates")}
+                        onClick={() => toast.success("AI Agent will interview all candidates")}
                     >
                         <Bot className="h-4 w-4" />
-                        Interview All Candidates
+                        Interview All ({displayList.length})
                     </Button>
                 )}
             </div>
@@ -364,7 +428,12 @@ export default function CandidatesList() {
             {/* List */}
             <ScrollArea className="flex-1 px-6 pb-6">
                 <div className="space-y-1">
-                    {displayList.map((candidate) => (
+                    {loadingCandidates ? (
+                        <div className="flex flex-col items-center justify-center h-64 gap-2 text-muted-foreground">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                            <p>Loading candidates...</p>
+                        </div>
+                    ) : displayList.map((candidate) => (
                         <motion.div 
                             key={candidate.id}
                             layout
@@ -376,28 +445,26 @@ export default function CandidatesList() {
                             {/* Candidate Info */}
                             <div className="flex items-center gap-4 w-[30%]">
                                 <Avatar className="h-10 w-10 border border-white/10">
-                                    <AvatarImage src={candidate.avatar} />
                                     <AvatarFallback className="bg-indigo-500 text-white text-xs">
-                                        {candidate.name.split(' ').map((n: string) => n[0]).join('')}
+                                        {candidate.fullName?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || 'NA'}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0">
-                                    <h3 className="text-sm font-bold text-white truncate">{candidate.name}</h3>
-                                    <p className="text-xs text-muted-foreground truncate">{candidate.role}</p>
+                                    <h3 className="text-sm font-bold text-white truncate">{candidate.fullName || 'Unknown'}</h3>
+                                    <p className="text-xs text-muted-foreground truncate">{candidate.role || 'No role specified'}</p>
                                 </div>
                             </div>
 
                             {/* Badges & Source */}
                             <div className="flex items-center gap-8 flex-1">
                                 <div className="flex items-center gap-2 min-w-[120px]">
-                                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded flex items-center gap-1.5 ${candidate.sourceColor}`}>
+                                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded flex items-center gap-1.5 ${getSourceColor(candidate.source)}`}>
                                         <div className="w-1 h-1 rounded-full bg-current" />
                                         {candidate.source}
                                     </span>
-                                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                        <div className="w-3 h-3 rounded-full border border-current opacity-50" />
-                                        {candidate.status}
-                                    </span>
+                                    <Badge variant="outline" className="text-[10px] h-5 px-2">
+                                        {candidate.match}% Match
+                                    </Badge>
                                 </div>
 
                                 {/* Contact Icons */}
@@ -410,51 +477,41 @@ export default function CandidatesList() {
 
                             {/* Actions */}
                             <div className="flex items-center gap-2">
-                                {activeTab === "Candidates" ? (
-                                    <>
-                                        <Button 
-                                            size="sm" 
-                                            className="h-8 bg-indigo-600 hover:bg-indigo-500 text-white border-0 gap-1.5 font-medium text-xs px-3"
-                                            onClick={() => handleShortlist(candidate.id)}
-                                        >
-                                            <ThumbsUp className="h-3 w-3" />
-                                            Shortlist
-                                        </Button>
-                                        <Button 
-                                            size="icon" 
-                                            variant="ghost" 
-                                            className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-white/10"
-                                            onClick={() => handleRemoveCandidate(candidate.id)}
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <Button 
-                                        size="sm" 
-                                        className="h-8 bg-white text-black hover:bg-gray-200 border-0 gap-1.5 font-medium text-xs px-3"
-                                        onClick={() => handleAIContact(candidate)}
-                                    >
-                                        <Bot className="h-3 w-3" />
-                                        AI Interview Invite
-                                    </Button>
-                                )}
+                                <Button 
+                                    size="sm" 
+                                    className="h-8 bg-white text-black hover:bg-gray-200 border-0 gap-1.5 font-medium text-xs px-3"
+                                    onClick={() => handleAIContact(candidate)}
+                                >
+                                    <Bot className="h-3 w-3" />
+                                    AI Interview
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    className="h-8 bg-indigo-600 hover:bg-indigo-500 text-white border-0 gap-1.5 font-medium text-xs px-3"
+                                    onClick={() => handleShortlist(candidate.id)}
+                                >
+                                    <ThumbsUp className="h-3 w-3" />
+                                    Shortlist
+                                </Button>
                             </div>
                         </motion.div>
                     ))}
                     
-                    {displayList.length === 0 && (
+                    {!loadingCandidates && displayList.length === 0 && (
                         <div className="text-center py-20 text-muted-foreground">
-                            <p>No candidates found in this view.</p>
-                            {activeTab === "Candidates" && (
-                                <Button 
-                                    variant="link" 
-                                    className="text-indigo-400 text-xs"
-                                    onClick={() => setActiveCandidates(CANDIDATES)}
-                                >
-                                    Reset List
+                            <Briefcase className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p className="text-lg font-medium">No candidates found</p>
+                            <p className="text-sm mt-2">
+                                {currentJob 
+                                    ? `No candidates have been matched to ${currentJob.title} yet.` 
+                                    : 'No candidates in the system yet.'}
+                            </p>
+                            <Link href="/hr-dashboard">
+                                <Button variant="link" className="text-primary mt-4">
+                                    <ArrowLeft className="h-4 w-4 mr-2" />
+                                    Back to Dashboard
                                 </Button>
-                            )}
+                            </Link>
                         </div>
                     )}
                 </div>
@@ -469,26 +526,26 @@ export default function CandidatesList() {
             <DialogHeader>
                 <DialogTitle>Invite to Voice Interview</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                    Customize the email invitation for {selectedCandidate?.name}.
+                    Customize the email invitation for {selectedCandidate?.fullName || 'candidate'}.
                 </DialogDescription>
             </DialogHeader>
             
             <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                     <Label>Recipient</Label>
-                    <Input value={selectedCandidate?.name || ""} disabled className="bg-black/50 border-white/10" />
+                    <Input value={selectedCandidate?.email || selectedCandidate?.fullName || ""} disabled className="bg-black/50 border-white/10" />
                 </div>
                 
                 <div className="grid gap-2">
                     <Label>Subject</Label>
-                    <Input defaultValue={`Interview Invitation: Senior Back-End Developer Role`} className="bg-black/50 border-white/10" />
+                    <Input defaultValue={`Interview Invitation: ${currentJob?.title || 'Position'}`} className="bg-black/50 border-white/10" />
                 </div>
 
                 <div className="grid gap-2">
                     <Label>Message</Label>
                     <Textarea 
                         className="min-h-[150px] bg-black/50 border-white/10 font-sans" 
-                        defaultValue={`Dear ${selectedCandidate?.name},
+                        defaultValue={`Dear ${selectedCandidate?.fullName || 'Candidate'},
 
 We are impressed with your profile and would like to invite you to an initial voice interview with our AI recruiter, Chit-Chet.
 

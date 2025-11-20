@@ -527,6 +527,94 @@ BENEFITS:
               </Card>
             </div>
 
+            {/* JOBS/ROLES LIST */}
+            <Card className="border-white/10 bg-card/20">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Open Roles</CardTitle>
+                    <CardDescription>
+                      {loadingJobs ? "Loading positions..." : "Active job requisitions and hiring pipelines"}
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Dialog open={isCreateJobOpen} onOpenChange={setIsCreateJobOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="gap-2 border-primary/20 bg-primary/5 hover:bg-primary/10">
+                          <Plus className="h-4 w-4" />
+                          New Role
+                        </Button>
+                      </DialogTrigger>
+                    </Dialog>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border border-white/10 overflow-hidden">
+                  <div className="bg-white/5 px-4 py-3 grid grid-cols-12 text-sm font-medium text-muted-foreground">
+                    <div className="col-span-4">Job Title</div>
+                    <div className="col-span-2">Department</div>
+                    <div className="col-span-2">Candidates</div>
+                    <div className="col-span-2">Status</div>
+                    <div className="col-span-2 text-right">Actions</div>
+                  </div>
+                  <ScrollArea className="h-[300px]">
+                    {loadingJobs ? (
+                      <div className="flex flex-col items-center justify-center h-32 gap-2 text-muted-foreground">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                        <p>Loading job requisitions...</p>
+                      </div>
+                    ) : displayJobs.length > 0 ? (
+                      displayJobs.map((job: any) => {
+                        const candidateCount = displayCandidates.filter((c: any) => c.jobId === job.id).length;
+                        return (
+                          <div key={job.id} className="px-4 py-3 grid grid-cols-12 items-center border-t border-white/5 hover:bg-white/5 transition-colors">
+                            <div className="col-span-4">
+                              <div className="font-medium">{job.title}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {job.location || "Johannesburg, Gauteng"}
+                              </div>
+                            </div>
+                            <div className="col-span-2 text-sm text-muted-foreground">{job.department}</div>
+                            <div className="col-span-2">
+                              <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+                                {candidateCount} {candidateCount === 1 ? 'Candidate' : 'Candidates'}
+                              </Badge>
+                            </div>
+                            <div className="col-span-2">
+                              <Badge className={`${job.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'} border-0`}>
+                                {job.status}
+                              </Badge>
+                            </div>
+                            <div className="col-span-2 text-right">
+                              <Link href={`/candidates-list?jobId=${job.id}`}>
+                                <Button variant="outline" size="sm" className="gap-2 border-white/10 hover:bg-white/5" data-testid={`button-view-candidates-${job.id}`}>
+                                  <Eye className="h-4 w-4" />
+                                  View Details
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-32 gap-2 text-muted-foreground">
+                        <Briefcase className="h-8 w-8 opacity-50" />
+                        <p>No open roles yet</p>
+                        <Button 
+                          variant="link" 
+                          className="text-primary text-xs"
+                          onClick={() => setIsCreateJobOpen(true)}
+                        >
+                          Create your first role
+                        </Button>
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="border-white/10 bg-card/20">
               <CardHeader>
                 <div className="flex items-center justify-between">
