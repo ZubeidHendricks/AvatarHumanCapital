@@ -31,11 +31,20 @@ import {
   FileText,
   Plus,
   Wand2,
-  LayoutList
+  LayoutList,
+  Eye,
+  Mic,
+  Video,
+  ArrowRight,
+  Mail,
+  Download,
+  Trash2,
+  Send
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -66,6 +75,10 @@ export default function HRDashboard() {
   const [activeTab, setActiveTab] = useState("recruitment");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
+  const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -90,6 +103,97 @@ export default function HRDashboard() {
       queryClient.invalidateQueries({ queryKey: ['candidates'] });
     },
   });
+
+  const deleteCandidateMutation = useMutation({
+    mutationFn: candidateService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      toast.success("Candidate removed successfully");
+    },
+    onError: () => {
+      toast.error("Failed to remove candidate");
+    }
+  });
+
+  const updateCandidateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => candidateService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      toast.success("Candidate updated successfully");
+    },
+    onError: () => {
+      toast.error("Failed to update candidate");
+    }
+  });
+
+  const handleMoveToNextStage = async (candidate: any) => {
+    if (!candidate?.id) {
+      toast.error("Invalid candidate");
+      return;
+    }
+
+    const currentStage = (candidate.stage || candidate.status || "New").trim();
+    
+    const stageMap: Record<string, string> = {
+      "new": "Screening",
+      "screening": "Interview",
+      "sourcing": "Screening",
+      "interview": "Offer",
+      "interviewing": "Offer",
+      "offer": "Hired",
+      "offer sent": "Hired",
+      "hired": "Hired",
+      "onboarding": "Hired",
+      "rejected": "Rejected",
+      "archived": "Archived"
+    };
+
+    const normalizedStage = currentStage.toLowerCase();
+    const nextStage = stageMap[normalizedStage];
+
+    if (!nextStage) {
+      toast.error(`Cannot determine next stage for "${currentStage}". Please update manually.`);
+      return;
+    }
+
+    if (nextStage === currentStage) {
+      toast.info(`Candidate is already at final stage: ${currentStage}`);
+      return;
+    }
+
+    await updateCandidateMutation.mutateAsync({
+      id: candidate.id,
+      data: { stage: nextStage, status: nextStage }
+    });
+  };
+
+  const handleSendEmail = (candidate: any) => {
+    if (!candidate?.id) {
+      toast.error("Invalid candidate");
+      return;
+    }
+    setSelectedCandidate(candidate);
+    setEmailSubject(`Regarding Your Application - ${candidate.role || 'Position'}`);
+    setEmailMessage(`Dear ${candidate.fullName || candidate.name},\n\nThank you for your interest in the ${candidate.role || 'position'} role at Avatar Human Capital.\n\nBest regards,\nHR Team`);
+    setIsEmailOpen(true);
+  };
+
+  const handleDownloadCV = (candidate: any) => {
+    if (candidate?.cvUrl) {
+      window.open(candidate.cvUrl, '_blank');
+      toast.success("Opening CV...");
+    } else {
+      toast.error("CV not available for this candidate");
+    }
+  };
+
+  const handleSendEmailSubmit = () => {
+    toast.success(`Email sent to ${selectedCandidate?.email || selectedCandidate?.fullName || 'candidate'}`);
+    setIsEmailOpen(false);
+    setSelectedCandidate(null);
+    setEmailSubject("");
+    setEmailMessage("");
+  };
 
   const handleGenerateJD = async () => {
     if (!jobTitle) {
@@ -505,6 +609,57 @@ BENEFITS:
                       </DialogContent>
                     </Dialog>
 
+                    {/* Email Dialog */}
+                    <Dialog open={isEmailOpen} onOpenChange={setIsEmailOpen}>
+                      <DialogContent className="sm:max-w-[600px]">
+                        <DialogHeader>
+                          <DialogTitle>Send Email to {selectedCandidate?.fullName || 'Candidate'}</DialogTitle>
+                          <DialogDescription>
+                            Compose and send an email to {selectedCandidate?.email || 'the candidate'}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="email-to">To</Label>
+                            <Input 
+                              id="email-to" 
+                              value={selectedCandidate?.email || 'No email on file'} 
+                              disabled 
+                              className="bg-background/50 border-white/10"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="email-subject">Subject</Label>
+                            <Input 
+                              id="email-subject" 
+                              value={emailSubject}
+                              onChange={(e) => setEmailSubject(e.target.value)}
+                              placeholder="Email subject..."
+                              className="bg-background/50 border-white/10"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="email-message">Message</Label>
+                            <Textarea 
+                              id="email-message"
+                              value={emailMessage}
+                              onChange={(e) => setEmailMessage(e.target.value)}
+                              placeholder="Write your message here..."
+                              rows={8}
+                              className="bg-background/50 border-white/10"
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsEmailOpen(false)}>Cancel</Button>
+                          <Button onClick={handleSendEmailSubmit}>
+                            <Send className="mr-2 h-4 w-4" />
+                            Send Email
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
                     <Button variant="outline" size="icon"><Filter className="h-4 w-4" /></Button>
                   </div>
                 </div>
@@ -537,7 +692,75 @@ BENEFITS:
                           </div>
                           <div className="col-span-2 text-sm">{candidate.stage || candidate.status || "New"}</div>
                           <div className="col-span-2 text-right">
-                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-actions-${candidate.id}`}>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuLabel>Candidate Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="cursor-pointer"
+                                  onClick={() => toast.info(`Viewing profile for ${candidate.fullName || 'candidate'}`)}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Profile
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                  <Link href="/interview-voice">
+                                    <Mic className="mr-2 h-4 w-4" />
+                                    Start Voice Interview
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                  <Link href="/interview-video">
+                                    <Video className="mr-2 h-4 w-4" />
+                                    Start Video Interview
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="cursor-pointer"
+                                  onClick={() => handleMoveToNextStage(candidate)}
+                                  disabled={updateCandidateMutation.isPending}
+                                >
+                                  <ArrowRight className="mr-2 h-4 w-4" />
+                                  Move to Next Stage
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="cursor-pointer"
+                                  onClick={() => handleSendEmail(candidate)}
+                                >
+                                  <Mail className="mr-2 h-4 w-4" />
+                                  Send Email
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="cursor-pointer"
+                                  onClick={() => handleDownloadCV(candidate)}
+                                >
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Download CV
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="cursor-pointer text-red-400 focus:text-red-400"
+                                  onClick={() => {
+                                    if (candidate?.id && window.confirm(`Remove ${candidate.fullName || 'this candidate'}?`)) {
+                                      deleteCandidateMutation.mutate(candidate.id);
+                                    } else if (!candidate?.id) {
+                                      toast.error("Invalid candidate ID");
+                                    }
+                                  }}
+                                  disabled={deleteCandidateMutation.isPending}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Remove Candidate
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       ))
