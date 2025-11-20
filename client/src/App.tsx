@@ -35,9 +35,8 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      {/* TooltipProvider removed temporarily due to React 19 conflict causing useRef errors */}
-      <Toaster />
       <Router />
+      <Toaster />
     </QueryClientProvider>
   );
 }
