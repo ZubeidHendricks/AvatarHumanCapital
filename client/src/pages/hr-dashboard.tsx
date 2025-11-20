@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { 
   Users, 
@@ -39,7 +40,8 @@ import {
   Mail,
   Download,
   Trash2,
-  Send
+  Send,
+  Star
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -609,6 +611,84 @@ BENEFITS:
                           Create your first role
                         </Button>
                       </div>
+                    )}
+                  </ScrollArea>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* SHORTLISTED CANDIDATES */}
+            <Card className="border-white/10 bg-card/20">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+                      Shortlisted Candidates
+                    </CardTitle>
+                    <CardDescription>
+                      {loadingCandidates ? "Loading..." : "Top talent ready for interviews and offers"}
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Link href="/shortlisted-candidates">
+                      <Button variant="outline" className="gap-2 border-white/10 hover:bg-white/5">
+                        <Star className="h-4 w-4" />
+                        View All Shortlisted
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border border-white/10 overflow-hidden">
+                  <ScrollArea className="h-[200px]">
+                    {loadingCandidates ? (
+                      <div className="flex flex-col items-center justify-center h-32 gap-2 text-muted-foreground">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                        <p>Loading shortlisted candidates...</p>
+                      </div>
+                    ) : (
+                      displayCandidates.filter((c: any) => c.stage === "Shortlisted").length > 0 ? (
+                        <div className="divide-y divide-white/5">
+                          {displayCandidates
+                            .filter((c: any) => c.stage === "Shortlisted")
+                            .slice(0, 5)
+                            .map((candidate: any) => (
+                              <div key={candidate.id} className="px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-8 w-8 border border-white/20">
+                                    <AvatarFallback className="bg-gradient-to-br from-yellow-500 to-orange-600 text-white text-xs font-semibold">
+                                      {candidate.fullName?.split(' ')?.map((n: string) => n[0])?.join('')?.toUpperCase() || '?'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium text-sm">{candidate.fullName}</p>
+                                    <p className="text-xs text-muted-foreground">{candidate.role || 'No role specified'}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {candidate.match !== null && candidate.match !== undefined && (
+                                    <Badge className="bg-yellow-400/10 text-yellow-400 border-0 text-xs">
+                                      {candidate.match}% Match
+                                    </Badge>
+                                  )}
+                                  <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-32 gap-2 text-muted-foreground">
+                          <Star className="h-8 w-8 opacity-50" />
+                          <p className="text-sm">No shortlisted candidates yet</p>
+                          <Link href="/candidates-list">
+                            <Button variant="link" className="text-primary text-xs">
+                              Browse candidates to shortlist
+                            </Button>
+                          </Link>
+                        </div>
+                      )
                     )}
                   </ScrollArea>
                 </div>
