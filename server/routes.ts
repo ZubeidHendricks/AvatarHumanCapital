@@ -147,6 +147,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/interview/voice/config", async (req, res) => {
+    try {
+      const HUMAI_API_KEY = process.env.HUMAI_API_KEY;
+      const HUMAI_SECRET_KEY = process.env.HUMAI_SECRET_KEY;
+
+      if (!HUMAI_API_KEY || !HUMAI_SECRET_KEY) {
+        return res.status(500).json({ 
+          message: "Hume AI credentials not configured" 
+        });
+      }
+
+      const tokenResponse = await fetch("https://api.hume.ai/oauth2-cc/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          grant_type: "client_credentials",
+          client_id: HUMAI_API_KEY,
+          client_secret: HUMAI_SECRET_KEY
+        })
+      });
+
+      if (!tokenResponse.ok) {
+        const error = await tokenResponse.text();
+        console.error("Hume AI token error:", error);
+        return res.status(tokenResponse.status).json({ 
+          message: "Failed to get Hume AI access token" 
+        });
+      }
+
+      const tokenData = await tokenResponse.json();
+      
+      res.json({ 
+        accessToken: tokenData.access_token,
+        websocketUrl: "wss://api.hume.ai/v0/evi/chat",
+        configId: "default"
+      });
+    } catch (error) {
+      console.error("Error getting Hume AI config:", error);
+      res.status(500).json({ message: "Failed to connect to Hume AI" });
+    }
+  });
+
+  app.post("/api/interview/video/session", async (req, res) => {
+    try {
+      const { candidateId, candidateName } = req.body;
+      const TAVUS_API_KEY = process.env.TAVUS_API_KEY;
+
+      if (!TAVUS_API_KEY) {
+        return res.status(500).json({ 
+          message: "Tavus API key not configured" 
+        });
+      }
+
+      if (!candidateName) {
+        return res.status(400).json({
+          message: "Candidate name is required"
+        });
+      }
+
+      const requestBody = {
+        replica_id: process.env.TAVUS_REPLICA_ID || "default_replica",
+        persona_id: process.env.TAVUS_PERSONA_ID || "default_persona",
+        conversation_name: `Interview: ${candidateName}`,
+        conversational_context: `You are a professional HR interviewer conducting a video interview with ${candidateName} for a Senior Backend Developer position at Avatar Human Capital. Ask thoughtful questions about their technical expertise, leadership experience, problem-solving skills, and cultural fit. Be friendly but professional. The interview should last about 15-20 minutes.`,
+        custom_greeting: `Hello ${candidateName}! Thank you for joining us today. I'm excited to learn more about your experience and discuss the Senior Backend Developer role with Avatar Human Capital.`,
+        properties: {
+          candidate_id: candidateId,
+          position: "Senior Backend Developer",
+          created_at: new Date().toISOString()
+        }
+      };
+
+      const response = await fetch("https://tavusapi.com/v2/conversations", {
+        method: "POST",
+        headers: {
+          "x-api-key": TAVUS_API_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Tavus error:", error);
+        return res.status(response.status).json({ 
+          message: "Failed to create Tavus video session",
+          details: error
+        });
+      }
+
+      const data = await response.json();
+
+      if (!data || !data.conversation_url) {
+        return res.status(500).json({
+          message: "Invalid response from Tavus API"
+        });
+      }
+      
+      res.json({
+        sessionUrl: data.conversation_url,
+        sessionId: data.conversation_id || "unknown",
+        status: data.status || "created",
+        candidateId,
+        candidateName
+      });
+    } catch (error) {
+      console.error("Error creating Tavus session:", error);
+      res.status(500).json({ message: "Failed to create video session" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

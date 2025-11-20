@@ -53,3 +53,17 @@ export const candidateService = {
     await api.delete(`/candidates/${id}`);
   }
 };
+
+export const interviewService = {
+  getVoiceConfig: async (): Promise<{ accessToken: string; websocketUrl: string; configId?: string }> => {
+    const response = await api.get("/interview/voice/config");
+    return response.data;
+  },
+  createVideoSession: async (candidateId?: string, candidateName?: string): Promise<{ sessionUrl: string; sessionId: string; status: string; candidateId?: string; candidateName?: string }> => {
+    const response = await api.post("/interview/video/session", { 
+      candidateId, 
+      candidateName 
+    });
+    return response.data;
+  }
+};
