@@ -20,9 +20,11 @@ import {
   Loader2, 
   ArrowRight,
   FileSearch,
-  Users
+  Users,
+  Mic
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { VoiceInterviewerModal } from "@/components/voice-agent/voice-interviewer-modal";
 
 // Types for our mock RAG system
 type Message = {
@@ -230,7 +232,10 @@ export default function RecruitmentAgent() {
                       <CardDescription className="text-xs">Powered by AHC Agentic Engine</CardDescription>
                     </div>
                   </div>
-                  <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[10px]">RAG ENABLED</Badge>
+                  <div className="flex items-center gap-2">
+                    <VoiceInterviewerModal />
+                    <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[10px]">RAG ENABLED</Badge>
+                  </div>
                 </div>
               </CardHeader>
               
