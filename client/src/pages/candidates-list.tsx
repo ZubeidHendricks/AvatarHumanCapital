@@ -18,10 +18,12 @@ import {
   Linkedin, 
   ThumbsUp, 
   Search,
-  ArrowLeft
+  ArrowLeft,
+  Bot
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import { toast } from "sonner";
 
 // Mock Data based on the screenshot
 const CRITERIA = [
@@ -98,6 +100,29 @@ const CANDIDATES = [
   }
 ];
 
+const MOCK_SHORTLISTED = [
+    {
+        id: 101,
+        name: "Zubeid Hendricks",
+        role: "Senior Backend Developer",
+        avatar: "",
+        source: "Uploaded",
+        sourceColor: "text-green-400 bg-green-400/10",
+        match: "Very High",
+        status: "shortlisted"
+    },
+    {
+        id: 102,
+        name: "Thandiwe Nkosi",
+        role: "Tech Lead",
+        avatar: "",
+        source: "Referral",
+        sourceColor: "text-purple-400 bg-purple-400/10",
+        match: "High",
+        status: "shortlisted"
+    }
+];
+
 const SA_LOCATIONS = [
   "Cape Town, Western Cape",
   "Johannesburg, Gauteng",
@@ -112,7 +137,7 @@ export default function CandidatesList() {
   const [activeTab, setActiveTab] = useState("Candidates");
   const [activeCriteria, setActiveCriteria] = useState(CRITERIA);
   const [activeCandidates, setActiveCandidates] = useState(CANDIDATES);
-  const [shortlistedCount, setShortlistedCount] = useState(2);
+  const [shortlistedCandidates, setShortlistedCandidates] = useState<any[]>(MOCK_SHORTLISTED);
   const [location, setLocation] = useState("Johannesburg, Gauteng");
 
   const removeCriteria = (index: number) => {
@@ -120,13 +145,23 @@ export default function CandidatesList() {
   };
 
   const handleShortlist = (id: number) => {
-    setActiveCandidates(prev => prev.filter(c => c.id !== id));
-    setShortlistedCount(prev => prev + 1);
+    const candidate = activeCandidates.find(c => c.id === id);
+    if (candidate) {
+        setActiveCandidates(prev => prev.filter(c => c.id !== id));
+        setShortlistedCandidates(prev => [...prev, { ...candidate, status: 'shortlisted' }]);
+        toast.success(`${candidate.name} moved to shortlisted`);
+    }
   };
 
   const handleRemoveCandidate = (id: number) => {
     setActiveCandidates(prev => prev.filter(c => c.id !== id));
   };
+
+  const handleAIContact = (name: string) => {
+    toast.success(`AI Agent initiating contact with ${name}...`);
+  };
+
+  const displayList = activeTab === "Candidates" ? activeCandidates : shortlistedCandidates;
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-foreground flex flex-col">
@@ -275,7 +310,7 @@ export default function CandidatesList() {
                     onClick={() => setActiveTab("Shortlisted")}
                     className={`h-full border-b-2 px-2 text-sm font-medium transition-colors ${activeTab === "Shortlisted" ? "border-white text-white" : "border-transparent text-muted-foreground"}`}
                 >
-                    Shortlisted <span className="ml-1 text-xs bg-white/10 px-1.5 py-0.5 rounded-full">{shortlistedCount}</span>
+                    Shortlisted <span className="ml-1 text-xs bg-white/10 px-1.5 py-0.5 rounded-full">{shortlistedCandidates.length}</span>
                 </button>
             </div>
 
@@ -295,12 +330,23 @@ export default function CandidatesList() {
                         </span>
                     </div>
                 </div>
+
+                {activeTab === "Shortlisted" && (
+                    <Button 
+                        size="sm" 
+                        className="bg-white text-black hover:bg-gray-200 gap-2 font-medium"
+                        onClick={() => toast.success("AI Agent will interview all shortlisted candidates")}
+                    >
+                        <Bot className="h-4 w-4" />
+                        Interview All Candidates
+                    </Button>
+                )}
             </div>
 
             {/* List */}
             <ScrollArea className="flex-1 px-6 pb-6">
                 <div className="space-y-1">
-                    {activeCandidates.map((candidate) => (
+                    {displayList.map((candidate) => (
                         <motion.div 
                             key={candidate.id}
                             layout
@@ -314,7 +360,7 @@ export default function CandidatesList() {
                                 <Avatar className="h-10 w-10 border border-white/10">
                                     <AvatarImage src={candidate.avatar} />
                                     <AvatarFallback className="bg-indigo-500 text-white text-xs">
-                                        {candidate.name.split(' ').map(n => n[0]).join('')}
+                                        {candidate.name.split(' ').map((n: string) => n[0]).join('')}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0">
@@ -346,36 +392,51 @@ export default function CandidatesList() {
 
                             {/* Actions */}
                             <div className="flex items-center gap-2">
-                                <Button 
-                                    size="sm" 
-                                    className="h-8 bg-indigo-600 hover:bg-indigo-500 text-white border-0 gap-1.5 font-medium text-xs px-3"
-                                    onClick={() => handleShortlist(candidate.id)}
-                                >
-                                    <ThumbsUp className="h-3 w-3" />
-                                    Shortlist
-                                </Button>
-                                <Button 
-                                    size="icon" 
-                                    variant="ghost" 
-                                    className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-white/10"
-                                    onClick={() => handleRemoveCandidate(candidate.id)}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
+                                {activeTab === "Candidates" ? (
+                                    <>
+                                        <Button 
+                                            size="sm" 
+                                            className="h-8 bg-indigo-600 hover:bg-indigo-500 text-white border-0 gap-1.5 font-medium text-xs px-3"
+                                            onClick={() => handleShortlist(candidate.id)}
+                                        >
+                                            <ThumbsUp className="h-3 w-3" />
+                                            Shortlist
+                                        </Button>
+                                        <Button 
+                                            size="icon" 
+                                            variant="ghost" 
+                                            className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-white/10"
+                                            onClick={() => handleRemoveCandidate(candidate.id)}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <Button 
+                                        size="sm" 
+                                        className="h-8 bg-white text-black hover:bg-gray-200 border-0 gap-1.5 font-medium text-xs px-3"
+                                        onClick={() => handleAIContact(candidate.name)}
+                                    >
+                                        <Bot className="h-3 w-3" />
+                                        AI Interview Invite
+                                    </Button>
+                                )}
                             </div>
                         </motion.div>
                     ))}
                     
-                    {activeCandidates.length === 0 && (
+                    {displayList.length === 0 && (
                         <div className="text-center py-20 text-muted-foreground">
-                            <p>No candidates remaining in this view.</p>
-                            <Button 
-                                variant="link" 
-                                className="text-indigo-400 text-xs"
-                                onClick={() => setActiveCandidates(CANDIDATES)}
-                            >
-                                Reset List
-                            </Button>
+                            <p>No candidates found in this view.</p>
+                            {activeTab === "Candidates" && (
+                                <Button 
+                                    variant="link" 
+                                    className="text-indigo-400 text-xs"
+                                    onClick={() => setActiveCandidates(CANDIDATES)}
+                                >
+                                    Reset List
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>
