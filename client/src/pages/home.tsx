@@ -2,6 +2,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Hero } from "@/components/sections/hero";
 import { Services } from "@/components/sections/services";
 import { DashboardPreview } from "@/components/sections/dashboard-preview";
+import { AveryFeatures } from "@/components/sections/avery-features";
 import { Cpu, Mail, MapPin, Phone, Mic, Video, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,9 @@ export default function Home() {
       <main>
         <Hero />
         
+        {/* NEW: Avery/Recruitment AI Features Module */}
+        <AveryFeatures />
+
         {/* NEW: Interview Suite Section */}
         <section className="py-24 bg-black/20 border-y border-white/5 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,0.1)_0%,rgba(0,0,0,0)_60%)]" />
