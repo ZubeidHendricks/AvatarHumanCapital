@@ -115,7 +115,8 @@ export default function HRDashboard() {
     return MOCK_CANDIDATES;
   };
 
-  const displayCandidates = getSafeCandidates();
+  // IMPORTANT: Force the type to be an Array, even if empty, to prevent .map errors
+  const displayCandidates = Array.isArray(getSafeCandidates()) ? getSafeCandidates() : MOCK_CANDIDATES;
 
   // Ensure jobs is an array for the length check
   const jobCount = Array.isArray(jobs) ? jobs.length : 12;
@@ -237,9 +238,9 @@ export default function HRDashboard() {
                          <p>Syncing with DigitalOcean Backend...</p>
                        </div>
                     ) : (
-                      // Final safety check in render map
-                      (Array.isArray(displayCandidates) ? displayCandidates : MOCK_CANDIDATES).map((candidate: any) => (
-                        <div key={candidate.id} className="px-4 py-3 grid grid-cols-12 items-center border-t border-white/5 hover:bg-white/5 transition-colors">
+                      // Use explicit array mapping
+                      displayCandidates.map((candidate: any) => (
+                        <div key={candidate.id || Math.random()} className="px-4 py-3 grid grid-cols-12 items-center border-t border-white/5 hover:bg-white/5 transition-colors">
                           <div className="col-span-3 font-medium">{candidate.name || "Unknown Candidate"}</div>
                           <div className="col-span-3 text-sm text-muted-foreground">{candidate.role || "General Application"}</div>
                           <div className="col-span-2">
