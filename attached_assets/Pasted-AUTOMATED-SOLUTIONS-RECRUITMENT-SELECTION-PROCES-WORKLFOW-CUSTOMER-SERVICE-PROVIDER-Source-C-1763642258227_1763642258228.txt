@@ -1,0 +1,287 @@
+AUTOMATED SOLUTIONS
+RECRUITMENT & SELECTION -PROCES & WORKLFOW
+CUSTOMER SERVICE PROVIDER
+Source Candidates
+AUTOMATION
+AI –Agentic
+oEvaluate 
+candidates
+oMatch 
+candidates to 
+hiring needsAUTOMATION
+AI -Agentic
+oUI interfaceAUTOMATION
+AI –Agentic
+oCompile Job 
+Description
+oDevelop Job 
+Description 
+libraries AUTOMATION
+AI –Agentic
+oAccess Job 
+Search portals
+oFind potential 
+candidates
+DATA STORAGE + CONTEXT OPTIMIZATIONINTEGRITY 
+EVALUATIONDetermine Hiring 
+NeedsRECRUITMENT 
+STARTCompile Job 
+DescriptionScreen Candidates
+
+AUTOMATED SOLUTIONS
+RECRUITMENT & SELECTION -RACI
+SOLUTION SERVICE PROVIDER D8TAVISION
+DETERMINE HIRING NEEDS•Understand customer’s hiring needs •UI for all customer communications relating to hiring 
+needs
+COMPILE JOB DESCRIPTION•Compile detailed job description to 
+facilitate candidate search•AI agents & agentic workflows
+oCompile job description using industry standards & 
+libraries
+oBuild job description libraries
+oUpdate libraries
+oData storage
+FIND CANDIDATES•Establish Job Search Vendor Eco -
+system
+oService offering & SLA
+oSubscription
+oAutomated access•AI agents & agentic workflows
+oContext & prompt optimization for job search platforms
+oJob search platform submissions
+oJob search platform extractions
+oData storage
+ASSESS CANDIDATES•Match candidates to customer hiring 
+needs –Best fit•AI agents & agentic workflows
+oCompile summary of candidates & applications
+oRank suitability of candidates according to hiring needs of 
+customer
+oCompile customer proposals
+oReporting & dashboarding
+oData storage
+
+
+AUTOMATED SOLUTIONS
+INTEGRITY EVALUATION (IE) -PROCES & WORKLFOW 
+CUSTOMER SERVICE PROVIDER
+AUTOMATION
+AI -Agentic
+•Obtain Consent
+•Process 
+Fingerprints
+•Collate Personal 
+InfoAUTOMATION
+AI -Agentic
+oPerform background 
+checks: 
+₋Criminal
+₋Credit
+₋Qualifications
+₋Employment history
+₋ReferencesAUTOMATION
+AI -Agentic
+oEvaluate 
+background checks
+oVerify accuracy & 
+relevance
+oCompile Candidate 
+AssessmentYes NoEvaluate & Appoint 
+Candidates
+DATA STORAGE + CONTEXT OPTIMIZATIONONBOARDINGRECRUITMENT 
+& SELECTIONProcure Information 
+from CandidatesPerform Background 
+Checks
+Inform    
+Candidates
+
+AUTOMATED SOLUTIONS
+INTEGRITY EVALUATION (IE) –RACI 
+SOLUTION SERVICE PROVIDER D8TAVISION
+DETERMINING HIRING NEES•Understand customer’s existing standard 
+operating procedures & workflows
+•Procurement of candidate’s Bio & 
+personal data•UI for sourcing candidate’s finger prints & personal 
+data
+•AI agents & agentic workflows
+oData sourcing
+oData storage
+PERFORMING BACKGROUND 
+CHECKS•Understand customer’s IE Assessment 
+framework / requirement
+•Establish IE Vendor Eco -system
+oService offering & SLA
+oSubscription
+oAutomated access•AI agents & agentic workflows
+oContext & prompt optimization for enhanced IE 
+Assessment Framework
+oIE Vendor submissions
+oIE Vendor extractions
+oData storage
+EVALUATION OF 
+BACKGROUND CHECKS•Understand customer’s reporting 
+requirements
+•Understand customer’s Delegation of 
+Authority structures•AI agents & agentic workflows
+oVerification –IE Vendor extractions
+oRisk Assessment -candidate
+oIE Reporting –customer & candidate
+oData storage
+
+
+AUTOMATED SOLUTIONS
+ONBOARDING -PROCES & WORKLFOW
+CUSTOMER SERVICE PROVIDER
+Provide Access & 
+Equipment 
+AUTOMATION
+AI –Agentic
+oIntroduce the 
+company to 
+new appointee
+oEvaluate 
+orientation 
+processAUTOMATION
+AI -Agentic
+oSend Welcome 
+Letter
+oDistribute 
+Employee 
+Handbook
+oCommunicate 
+Company 
+Benefits AUTOMATION
+AI –Agentic
+oProcure 
+completed Tax 
+forms
+oProcure Banking 
+Details
+oProcure signed 
+Offer
+oProcure signed 
+Contracts
+oProcure signed 
+NDAAUTOMATION
+AI –Agentic
+oShare Access 
+Codes
+oProcure equipment
+oCoordinate 
+equipment set up
+DATA STORAGE + CONTEXT OPTIMIZATIONHR 
+MANAGEMENTWelcome New 
+AppointeeINTEGRITY 
+EVALUATIONComplete 
+PaperworkOrientation of New 
+Appointee
+INTEGRATION
+AI –Agentic
+oFinance
+oIT Dept
+
+AUTOMATED SOLUTIONS
+ONBOARDING -RACI
+SOLUTION SERVICE PROVIDER D8TAVISION
+WELCOME•Understand customer’s existing standard 
+operating procedures & workflows•UI for all onboarding communications with new 
+appointee
+•AI agents & agentic workflows
+oEmployee handbooks
+oEmployee benefits 
+PAPERWORK•Understand the scope of the paperwork 
+that needs to be completed, signed & 
+submitted
+oPre-onboarding
+oDay 1•AI agents & agentic workflows
+oSubmission of paperwork to new appointee
+oRetrieval of completed & signed paperwork
+oVerification of compliance & accuracy
+oData storage
+ACCESS & EQUIPMENT•Understand access requirements to the 
+premises
+•Understand standard equipment issue to 
+new appointees•AI agents & agentic workflows
+oWorks -order to IT Department
+oEquipment purchase order to Finance department
+oData storage
+ORIENTATION•Understand Orientation procedures & 
+evaluation requirements•AI agents & agentic workflows
+oCompany introduction to new appointee
+oOrientation evaluation
+
+
+AUTOMATED SOLUTIONS
+HR MANAGEMENT -PROCES & WORKLFOW
+AUTOMATION
+AI –Agentic
+oObtain 
+Employee 
+Feedback
+₋Concerns
+₋Suggestions
+oEvaluate Staff 
+Satisfaction 
+levelsAUTOMATION
+AI -Agentic
+oEvaluate Staff 
+Training 
+oCompile 
+management 
+reports
+oCreate & update 
+dashboardsAUTOMATION
+AI –Agentic
+oEvaluate Staff 
+Performance 
+against set KPI’s
+oCompile 
+management 
+reports
+oCreate & update 
+dashboardsAUTOMATION
+AI –Agentic
+oAdminister 
+payroll
+oAdminister Leave 
+Pay
+oAdminister Staff 
+Benefits
+DATA STORAGE + CONTEXT OPTIMIZATIONCUSTOMER SERVICE PROVIDER
+HR 
+MANAGEMENT 
+FINISHTraining & 
+IntegrationONBOARDINGPerformance 
+ManagementPayroll 
+AdministrationEmployee  
+Relations
+INTEGRATION
+AI –Agentic
+oFinance
+
+AUTOMATED SOLUTIONS
+HR MANAGEMENT -RACI
+SOLUTION SERVICE PROVIDER D8TAVISION
+TRAINING & INTEGRATION•Understand customer’s staff training & 
+development outcomes •UI for all communications relating to staff training 
+•AI agents & agentic workflows
+oEmployee evaluations of training received
+oData Storage
+PERFORMANCE MANAGEMENT•Understand customers KPI setting
+•Understand customers staff performance 
+benchmarks & minimum standards•AI agents & agentic workflows
+oPerformance evaluations
+oPerformance improvement suggestions 
+oBenchmarking internal & external
+oData storage
+PAYROL ADMINISTRATION•Understand standard staff benefits that are 
+offered by the customer to their staff
+•Understand bonus and incentive structures 
+and how they relate to KPI setting•AI agents & agentic workflows
+oAdministration of compensation & benefits
+oIntegration –Finance Department
+oData Storage
+EMPLOYEE RELATIONS•Understand the type of feedback that the 
+customer desires from their staff
+•Understand the purpose for the staff 
+feedback•AI agents & agentic workflows
+oEvaluation of staff feedback
+oDetermination of staff satisfaction levels
+oData Storage

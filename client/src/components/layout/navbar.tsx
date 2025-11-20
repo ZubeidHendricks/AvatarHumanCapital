@@ -8,8 +8,8 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { name: "Solutions", href: "#solutions" },
-    { name: "Platform", href: "#platform" },
+    { name: "Solutions", href: "/#solutions" },
+    { name: "Platform", href: "/#platform" },
     { name: "About", href: "#about" },
     { name: "Contact", href: "#contact" },
   ];
@@ -41,9 +41,14 @@ export function Navbar() {
               {link.name}
             </a>
           ))}
-          <Button variant="outline" className="border-primary/20 hover:bg-primary/10 hover:text-primary">
-            Client Login
-          </Button>
+          
+          {/* HR Portal Button */}
+          <Link href="/hr-dashboard">
+            <Button variant="outline" className="border-primary/20 hover:bg-primary/10 hover:text-primary">
+              HR Portal
+            </Button>
+          </Link>
+
           <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_-5px_hsl(var(--primary)/0.5)]">
             Get Started
           </Button>
@@ -79,7 +84,9 @@ export function Navbar() {
                 </a>
               ))}
               <div className="h-px bg-white/10 my-2" />
-              <Button variant="outline" className="w-full justify-start">Client Login</Button>
+              <Link href="/hr-dashboard">
+                <Button variant="outline" className="w-full justify-start mb-2">HR Portal</Button>
+              </Link>
               <Button className="w-full bg-primary text-primary-foreground">Get Started</Button>
             </div>
           </motion.div>
