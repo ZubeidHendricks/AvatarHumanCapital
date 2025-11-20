@@ -14,6 +14,7 @@ import ExecutiveDashboard from "@/pages/executive-dashboard";
 import InterviewVoice from "@/pages/interview-voice";
 import InterviewVideo from "@/pages/interview-video";
 import CustomerOnboarding from "@/pages/customer-onboarding";
+import CandidatesList from "@/pages/candidates-list";
 
 function Router() {
   return (
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/hr-management-agent" component={HRManagementAgent} />
       <Route path="/interview/voice" component={InterviewVoice} />
       <Route path="/interview/video" component={InterviewVideo} />
+      <Route path="/candidates-list" component={CandidatesList} />
       <Route component={NotFound} />
     </Switch>
   );
