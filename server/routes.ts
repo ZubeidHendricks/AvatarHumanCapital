@@ -153,11 +153,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const HUMAI_SECRET_KEY = process.env.HUMAI_SECRET_KEY;
 
       if (!HUMAI_API_KEY || !HUMAI_SECRET_KEY) {
+        console.error("Hume AI credentials missing:", { 
+          hasApiKey: !!HUMAI_API_KEY, 
+          hasSecretKey: !!HUMAI_SECRET_KEY 
+        });
         return res.status(500).json({ 
-          message: "Hume AI credentials not configured" 
+          message: "Hume AI credentials not configured. Please add HUMAI_API_KEY and HUMAI_SECRET_KEY to your environment secrets." 
         });
       }
 
+      console.log("Requesting Hume AI access token...");
       const tokenResponse = await fetch("https://api.hume.ai/oauth2-cc/token", {
         method: "POST",
         headers: {
@@ -172,13 +177,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!tokenResponse.ok) {
         const error = await tokenResponse.text();
-        console.error("Hume AI token error:", error);
+        console.error("Hume AI token error - Status:", tokenResponse.status);
+        console.error("Hume AI token error - Response:", error);
         return res.status(tokenResponse.status).json({ 
-          message: "Failed to get Hume AI access token" 
+          message: `Failed to get Hume AI access token: ${error}`,
+          status: tokenResponse.status
         });
       }
 
       const tokenData = await tokenResponse.json();
+      console.log("Successfully obtained Hume AI access token");
       
       res.json({ 
         accessToken: tokenData.access_token,
@@ -187,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error getting Hume AI config:", error);
-      res.status(500).json({ message: "Failed to connect to Hume AI" });
+      res.status(500).json({ message: `Failed to connect to Hume AI: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   });
 
