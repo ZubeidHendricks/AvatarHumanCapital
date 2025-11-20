@@ -19,7 +19,7 @@ export function Navbar() {
       <div className="container mx-auto px-6 h-20 flex items-center justify-between">
         {/* Logo */}
         <Link href="/">
-          <a className="flex items-center gap-2 group">
+          <div className="flex items-center gap-2 group cursor-pointer">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:border-primary/50 transition-colors">
               <Cpu className="w-6 h-6 text-primary" />
             </div>
@@ -27,7 +27,7 @@ export function Navbar() {
               <span className="font-display font-bold text-xl tracking-tight leading-none">AHC</span>
               <span className="text-[10px] text-muted-foreground uppercase tracking-widest leading-none">Avatar Human Capital</span>
             </div>
-          </a>
+          </div>
         </Link>
 
         {/* Desktop Nav */}
