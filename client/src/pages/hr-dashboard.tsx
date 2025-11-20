@@ -29,13 +29,15 @@ import {
   WifiOff,
   UploadCloud,
   FileText,
-  Plus
+  Plus,
+  Wand2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 // Mock Data as fallback if API fails or for other tabs not yet connected
 const integrityChecks = [
@@ -63,6 +65,55 @@ export default function HRDashboard() {
   const [activeTab, setActiveTab] = useState("recruitment");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
+
+  // JD Generation State
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [jobTitle, setJobTitle] = useState("");
+  const [department, setDepartment] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
+
+  const handleGenerateJD = async () => {
+    if (!jobTitle) {
+        toast.error("Please enter a Job Title first.");
+        return;
+    }
+    
+    setIsGenerating(true);
+    
+    // Simulate AI Generation Delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const generatedText = `JOB TITLE: ${jobTitle}
+DEPARTMENT: ${department || 'General'}
+
+ROLE OVERVIEW:
+We are looking for a highly motivated ${jobTitle} to join our ${department || 'growing'} team. In this role, you will be responsible for driving key initiatives and contributing to our mission of excellence.
+
+KEY RESPONSIBILITIES:
+• ${jobDescription ? jobDescription.split('\n')[0] : 'Lead and manage projects from conception to completion.'}
+• Collaborate with cross-functional teams to deliver high-quality results.
+• Analyze data to identify trends and opportunities for improvement.
+• Mentor junior team members and foster a culture of continuous learning.
+• Ensure compliance with industry standards and company policies.
+
+QUALIFICATIONS:
+• Bachelor's degree in a related field or equivalent practical experience.
+• 3+ years of experience in a similar role.
+• Strong problem-solving skills and attention to detail.
+• Excellent communication and interpersonal skills.
+• Proficiency with relevant tools and technologies.
+
+BENEFITS:
+• Competitive salary and equity package.
+• Comprehensive health, dental, and vision insurance.
+• Flexible work arrangements (Remote/Hybrid).
+• Professional development budget.
+`;
+
+    setJobDescription(generatedText);
+    setIsGenerating(false);
+    toast.success("Job Description generated successfully!");
+  };
 
   // Fetch real data from backend
   const { 
@@ -160,19 +211,52 @@ export default function HRDashboard() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="title">Job Title</Label>
-                      <Input id="title" placeholder="e.g. Senior Product Designer" className="bg-background/50 border-white/10" />
+                      <Input 
+                        id="title" 
+                        placeholder="e.g. Senior Product Designer" 
+                        className="bg-background/50 border-white/10" 
+                        value={jobTitle}
+                        onChange={(e) => setJobTitle(e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="department">Department</Label>
-                      <Input id="department" placeholder="e.g. Engineering" className="bg-background/50 border-white/10" />
+                      <Input 
+                        id="department" 
+                        placeholder="e.g. Engineering" 
+                        className="bg-background/50 border-white/10"
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                      />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="description">Key Responsibilities & Requirements</Label>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="description">Key Responsibilities & Requirements</Label>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-6 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                            onClick={handleGenerateJD}
+                            disabled={isGenerating}
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" /> Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <Wand2 className="w-3 h-3 mr-1" /> Auto-Generate with AI
+                                </>
+                            )}
+                        </Button>
+                    </div>
                     <Textarea 
                       id="description" 
                       placeholder="Paste raw requirements here or type a brief summary. AI will expand this into a full JD." 
-                      className="min-h-[150px] bg-background/50 border-white/10"
+                      className="min-h-[200px] bg-background/50 border-white/10 font-mono text-sm"
+                      value={jobDescription}
+                      onChange={(e) => setJobDescription(e.target.value)}
                     />
                   </div>
                   <div className="flex items-center gap-4">
@@ -188,7 +272,9 @@ export default function HRDashboard() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsCreateJobOpen(false)}>Cancel</Button>
-                  <Button onClick={() => setIsCreateJobOpen(false)}>Generate & Publish</Button>
+                  <Button onClick={() => setIsCreateJobOpen(false)} className="bg-primary text-primary-foreground">
+                    Publish Requisition
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -483,41 +569,30 @@ export default function HRDashboard() {
            <TabsContent value="performance" className="space-y-6">
             
              {/* AI Performance Banner */}
-            <div className="rounded-lg bg-gradient-to-r from-indigo-900/20 to-purple-500/20 border border-indigo-500/20 p-6 flex items-center justify-between">
+            <div className="rounded-lg bg-gradient-to-r from-indigo-500/20 to-blue-600/20 border border-indigo-500/20 p-6 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold flex items-center gap-2 text-white">
                   <TrendingUp className="w-5 h-5 text-indigo-400" />
                   Analyze workforce performance?
                 </h3>
                 <p className="text-muted-foreground text-sm mt-1">
-                  The HR Management Agent tracks KPIs, staff satisfaction, and payroll compliance in real-time.
+                  Connect data streams to track KPIs, engagement, and retention risks in real-time.
                 </p>
               </div>
-              <Link href="/hr-management-agent">
-                <Button className="bg-indigo-500 text-white hover:bg-indigo-400 shadow-lg shadow-indigo-500/20">
-                  View HR Analytics
-                </Button>
-              </Link>
+              <Button className="bg-indigo-500 text-indigo-950 hover:bg-indigo-400 shadow-lg shadow-indigo-500/20">
+                View Analytics
+              </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="border-white/10 bg-card/20">
-                <CardHeader>
-                  <CardTitle>KPI Tracking</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Performance data visualization would go here.</p>
-                </CardContent>
-              </Card>
-              <Card className="border-white/10 bg-card/20">
-                 <CardHeader>
-                  <CardTitle>Training & Development</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Training module progress would go here.</p>
-                </CardContent>
-              </Card>
-            </div>
+            <Card className="border-white/10 bg-card/20">
+              <CardHeader>
+                <CardTitle>Performance Metrics</CardTitle>
+                <CardDescription>Coming soon: Real-time KPI tracking dashboard.</CardDescription>
+              </CardHeader>
+              <CardContent className="h-[200px] flex items-center justify-center text-muted-foreground">
+                No active data streams connected.
+              </CardContent>
+            </Card>
           </TabsContent>
 
         </Tabs>
