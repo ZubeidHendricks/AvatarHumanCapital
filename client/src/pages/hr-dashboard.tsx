@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { jobsService, candidateService } from "@/lib/api";
 import { Navbar } from "@/components/layout/navbar";
@@ -26,10 +26,16 @@ import {
   Laptop,
   TrendingUp,
   Loader2,
-  WifiOff
+  WifiOff,
+  UploadCloud,
+  FileText,
+  Plus
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 // Mock Data as fallback if API fails or for other tabs not yet connected
 const integrityChecks = [
@@ -55,6 +61,8 @@ const MOCK_CANDIDATES = [
 
 export default function HRDashboard() {
   const [activeTab, setActiveTab] = useState("recruitment");
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
 
   // Fetch real data from backend
   const { 
@@ -136,7 +144,54 @@ export default function HRDashboard() {
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1">
               <BrainCircuit className="w-3 h-3 mr-2" /> AI Agents Active
             </Badge>
-            <Button>Create New Requisition</Button>
+            
+            <Dialog open={isCreateJobOpen} onOpenChange={setIsCreateJobOpen}>
+              <DialogTrigger asChild>
+                <Button>Create New Requisition</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px] bg-card border-white/10">
+                <DialogHeader>
+                  <DialogTitle>Create New Job Requisition</DialogTitle>
+                  <DialogDescription>
+                    Define the role requirements. Our AI will automatically generate a job description and start sourcing.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Job Title</Label>
+                      <Input id="title" placeholder="e.g. Senior Product Designer" className="bg-background/50 border-white/10" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Department</Label>
+                      <Input id="department" placeholder="e.g. Engineering" className="bg-background/50 border-white/10" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Key Responsibilities & Requirements</Label>
+                    <Textarea 
+                      id="description" 
+                      placeholder="Paste raw requirements here or type a brief summary. AI will expand this into a full JD." 
+                      className="min-h-[150px] bg-background/50 border-white/10"
+                    />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="remote" className="rounded border-white/20 bg-background/50" />
+                      <Label htmlFor="remote">Remote Eligible</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="urgent" className="rounded border-white/20 bg-background/50" />
+                      <Label htmlFor="urgent">Urgent Hire</Label>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsCreateJobOpen(false)}>Cancel</Button>
+                  <Button onClick={() => setIsCreateJobOpen(false)}>Generate & Publish</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -219,6 +274,47 @@ export default function HRDashboard() {
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input placeholder="Search candidates..." className="pl-9 w-[200px] bg-background/50 border-white/10" />
                     </div>
+                    
+                    <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="gap-2 border-primary/20 bg-primary/5 hover:bg-primary/10">
+                          <UploadCloud className="h-4 w-4" />
+                          Upload CVs
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="bg-card border-white/10 sm:max-w-[500px]">
+                        <DialogHeader>
+                          <DialogTitle>Upload Candidate Profiles</DialogTitle>
+                          <DialogDescription>
+                            Drag and drop CVs here. Our AI will extract skills, match to open roles, and rank them instantly.
+                          </DialogDescription>
+                        </DialogHeader>
+                        
+                        <div className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-white/5">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="p-3 rounded-full bg-primary/10">
+                              <UploadCloud className="h-8 w-8 text-primary" />
+                            </div>
+                            <h3 className="font-medium mt-2">Drop files here or click to upload</h3>
+                            <p className="text-sm text-muted-foreground">Supports PDF, DOCX, TXT (Max 10MB)</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 mt-2">
+                           <Label>Or manually add a candidate link</Label>
+                           <div className="flex gap-2">
+                             <Input placeholder="https://linkedin.com/in/..." className="bg-background/50 border-white/10" />
+                             <Button size="sm" variant="secondary"><Plus className="w-4 h-4" /></Button>
+                           </div>
+                        </div>
+
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
+                          <Button onClick={() => setIsUploadOpen(false)}>Process Files</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
                     <Button variant="outline" size="icon"><Filter className="h-4 w-4" /></Button>
                   </div>
                 </div>
