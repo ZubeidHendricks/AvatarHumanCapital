@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { candidateService, jobsService } from "@/lib/api";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
@@ -156,6 +156,8 @@ export default function CandidatesList() {
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
   const [inviteLink, setInviteLink] = useState("");
 
+  const queryClient = useQueryClient();
+
   // Fetch candidates and jobs from API
   const { data: candidates, isLoading: loadingCandidates } = useQuery({
     queryKey: ['candidates'],
@@ -167,6 +169,23 @@ export default function CandidatesList() {
     queryKey: ['jobs'],
     queryFn: jobsService.getAll,
     retry: 1,
+  });
+
+  // Mutation to update candidate
+  const updateCandidateMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: any }) => 
+      candidateService.update(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+    },
+  });
+
+  // Mutation to delete candidate
+  const deleteCandidateMutation = useMutation({
+    mutationFn: (id: string) => candidateService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+    },
   });
 
   // Find the current job if jobId is present
@@ -186,17 +205,28 @@ export default function CandidatesList() {
     setActiveCriteria(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleShortlist = (id: string) => {
+  const handleShortlist = async (id: string) => {
     const candidate = filteredCandidates.find(c => c.id === id);
     if (candidate) {
+      try {
+        await updateCandidateMutation.mutateAsync({
+          id,
+          updates: { stage: "Shortlisted" }
+        });
         toast.success(`${candidate.fullName} moved to shortlisted`);
-        // TODO: Implement shortlist mutation with API
+      } catch (error) {
+        toast.error("Failed to shortlist candidate");
+      }
     }
   };
 
-  const handleRemoveCandidate = (id: string) => {
-    toast.success("Candidate removed");
-    // TODO: Implement delete mutation with API
+  const handleRemoveCandidate = async (id: string) => {
+    try {
+      await deleteCandidateMutation.mutateAsync(id);
+      toast.success("Candidate removed");
+    } catch (error) {
+      toast.error("Failed to remove candidate");
+    }
   };
 
   const handleAIContact = (candidate: any) => {
