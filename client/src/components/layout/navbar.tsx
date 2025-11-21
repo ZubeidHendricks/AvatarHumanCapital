@@ -92,6 +92,12 @@ export function Navbar() {
             </Button>
           </Link>
 
+          <Link href="/candidate-pipeline">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10">
+              Pipeline
+            </Button>
+          </Link>
+
           <Link href="/executive-dashboard">
             <Button variant="outline" size="sm" className="border-primary/20 hover:bg-primary/10 hover:text-primary gap-2">
               <LayoutDashboard className="w-4 h-4" />

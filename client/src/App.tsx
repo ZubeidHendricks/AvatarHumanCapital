@@ -16,6 +16,7 @@ import InterviewVideo from "@/pages/interview-video";
 import CustomerOnboarding from "@/pages/customer-onboarding";
 import CandidatesList from "@/pages/candidates-list";
 import ShortlistedCandidates from "@/pages/shortlisted-candidates";
+import CandidatePipeline from "@/pages/candidate-pipeline";
 
 function Router() {
   return (
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/interview/video" component={InterviewVideo} />
       <Route path="/candidates-list" component={CandidatesList} />
       <Route path="/shortlisted-candidates" component={ShortlistedCandidates} />
+      <Route path="/candidate-pipeline" component={CandidatePipeline} />
       <Route component={NotFound} />
     </Switch>
   );
