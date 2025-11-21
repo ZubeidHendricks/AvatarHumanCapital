@@ -40,6 +40,19 @@ export const candidates = pgTable("candidates", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const integrityChecks = pgTable("integrity_checks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  checkType: text("check_type").notNull(),
+  status: text("status").notNull().default("Pending"),
+  result: text("result"),
+  riskScore: integer("risk_score"),
+  findings: jsonb("findings"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -57,6 +70,12 @@ export const insertCandidateSchema = createInsertSchema(candidates).omit({
   updatedAt: true,
 });
 
+export const insertIntegrityCheckSchema = createInsertSchema(integrityChecks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -65,3 +84,6 @@ export type Job = typeof jobs.$inferSelect;
 
 export type InsertCandidate = z.infer<typeof insertCandidateSchema>;
 export type Candidate = typeof candidates.$inferSelect;
+
+export type InsertIntegrityCheck = z.infer<typeof insertIntegrityCheckSchema>;
+export type IntegrityCheck = typeof integrityChecks.$inferSelect;

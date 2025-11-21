@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCandidateSchema, insertJobSchema } from "@shared/schema";
+import { insertCandidateSchema, insertJobSchema, insertIntegrityCheckSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -266,6 +266,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating Tavus session:", error);
       res.status(500).json({ message: "Failed to create video session" });
+    }
+  });
+
+  app.get("/api/integrity-checks", async (req, res) => {
+    try {
+      const checks = await storage.getAllIntegrityChecks();
+      res.json(checks);
+    } catch (error) {
+      console.error("Error fetching integrity checks:", error);
+      res.status(500).json({ message: "Failed to fetch integrity checks" });
+    }
+  });
+
+  app.get("/api/integrity-checks/candidate/:candidateId", async (req, res) => {
+    try {
+      const checks = await storage.getIntegrityChecksByCandidateId(req.params.candidateId);
+      res.json(checks);
+    } catch (error) {
+      console.error("Error fetching candidate integrity checks:", error);
+      res.status(500).json({ message: "Failed to fetch candidate integrity checks" });
+    }
+  });
+
+  app.get("/api/integrity-checks/:id", async (req, res) => {
+    try {
+      const check = await storage.getIntegrityCheck(req.params.id);
+      if (!check) {
+        return res.status(404).json({ message: "Integrity check not found" });
+      }
+      res.json(check);
+    } catch (error) {
+      console.error("Error fetching integrity check:", error);
+      res.status(500).json({ message: "Failed to fetch integrity check" });
+    }
+  });
+
+  app.post("/api/integrity-checks", async (req, res) => {
+    try {
+      const result = insertIntegrityCheckSchema.safeParse(req.body);
+      if (!result.success) {
+        const validationError = fromZodError(result.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      
+      const check = await storage.createIntegrityCheck(result.data);
+      res.status(201).json(check);
+    } catch (error) {
+      console.error("Error creating integrity check:", error);
+      res.status(500).json({ message: "Failed to create integrity check" });
+    }
+  });
+
+  app.patch("/api/integrity-checks/:id", async (req, res) => {
+    try {
+      const result = insertIntegrityCheckSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        const validationError = fromZodError(result.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      
+      const check = await storage.updateIntegrityCheck(req.params.id, result.data);
+      if (!check) {
+        return res.status(404).json({ message: "Integrity check not found" });
+      }
+      res.json(check);
+    } catch (error) {
+      console.error("Error updating integrity check:", error);
+      res.status(500).json({ message: "Failed to update integrity check" });
+    }
+  });
+
+  app.delete("/api/integrity-checks/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteIntegrityCheck(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Integrity check not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting integrity check:", error);
+      res.status(500).json({ message: "Failed to delete integrity check" });
     }
   });
 

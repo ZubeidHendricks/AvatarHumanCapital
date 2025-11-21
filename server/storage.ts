@@ -5,9 +5,12 @@ import {
   type InsertJob,
   type Candidate,
   type InsertCandidate,
+  type IntegrityCheck,
+  type InsertIntegrityCheck,
   users,
   jobs,
-  candidates
+  candidates,
+  integrityChecks
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -28,6 +31,13 @@ export interface IStorage {
   createCandidate(candidate: InsertCandidate): Promise<Candidate>;
   updateCandidate(id: string, candidate: Partial<InsertCandidate>): Promise<Candidate | undefined>;
   deleteCandidate(id: string): Promise<boolean>;
+  
+  getAllIntegrityChecks(): Promise<IntegrityCheck[]>;
+  getIntegrityCheck(id: string): Promise<IntegrityCheck | undefined>;
+  getIntegrityChecksByCandidateId(candidateId: string): Promise<IntegrityCheck[]>;
+  createIntegrityCheck(check: InsertIntegrityCheck): Promise<IntegrityCheck>;
+  updateIntegrityCheck(id: string, check: Partial<InsertIntegrityCheck>): Promise<IntegrityCheck | undefined>;
+  deleteIntegrityCheck(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -108,6 +118,41 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCandidate(id: string): Promise<boolean> {
     const result = await db.delete(candidates).where(eq(candidates.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getAllIntegrityChecks(): Promise<IntegrityCheck[]> {
+    return await db.select().from(integrityChecks).orderBy(desc(integrityChecks.createdAt));
+  }
+
+  async getIntegrityCheck(id: string): Promise<IntegrityCheck | undefined> {
+    const [check] = await db.select().from(integrityChecks).where(eq(integrityChecks.id, id));
+    return check || undefined;
+  }
+
+  async getIntegrityChecksByCandidateId(candidateId: string): Promise<IntegrityCheck[]> {
+    return await db.select().from(integrityChecks).where(eq(integrityChecks.candidateId, candidateId)).orderBy(desc(integrityChecks.createdAt));
+  }
+
+  async createIntegrityCheck(insertCheck: InsertIntegrityCheck): Promise<IntegrityCheck> {
+    const [check] = await db
+      .insert(integrityChecks)
+      .values(insertCheck)
+      .returning();
+    return check;
+  }
+
+  async updateIntegrityCheck(id: string, updates: Partial<InsertIntegrityCheck>): Promise<IntegrityCheck | undefined> {
+    const [check] = await db
+      .update(integrityChecks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(integrityChecks.id, id))
+      .returning();
+    return check || undefined;
+  }
+
+  async deleteIntegrityCheck(id: string): Promise<boolean> {
+    const result = await db.delete(integrityChecks).where(eq(integrityChecks.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 }
