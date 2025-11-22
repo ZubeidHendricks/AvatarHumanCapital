@@ -813,6 +813,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/onboarding/trigger/:candidateId", async (req, res) => {
+    try {
+      const { OnboardingOrchestrator } = await import("./onboarding-orchestrator");
+      const orchestrator = new OnboardingOrchestrator(storage);
+      
+      const workflow = await orchestrator.startOnboarding(req.params.candidateId);
+      
+      res.status(201).json({
+        message: "Onboarding workflow started",
+        workflow,
+      });
+    } catch (error) {
+      console.error("Error starting onboarding:", error);
+      res.status(500).json({ message: "Failed to start onboarding workflow" });
+    }
+  });
+
+  app.get("/api/onboarding/status/:candidateId", async (req, res) => {
+    try {
+      const { OnboardingOrchestrator } = await import("./onboarding-orchestrator");
+      const orchestrator = new OnboardingOrchestrator(storage);
+      
+      const workflow = await orchestrator.getWorkflowByCandidateId(req.params.candidateId);
+      
+      res.json(workflow || null);
+    } catch (error) {
+      console.error("Error fetching onboarding status:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding status" });
+    }
+  });
+
+  app.get("/api/onboarding/workflows", async (req, res) => {
+    try {
+      const workflows = await storage.getAllOnboardingWorkflows();
+      res.json(workflows);
+    } catch (error) {
+      console.error("Error fetching onboarding workflows:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding workflows" });
+    }
+  });
+
+  app.get("/api/onboarding/workflows/:id", async (req, res) => {
+    try {
+      const workflow = await storage.getOnboardingWorkflow(req.params.id);
+      
+      if (!workflow) {
+        return res.status(404).json({ message: "Onboarding workflow not found" });
+      }
+      
+      res.json(workflow);
+    } catch (error) {
+      console.error("Error fetching onboarding workflow:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding workflow" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

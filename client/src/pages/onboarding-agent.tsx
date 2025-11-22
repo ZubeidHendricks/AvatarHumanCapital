@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,16 +15,15 @@ import {
   Mail, 
   FileSignature, 
   Laptop, 
-  CreditCard, 
   CheckCircle2, 
   Loader2, 
   Briefcase,
-  Key,
-  FileCheck
+  Search
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { api } from "@/lib/api";
+import type { Candidate, OnboardingWorkflow } from "@shared/schema";
 
-// Types for our mock RAG system
 type Message = {
   id: string;
   role: "user" | "agent";
@@ -48,22 +48,22 @@ type RetrievedDoc = {
 };
 
 export default function OnboardingAgent() {
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       role: "agent",
-      content: "Welcome to the Onboarding Automation Agent. I handle everything from welcome packets to equipment provisioning. Who are we onboarding today?",
+      content: "Welcome to the Onboarding Automation Agent. I handle everything from welcome packets to equipment provisioning. Select a candidate from the list or search by name to begin their onboarding process.",
       timestamp: new Date()
     }
   ]);
-  const [inputValue, setInputValue] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  
-  // RAG State
   const [ragSteps, setRagSteps] = useState<RagStep[]>([]);
   const [retrievedDocs, setRetrievedDocs] = useState<RetrievedDoc[]>([]);
+  const [workflowId, setWorkflowId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -71,83 +71,120 @@ export default function OnboardingAgent() {
     }
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+  const { data: candidates = [], isLoading: candidatesLoading } = useQuery<Candidate[]>({
+    queryKey: ["candidates"],
+    queryFn: async () => {
+      const response = await api.get("/candidates");
+      return response.data;
+    },
+  });
 
-    const newUserMsg: Message = {
+  const { data: workflow, isLoading: workflowLoading } = useQuery<OnboardingWorkflow | null>({
+    queryKey: ["onboarding-workflow", selectedCandidate?.id],
+    queryFn: async () => {
+      if (!selectedCandidate) return null;
+      const response = await api.get(`/onboarding/status/${selectedCandidate.id}`);
+      return response.data;
+    },
+    enabled: !!selectedCandidate,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data || data.status === "Completed" || data.status === "Failed") {
+        return false;
+      }
+      return 2000;
+    },
+  });
+
+  useEffect(() => {
+    if (workflow) {
+      const tasks = workflow.tasks as any[] || [];
+      const documents = workflow.documents as any[] || [];
+
+      const steps: RagStep[] = tasks.map((task: any) => ({
+        id: task.id,
+        label: task.title,
+        status: task.status,
+        details: task.details,
+        icon: task.type === "welcome" ? Mail : 
+              task.type === "paperwork" ? FileSignature :
+              task.type === "provisioning" ? Laptop : UserPlus,
+      }));
+
+      setRagSteps(steps);
+      setRetrievedDocs(documents);
+
+      if (workflow.status === "Completed") {
+        const completionMessage: Message = {
+          id: `completion-${workflow.id}`,
+          role: "agent",
+          content: "Onboarding sequence completed successfully.\n\n✅ Welcome Packet: Sent\n✅ Paperwork: NDA and Offer Letter signed\n✅ IT Provisioning: Laptop ordered, accounts created\n✅ Orientation: Scheduled\n\nAll tasks have been completed. The candidate is ready for their first day!",
+          timestamp: new Date(),
+        };
+
+        setMessages(prev => {
+          const exists = prev.some(m => m.id === completionMessage.id);
+          if (!exists) {
+            return [...prev, completionMessage];
+          }
+          return prev;
+        });
+      }
+    }
+  }, [workflow]);
+
+  const startOnboardingMutation = useMutation({
+    mutationFn: async (candidateId: string) => {
+      const response = await api.post(`/onboarding/trigger/${candidateId}`);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setWorkflowId(data.workflow.id);
+      queryClient.invalidateQueries({ queryKey: ["onboarding-workflow", selectedCandidate?.id] });
+      
+      const agentResponse: Message = {
+        id: Date.now().toString(),
+        role: "agent",
+        content: `Initiating onboarding workflow for ${selectedCandidate?.fullName}...\n\nI'm now processing:\n• Welcome package preparation\n• Document automation\n• IT system provisioning\n• Orientation scheduling\n\nWatch the progress in real-time on the left panel.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, agentResponse]);
+    },
+    onError: () => {
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: "agent",
+        content: "Sorry, there was an error starting the onboarding process. Please try again.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    },
+  });
+
+  const handleCandidateSelect = (candidate: Candidate) => {
+    setSelectedCandidate(candidate);
+    setRagSteps([]);
+    setRetrievedDocs([]);
+    setWorkflowId(null);
+
+    const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: inputValue,
-      timestamp: new Date()
+      content: `Start onboarding for ${candidate.fullName}`,
+      timestamp: new Date(),
     };
+    setMessages(prev => [...prev, userMessage]);
 
-    setMessages(prev => [...prev, newUserMsg]);
-    setInputValue("");
-    setIsProcessing(true);
-
-    // Simulate Onboarding Workflow based on the document
-    // 1. Welcome (Letter, Handbook, Benefits) -> 2. Paperwork (Tax, Bank, Offer, NDA) -> 3. Access & Equipment -> 4. Orientation
-    
-    // Step 1: Welcome Package
-    setRagSteps([
-      { id: "1", label: "Initiating Welcome Sequence", status: "processing", icon: Mail, details: ["Generating personalized welcome letter...", "Attaching Employee Handbook v2024...", "Compiling Benefits Summary..."] }
-    ]);
-    
-    await new Promise(r => setTimeout(r, 1500));
-    
-    setRetrievedDocs([
-      { id: "doc1", title: "Welcome_Packet_Sent.eml", type: "email", status: "sent", snippet: "Sent to personal email. Subject: Welcome to the team!" },
-      { id: "doc2", title: "Employee_Handbook.pdf", type: "document", status: "sent", snippet: "Version 4.2 attached to welcome email." }
-    ]);
-
-    setRagSteps(prev => [
-      { ...prev[0], status: "completed" },
-      { id: "2", label: "Procuring Digital Paperwork", status: "processing", icon: FileSignature, details: ["Sending Tax Forms (W-4/I-9)...", "Requesting Banking Details...", "Deploying NDA for e-signature..."] }
-    ]);
-
-    await new Promise(r => setTimeout(r, 2000));
-
-    // Step 3: Access & Equipment
-    setRagSteps(prev => [
-      ...prev.slice(0, 1),
-      { ...prev[1], status: "completed" },
-      { id: "3", label: "Provisioning Access & Equipment", status: "processing", icon: Laptop, details: ["Creating AD Account...", "Ordering MacBook Pro M3...", "Generating VPN Keys..."] }
-    ]);
-    
-    setRetrievedDocs(prev => [
-      ...prev,
-      { id: "doc3", title: "Offer_Letter_Signed.pdf", type: "document", status: "signed", snippet: "Signed by candidate via DocuSign." },
-      { id: "doc4", title: "Banking_Details_Encrypted.dat", type: "document", status: "pending", snippet: "Waiting for candidate input." },
-      { id: "asset1", title: "IT_Asset_Request_#4922", type: "asset", status: "provisioned", snippet: "Laptop & Monitor dispatched to IT Support." }
-    ]);
-
-    await new Promise(r => setTimeout(r, 2000));
-    
-    // Step 4: Orientation
-    setRagSteps(prev => [
-      ...prev.slice(0, 2),
-      { ...prev[2], status: "completed" },
-      { id: "4", label: "Orientation & Integration", status: "processing", icon: UserPlus, details: ["Scheduling 'Meet the Team'...", "Assigning Orientation Modules...", "Notifying Finance & IT..."] }
-    ]);
-    
-     setRetrievedDocs(prev => [
-      ...prev,
-      { id: "access1", title: "System_Access_Credentials", type: "asset", status: "provisioned", snippet: "SSO Invite sent. VPN Access granted." }
-    ]);
-
-    await new Promise(r => setTimeout(r, 1500));
-
-    setRagSteps(prev => prev.map(s => ({ ...s, status: "completed" })));
-    setIsProcessing(false);
-
-    const agentResponse: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "agent",
-      content: "Onboarding sequence initiated successfully.\n\n1. **Welcome Packet**: Sent.\n2. **Paperwork**: NDA and Offer Letter signed. Waiting on Tax/Banking forms.\n3. **IT Provisioning**: Laptop ordered, accounts created.\n4. **Orientation**: Scheduled for Monday at 09:00 AM.\n\nI will notify you once the outstanding paperwork is completed.",
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, agentResponse]);
+    setTimeout(() => {
+      startOnboardingMutation.mutate(candidate.id);
+    }, 500);
   };
+
+  const filteredCandidates = candidates.filter(c =>
+    c.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.role?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -158,7 +195,7 @@ export default function OnboardingAgent() {
           
           {/* LEFT: Workflow Visualization */}
           <div className="hidden lg:block lg:col-span-3 flex flex-col gap-6 h-full overflow-hidden">
-            <Card className="bg-card/30 border-white/10 backdrop-blur-sm flex-1 flex flex-col overflow-hidden">
+            <Card className="bg-card/30 border-white/10 backdrop-blur-sm flex-1 flex flex-col overflow-hidden" data-testid="card-workflow-steps">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-primary" /> 
@@ -167,7 +204,6 @@ export default function OnboardingAgent() {
               </CardHeader>
               <CardContent className="flex-1 overflow-y-auto pr-2">
                 <div className="space-y-6 relative">
-                  {/* Connecting Line */}
                   <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-white/5 z-0" />
                   
                   {ragSteps.length === 0 && (
@@ -184,6 +220,7 @@ export default function OnboardingAgent() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
                         className="relative z-10"
+                        data-testid={`step-${step.id}`}
                       >
                         <div className="flex items-start gap-3">
                           <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center shrink-0 bg-background ${
@@ -223,7 +260,7 @@ export default function OnboardingAgent() {
 
           {/* MIDDLE: Chat Interface */}
           <div className="lg:col-span-6 flex flex-col h-full">
-            <Card className="flex-1 flex flex-col bg-card/50 border-white/10 backdrop-blur-md overflow-hidden">
+            <Card className="flex-1 flex flex-col bg-card/50 border-white/10 backdrop-blur-md overflow-hidden" data-testid="card-chat">
               <CardHeader className="border-b border-white/5 py-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -233,7 +270,9 @@ export default function OnboardingAgent() {
                       <CardDescription className="text-xs">Employee Integration & Provisioning</CardDescription>
                     </div>
                   </div>
-                  <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[10px]">AUTO-PROVISIONING</Badge>
+                  <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[10px]">
+                    {workflow?.status || "READY"}
+                  </Badge>
                 </div>
               </CardHeader>
               
@@ -245,6 +284,7 @@ export default function OnboardingAgent() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className={`flex items-start gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                      data-testid={`message-${msg.role}`}
                     >
                       <Avatar className={`w-8 h-8 ${msg.role === "agent" ? "border border-primary/50" : "border border-white/10"}`}>
                         <AvatarImage src={msg.role === "agent" ? "" : "/user.png"} />
@@ -266,7 +306,7 @@ export default function OnboardingAgent() {
                     </motion.div>
                   ))}
                   
-                  {isProcessing && (
+                  {startOnboardingMutation.isPending && (
                     <motion.div 
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -279,90 +319,129 @@ export default function OnboardingAgent() {
                       </Avatar>
                       <div className="bg-white/5 border border-white/10 rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                        <span className="text-xs text-muted-foreground">Coordinating with IT & Finance...</span>
+                        <span className="text-xs text-muted-foreground">Starting onboarding workflow...</span>
                       </div>
                     </motion.div>
                   )}
                   <div ref={scrollRef} />
                 </div>
               </ScrollArea>
-
-              <div className="p-4 border-t border-white/5 bg-black/20">
-                <div className="flex gap-2">
-                  <Input 
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                    placeholder="Enter new hire name to start onboarding..." 
-                    className="bg-white/5 border-white/10 focus-visible:ring-primary/50"
-                  />
-                  <Button 
-                    onClick={handleSendMessage}
-                    disabled={isProcessing || !inputValue.trim()}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
             </Card>
           </div>
 
-          {/* RIGHT: Asset & Doc Tracker */}
+          {/* RIGHT: Candidate Selector & Doc Tracker */}
           <div className="hidden lg:block lg:col-span-3 flex flex-col gap-6 h-full overflow-hidden">
-            <Card className="bg-card/30 border-white/10 backdrop-blur-sm flex-1 flex flex-col overflow-hidden">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Briefcase className="w-4 h-4 text-primary" /> 
-                  Onboarding Checklist
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto pr-2">
-                {retrievedDocs.length === 0 ? (
-                   <div className="text-sm text-muted-foreground text-center py-8 italic">
-                      No actions initiated yet.
-                    </div>
-                ) : (
-                  <div className="space-y-3">
-                    <AnimatePresence>
-                      {retrievedDocs.map((doc, index) => (
-                        <motion.div
-                          key={doc.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                        >
-                          <div className={`p-3 rounded-lg bg-white/5 border transition-colors group cursor-pointer ${
-                            doc.status === "pending" ? "border-white/10 border-dashed" : 
-                            "border-white/5 hover:border-green-500/30"
-                          }`}>
-                            <div className="flex items-start justify-between mb-1">
-                              <div className="flex items-center gap-2">
-                                {doc.type === "document" ? <FileSignature className="w-3 h-3 text-blue-400" /> : 
-                                 doc.type === "asset" ? <Laptop className="w-3 h-3 text-amber-400" /> : 
-                                 <Mail className="w-3 h-3 text-purple-400" />}
-                                <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-white/10">{doc.type}</Badge>
-                              </div>
-                              {doc.status === "pending" ? (
-                                <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
-                                  <Loader2 className="w-3 h-3 animate-spin" /> PENDING
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-green-400 font-mono flex items-center gap-1 uppercase">
-                                  <CheckCircle2 className="w-3 h-3" /> {doc.status}
-                                </span>
-                              )}
-                            </div>
-                            <h5 className="text-sm font-medium truncate mb-1 group-hover:text-foreground transition-colors">{doc.title}</h5>
-                            <p className="text-xs text-muted-foreground line-clamp-2 italic">"{doc.snippet}"</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
+            {!selectedCandidate ? (
+              <Card className="bg-card/30 border-white/10 backdrop-blur-sm flex-1 flex flex-col overflow-hidden" data-testid="card-candidate-selector">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <Search className="w-4 h-4 text-primary" /> 
+                    Select Candidate
+                  </CardTitle>
+                  <div className="mt-2">
+                    <Input
+                      placeholder="Search candidates..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="bg-black/40 border-white/10 text-white text-sm"
+                      data-testid="input-search-candidate"
+                    />
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto pr-2">
+                  {candidatesLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : filteredCandidates.length === 0 ? (
+                    <div className="text-sm text-muted-foreground text-center py-8 italic">
+                      No candidates found
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredCandidates.map((candidate) => (
+                        <div
+                          key={candidate.id}
+                          onClick={() => handleCandidateSelect(candidate)}
+                          className="p-3 rounded-lg bg-white/5 border border-white/10 hover:border-primary/50 cursor-pointer transition-all group"
+                          data-testid={`candidate-${candidate.id}`}
+                        >
+                          <h5 className="text-sm font-medium group-hover:text-primary transition-colors">
+                            {candidate.fullName}
+                          </h5>
+                          <p className="text-xs text-muted-foreground">{candidate.role || "No role specified"}</p>
+                          <p className="text-xs text-muted-foreground truncate">{candidate.email || "No email"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="bg-card/30 border-white/10 backdrop-blur-sm flex-1 flex flex-col overflow-hidden" data-testid="card-document-tracker">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-primary" /> 
+                    Onboarding Checklist
+                  </CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setSelectedCandidate(null)}
+                    className="mt-2 text-xs"
+                    data-testid="button-select-another"
+                  >
+                    Select Another Candidate
+                  </Button>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto pr-2">
+                  {retrievedDocs.length === 0 ? (
+                     <div className="text-sm text-muted-foreground text-center py-8 italic">
+                        No actions initiated yet.
+                      </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <AnimatePresence>
+                        {retrievedDocs.map((doc, index) => (
+                          <motion.div
+                            key={doc.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            data-testid={`document-${doc.id}`}
+                          >
+                            <div className={`p-3 rounded-lg bg-white/5 border transition-colors group cursor-pointer ${
+                              doc.status === "pending" ? "border-white/10 border-dashed" : 
+                              "border-white/5 hover:border-green-500/30"
+                            }`}>
+                              <div className="flex items-start justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                  {doc.type === "document" ? <FileSignature className="w-3 h-3 text-blue-400" /> : 
+                                   doc.type === "asset" ? <Laptop className="w-3 h-3 text-amber-400" /> : 
+                                   <Mail className="w-3 h-3 text-purple-400" />}
+                                  <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-white/10">{doc.type}</Badge>
+                                </div>
+                                {doc.status === "pending" ? (
+                                  <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                                    <Loader2 className="w-3 h-3 animate-spin" /> PENDING
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-green-400 font-mono flex items-center gap-1 uppercase">
+                                    <CheckCircle2 className="w-3 h-3" /> {doc.status}
+                                  </span>
+                                )}
+                              </div>
+                              <h5 className="text-sm font-medium truncate mb-1 group-hover:text-foreground transition-colors">{doc.title}</h5>
+                              <p className="text-xs text-muted-foreground line-clamp-2 italic">"{doc.snippet}"</p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
         </div>

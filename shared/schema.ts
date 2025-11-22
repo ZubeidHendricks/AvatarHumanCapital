@@ -115,6 +115,20 @@ export const systemSettings = pgTable("system_settings", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const onboardingWorkflows = pgTable("onboarding_workflows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  status: text("status").notNull().default("In Progress"),
+  currentStep: text("current_step"),
+  tasks: jsonb("tasks"),
+  documents: jsonb("documents"),
+  provisioningData: jsonb("provisioning_data"),
+  startDate: timestamp("start_date").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -173,3 +187,15 @@ export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit
 
 export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
 export type SystemSetting = typeof systemSettings.$inferSelect;
+
+export const insertOnboardingWorkflowSchema = createInsertSchema(onboardingWorkflows, {
+  completedAt: z.coerce.date().optional().nullable(),
+  startDate: z.coerce.date().optional().nullable(),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOnboardingWorkflow = z.infer<typeof insertOnboardingWorkflowSchema>;
+export type OnboardingWorkflow = typeof onboardingWorkflows.$inferSelect;

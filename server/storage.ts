@@ -11,12 +11,15 @@ import {
   type InsertRecruitmentSession,
   type SystemSetting,
   type InsertSystemSetting,
+  type OnboardingWorkflow,
+  type InsertOnboardingWorkflow,
   users,
   jobs,
   candidates,
   integrityChecks,
   recruitmentSessions,
-  systemSettings
+  systemSettings,
+  onboardingWorkflows
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte } from "drizzle-orm";
@@ -59,6 +62,13 @@ export interface IStorage {
   getSystemSetting(key: string): Promise<SystemSetting | undefined>;
   upsertSystemSetting(key: string, value: string, category?: string, description?: string): Promise<SystemSetting>;
   deleteSystemSetting(key: string): Promise<boolean>;
+  
+  getAllOnboardingWorkflows(): Promise<OnboardingWorkflow[]>;
+  getOnboardingWorkflow(id: string): Promise<OnboardingWorkflow | undefined>;
+  getOnboardingWorkflowByCandidateId(candidateId: string): Promise<OnboardingWorkflow | undefined>;
+  createOnboardingWorkflow(workflow: InsertOnboardingWorkflow): Promise<OnboardingWorkflow>;
+  updateOnboardingWorkflow(id: string, workflow: Partial<InsertOnboardingWorkflow>): Promise<OnboardingWorkflow | undefined>;
+  deleteOnboardingWorkflow(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -259,6 +269,50 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSystemSetting(key: string): Promise<boolean> {
     const result = await db.delete(systemSettings).where(eq(systemSettings.key, key));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getAllOnboardingWorkflows(): Promise<OnboardingWorkflow[]> {
+    return await db.select().from(onboardingWorkflows).orderBy(desc(onboardingWorkflows.createdAt));
+  }
+
+  async getOnboardingWorkflow(id: string): Promise<OnboardingWorkflow | undefined> {
+    const [workflow] = await db.select().from(onboardingWorkflows).where(eq(onboardingWorkflows.id, id));
+    return workflow || undefined;
+  }
+
+  async getOnboardingWorkflowByCandidateId(candidateId: string): Promise<OnboardingWorkflow | undefined> {
+    const [workflow] = await db.select().from(onboardingWorkflows).where(eq(onboardingWorkflows.candidateId, candidateId)).orderBy(desc(onboardingWorkflows.createdAt));
+    return workflow || undefined;
+  }
+
+  async createOnboardingWorkflow(insertWorkflow: InsertOnboardingWorkflow): Promise<OnboardingWorkflow> {
+    const cleanedWorkflow = Object.fromEntries(
+      Object.entries(insertWorkflow).filter(([_, v]) => v !== null && v !== undefined)
+    ) as any;
+    
+    const [workflow] = await db
+      .insert(onboardingWorkflows)
+      .values(cleanedWorkflow)
+      .returning();
+    return workflow;
+  }
+
+  async updateOnboardingWorkflow(id: string, updates: Partial<InsertOnboardingWorkflow>): Promise<OnboardingWorkflow | undefined> {
+    const cleanedUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, v]) => v !== null && v !== undefined)
+    ) as any;
+    
+    const [workflow] = await db
+      .update(onboardingWorkflows)
+      .set({ ...cleanedUpdates, updatedAt: new Date() })
+      .where(eq(onboardingWorkflows.id, id))
+      .returning();
+    return workflow || undefined;
+  }
+
+  async deleteOnboardingWorkflow(id: string): Promise<boolean> {
+    const result = await db.delete(onboardingWorkflows).where(eq(onboardingWorkflows.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 }
