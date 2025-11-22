@@ -15,9 +15,33 @@ export const jobs = pgTable("jobs", {
   department: text("department").notNull(),
   description: text("description"),
   status: text("status").notNull().default("Active"),
+  
+  // Compensation
   salaryMin: integer("salary_min"),
   salaryMax: integer("salary_max"),
+  payRateUnit: text("pay_rate_unit"), // 'hourly', 'daily', 'monthly', 'annual'
+  
+  // Location & Schedule
   location: text("location"),
+  employmentType: text("employment_type"), // 'full_time', 'part_time', 'contract', 'temporary'
+  shiftStructure: text("shift_structure"), // 'day', 'night', 'rotating', 'split'
+  
+  // Experience & Requirements
+  minYearsExperience: integer("min_years_experience"),
+  licenseRequirements: text("license_requirements").array(), // ['Code 10', 'Code 14', 'PrDP']
+  vehicleTypes: text("vehicle_types").array(), // ['Rigid Truck', 'Articulated Truck', 'Forklift']
+  certificationsRequired: text("certifications_required").array(), // ['First Aid', 'Hazmat', 'OHSA']
+  
+  // Physical & Equipment
+  physicalRequirements: text("physical_requirements"), // 'Heavy lifting', 'Standing for long periods'
+  equipmentExperience: jsonb("equipment_experience"), // { 'Forklift': 'required', 'Pallet Jack': 'preferred' }
+  
+  // Other
+  unionAffiliation: text("union_affiliation"),
+  
+  // RAG Embeddings
+  requirementsEmbedding: vector("requirements_embedding", { dimensions: 1536 }),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -85,6 +109,7 @@ export const insertJobSchema = createInsertSchema(jobs).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  requirementsEmbedding: true, // Generated automatically by the system
 });
 
 export const insertCandidateSchema = createInsertSchema(candidates).omit({

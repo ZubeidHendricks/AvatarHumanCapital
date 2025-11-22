@@ -6,6 +6,7 @@ import { fromZodError } from "zod-validation-error";
 import { IntegrityOrchestrator } from "./integrity-orchestrator";
 import { RecruitmentOrchestrator } from "./recruitment-orchestrator";
 import { cvParser } from "./cv-parser";
+import { embeddingService } from "./embedding-service";
 import multer from "multer";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -199,7 +200,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: validationError.message });
       }
       
+      // Create job first without embedding
       const job = await storage.createJob(result.data);
+      
+      // Generate embedding in the background (don't block response)
+      embeddingService.generateJobEmbedding({
+        title: job.title,
+        department: job.department,
+        description: job.description,
+        location: job.location,
+        employmentType: job.employmentType,
+        shiftStructure: job.shiftStructure,
+        minYearsExperience: job.minYearsExperience,
+        licenseRequirements: job.licenseRequirements,
+        vehicleTypes: job.vehicleTypes,
+        certificationsRequired: job.certificationsRequired,
+        physicalRequirements: job.physicalRequirements,
+        equipmentExperience: job.equipmentExperience,
+        salaryMin: job.salaryMin,
+        salaryMax: job.salaryMax,
+        payRateUnit: job.payRateUnit,
+      }).then(async (embedding) => {
+        // Update job with embedding
+        await storage.updateJob(job.id, {
+          requirementsEmbedding: embedding as any,
+        });
+        console.log(`✓ Generated embedding for job ${job.id}: ${job.title}`);
+      }).catch((error) => {
+        console.error(`✗ Failed to generate embedding for job ${job.id}:`, error);
+      });
+      
       res.status(201).json(job);
     } catch (error) {
       console.error("Error creating job:", error);
