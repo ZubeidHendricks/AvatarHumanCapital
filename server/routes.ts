@@ -652,7 +652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/reminders/check-all", async (req, res) => {
     try {
-      const { ReminderService } = await import("./reminder-service");
+      const { ReminderService} = await import("./reminder-service");
       const reminderService = new ReminderService(storage);
       
       await reminderService.checkAndSendReminders();
@@ -660,6 +660,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking reminders:", error);
       res.status(500).json({ message: "Failed to check reminders" });
+    }
+  });
+
+  app.get("/api/system-settings", async (req, res) => {
+    try {
+      const settings = await storage.getAllSystemSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching system settings:", error);
+      res.status(500).json({ message: "Failed to fetch system settings" });
+    }
+  });
+
+  app.get("/api/system-settings/:key", async (req, res) => {
+    try {
+      const setting = await storage.getSystemSetting(req.params.key);
+      if (!setting) {
+        return res.status(404).json({ message: "Setting not found" });
+      }
+      res.json(setting);
+    } catch (error) {
+      console.error("Error fetching system setting:", error);
+      res.status(500).json({ message: "Failed to fetch system setting" });
+    }
+  });
+
+  app.put("/api/system-settings/:key", async (req, res) => {
+    try {
+      const { value, category, description } = req.body;
+      if (!value) {
+        return res.status(400).json({ message: "Value is required" });
+      }
+      
+      const setting = await storage.upsertSystemSetting(
+        req.params.key,
+        value,
+        category || "general",
+        description
+      );
+      res.json(setting);
+    } catch (error) {
+      console.error("Error updating system setting:", error);
+      res.status(500).json({ message: "Failed to update system setting" });
+    }
+  });
+
+  app.delete("/api/system-settings/:key", async (req, res) => {
+    try {
+      const success = await storage.deleteSystemSetting(req.params.key);
+      if (!success) {
+        return res.status(404).json({ message: "Setting not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting system setting:", error);
+      res.status(500).json({ message: "Failed to delete system setting" });
+    }
+  });
+
+  app.get("/api/env-status", async (req, res) => {
+    try {
+      const requiredSecrets = [
+        { key: "GROQ_API_KEY", description: "Groq API for AI agents" },
+        { key: "HUME_API_KEY", description: "Hume AI for voice interviews" },
+        { key: "HUME_SECRET_KEY", description: "Hume AI secret key" },
+        { key: "TAVUS_API_KEY", description: "Tavus for video interviews" },
+        { key: "WHATSAPP_API_TOKEN", description: "WhatsApp for notifications" },
+        { key: "WHATSAPP_PHONE_NUMBER_ID", description: "WhatsApp phone number" },
+        { key: "WHATSAPP_VERIFY_TOKEN", description: "WhatsApp verification" },
+        { key: "ELEVENLABS_API_KEY", description: "ElevenLabs for voice synthesis" },
+      ];
+
+      const status = requiredSecrets.map(secret => ({
+        key: secret.key,
+        description: secret.description,
+        configured: !!process.env[secret.key],
+      }));
+
+      res.json({ secrets: status });
+    } catch (error) {
+      console.error("Error checking env status:", error);
+      res.status(500).json({ message: "Failed to check environment status" });
     }
   });
 

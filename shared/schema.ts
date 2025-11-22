@@ -105,6 +105,16 @@ export const recruitmentSessions = pgTable("recruitment_sessions", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const systemSettings = pgTable("system_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(),
+  value: text("value"),
+  category: text("category").notNull().default("general"),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -154,3 +164,12 @@ export type IntegrityCheck = typeof integrityChecks.$inferSelect;
 
 export type InsertRecruitmentSession = z.infer<typeof insertRecruitmentSessionSchema>;
 export type RecruitmentSession = typeof recruitmentSessions.$inferSelect;
+
+export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
+export type SystemSetting = typeof systemSettings.$inferSelect;

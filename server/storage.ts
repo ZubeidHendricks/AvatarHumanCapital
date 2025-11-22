@@ -9,11 +9,14 @@ import {
   type InsertIntegrityCheck,
   type RecruitmentSession,
   type InsertRecruitmentSession,
+  type SystemSetting,
+  type InsertSystemSetting,
   users,
   jobs,
   candidates,
   integrityChecks,
-  recruitmentSessions
+  recruitmentSessions,
+  systemSettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte } from "drizzle-orm";
@@ -51,6 +54,11 @@ export interface IStorage {
   deleteRecruitmentSession(id: string): Promise<boolean>;
   getJobById(id: string): Promise<Job | undefined>;
   getCandidateById(id: string): Promise<Candidate | undefined>;
+  
+  getAllSystemSettings(): Promise<SystemSetting[]>;
+  getSystemSetting(key: string): Promise<SystemSetting | undefined>;
+  upsertSystemSetting(key: string, value: string, category?: string, description?: string): Promise<SystemSetting>;
+  deleteSystemSetting(key: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -219,6 +227,39 @@ export class DatabaseStorage implements IStorage {
 
   async getCandidateById(id: string): Promise<Candidate | undefined> {
     return this.getCandidate(id);
+  }
+
+  async getAllSystemSettings(): Promise<SystemSetting[]> {
+    return await db.select().from(systemSettings).orderBy(systemSettings.category, systemSettings.key);
+  }
+
+  async getSystemSetting(key: string): Promise<SystemSetting | undefined> {
+    const [setting] = await db.select().from(systemSettings).where(eq(systemSettings.key, key));
+    return setting || undefined;
+  }
+
+  async upsertSystemSetting(key: string, value: string, category: string = "general", description?: string): Promise<SystemSetting> {
+    const existing = await this.getSystemSetting(key);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(systemSettings)
+        .set({ value, category, description, updatedAt: new Date() })
+        .where(eq(systemSettings.key, key))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(systemSettings)
+        .values({ key, value, category, description })
+        .returning();
+      return created;
+    }
+  }
+
+  async deleteSystemSetting(key: string): Promise<boolean> {
+    const result = await db.delete(systemSettings).where(eq(systemSettings.key, key));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 

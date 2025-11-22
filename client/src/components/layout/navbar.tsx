@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown, UserSearch, Shield } from "lucide-react";
+import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown, UserSearch, Shield, Settings } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -107,6 +107,13 @@ export function Navbar() {
           <Link href="/candidate-pipeline">
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10">
               Pipeline
+            </Button>
+          </Link>
+
+          <Link href="/admin-dashboard">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10">
+              <Settings className="w-4 h-4 mr-1" />
+              Admin
             </Button>
           </Link>
 
