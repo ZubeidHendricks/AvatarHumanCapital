@@ -17,6 +17,9 @@ export interface ResearchResult {
   riskScore: number;
   details: Record<string, any>;
   sources: string[];
+  missingDocuments?: string[];
+  requiresFollowUp?: boolean;
+  followUpReason?: string;
 }
 
 export class GroqResearchService {
@@ -35,11 +38,11 @@ export class GroqResearchService {
     
     try {
       const completion = await groq.chat.completions.create({
-        model: "llama-3.1-70b-versatile",
+        model: "llama-3.3-70b-versatile",
         messages: [
           {
             role: "system",
-            content: "You are an expert HR background check analyst. Analyze candidates thoroughly and provide structured findings with risk scores."
+            content: "You are an expert HR background check analyst. Analyze candidates thoroughly and provide structured findings with risk scores. When documents are missing, clearly state what is needed for verification."
           },
           {
             role: "user",
@@ -69,12 +72,14 @@ Research Tasks:
 2. Check news archives for any legal issues
 3. Verify if there are any outstanding warrants or charges
 4. Assess risk level (0-100) based on findings
+5. Identify any missing documents needed for full verification (ID copy, police clearance certificate, etc.)
 
 Provide structured output with:
 - Risk Score (0-100, where 0 is lowest risk)
 - Findings (detailed summary)
 - Sources (where information was found or would be found)
-- Recommendations
+- Missing documents required for verification
+- Whether HR follow-up is needed
 
 Format your response as JSON:
 {
@@ -82,6 +87,9 @@ Format your response as JSON:
   "findings": "<detailed findings>",
   "sources": ["<source1>", "<source2>"],
   "recommendations": "<any recommendations>",
+  "missingDocuments": ["<document1>", "<document2>"],
+  "requiresFollowUp": <boolean>,
+  "followUpReason": "<why HR needs to follow up>",
   "details": {
     "recordsFound": <boolean>,
     "severity": "<low|medium|high|none>",
@@ -96,11 +104,13 @@ Research Tasks:
 2. Check for bankruptcy filings or debt judgments
 3. Assess financial responsibility
 4. Calculate risk score (0-100)
+5. Identify missing documents (bank statements, credit reports, salary slips, proof of income)
 
 Provide structured output with:
 - Risk Score (0-100, where 0 is lowest risk)
 - Findings (credit analysis summary)
 - Financial red flags (if any)
+- Missing documents needed for verification
 - Sources
 
 Format as JSON:
@@ -108,6 +118,9 @@ Format as JSON:
   "riskScore": <number>,
   "findings": "<credit analysis>",
   "sources": ["<source1>", "<source2>"],
+  "missingDocuments": ["<document1>", "<document2>"],
+  "requiresFollowUp": <boolean>,
+  "followUpReason": "<why HR needs to request financial documents>",
   "details": {
     "creditIndicators": "<description>",
     "bankruptcyRecords": <boolean>,
@@ -123,12 +136,16 @@ Research Tasks:
 2. Check institution legitimacy
 3. Look for credential fraud indicators
 4. Assess verification confidence (0-100)
+5. Identify missing documents (degree certificates, transcripts, academic records, institution letters)
 
 Format as JSON:
 {
   "riskScore": <number>,
   "findings": "<education verification summary>",
   "sources": ["<source1>", "<source2>"],
+  "missingDocuments": ["<document1>", "<document2>"],
+  "requiresFollowUp": <boolean>,
+  "followUpReason": "<why HR needs to request documents>",
   "details": {
     "credentialsVerified": <boolean>,
     "institutionsVerified": ["<institution1>"],
@@ -144,12 +161,16 @@ Research Tasks:
 2. Check LinkedIn and professional profiles
 3. Look for employment gaps or discrepancies
 4. Assess credibility (0-100)
+5. Identify missing documents (employment letters, payslips, tax certificates, reference letters)
 
 Format as JSON:
 {
   "riskScore": <number>,
   "findings": "<employment verification summary>",
   "sources": ["<source1>", "<source2>"],
+  "missingDocuments": ["<document1>", "<document2>"],
+  "requiresFollowUp": <boolean>,
+  "followUpReason": "<why HR needs to request employment documents>",
   "details": {
     "employmentVerified": <boolean>,
     "discrepanciesFound": <boolean>,
@@ -165,12 +186,16 @@ Research Tasks:
 2. Verify identity documents
 3. Cross-reference public records
 4. Assess identity confidence (0-100)
+5. Identify missing documents (ID copy, passport, proof of address, biometric data)
 
 Format as JSON:
 {
   "riskScore": <number>,
   "findings": "<biometric verification summary>",
   "sources": ["<source1>", "<source2>"],
+  "missingDocuments": ["<document1>", "<document2>"],
+  "requiresFollowUp": <boolean>,
+  "followUpReason": "<why HR needs to request documents>",
   "details": {
     "identityVerified": <boolean>,
     "fraudIndicators": <boolean>,
@@ -186,12 +211,16 @@ Research Tasks:
 2. Check online reviews and mentions
 3. Look for professional misconduct
 4. Assess professional standing (0-100)
+5. Identify missing documents (reference contact details, reference letters, professional recommendations)
 
 Format as JSON:
 {
   "riskScore": <number>,
   "findings": "<reference check summary>",
   "sources": ["<source1>", "<source2>"],
+  "missingDocuments": ["<document1>", "<document2>"],
+  "requiresFollowUp": <boolean>,
+  "followUpReason": "<why HR needs to contact references>",
   "details": {
     "reputationStatus": "<excellent|good|fair|poor>",
     "misconductFound": <boolean>,
@@ -215,6 +244,9 @@ Format as JSON:
           riskScore: parsed.riskScore || 0,
           details: parsed.details || {},
           sources: parsed.sources || ["AI Analysis"],
+          missingDocuments: parsed.missingDocuments || [],
+          requiresFollowUp: parsed.requiresFollowUp || false,
+          followUpReason: parsed.followUpReason || "",
         };
       }
     } catch (error) {
@@ -227,6 +259,8 @@ Format as JSON:
       riskScore: this.calculateFallbackRiskScore(response),
       details: { rawResponse: response },
       sources: ["AI Analysis"],
+      missingDocuments: [],
+      requiresFollowUp: false,
     };
   }
 

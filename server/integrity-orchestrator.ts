@@ -57,11 +57,20 @@ export class IntegrityOrchestrator {
     for (const agentType of this.agentSequence) {
       progress.currentAgent = agentType;
       
-      // Update check status
+      // Update check status with progress tracking (don't overwrite findings)
+      const progressUpdate = {
+        currentAgent: agentType,
+        completedAgents: progress.completedAgents,
+        timestamp: new Date().toISOString(),
+      };
+      
       await this.storage.updateIntegrityCheck(checkId, {
         status: "in_progress",
         result: `Running ${agentType} check...`,
-        findings: { currentAgent: agentType, completed: progress.completedAgents },
+        findings: { 
+          ...allFindings, // Preserve existing findings
+          _progress: progressUpdate // Track progress separately
+        },
       });
 
       if (onProgress) {
@@ -86,20 +95,30 @@ export class IntegrityOrchestrator {
         progress.results[agentType] = result;
         progress.completedAgents.push(agentType);
 
-        // Accumulate findings
+        // Accumulate findings including missing documents and follow-up info
         allFindings[agentType] = {
           findings: result.findings,
           riskScore: result.riskScore,
           details: result.details,
           sources: result.sources,
+          missingDocuments: result.missingDocuments || [],
+          requiresFollowUp: result.requiresFollowUp || false,
+          followUpReason: result.followUpReason || "",
         };
 
         // Update overall risk score (weighted average)
         overallRiskScore += result.riskScore / this.agentSequence.length;
 
-        // Update check with intermediate results
+        // Update check with intermediate results (deep merge, preserve progress)
         await this.storage.updateIntegrityCheck(checkId, {
-          findings: allFindings,
+          findings: {
+            ...allFindings,
+            _progress: {
+              currentAgent: agentType,
+              completedAgents: [...progress.completedAgents],
+              timestamp: new Date().toISOString(),
+            }
+          },
           riskScore: Math.round(overallRiskScore),
         });
 
@@ -115,11 +134,22 @@ export class IntegrityOrchestrator {
           riskScore: 50, // Default medium risk on error
           details: { error: error instanceof Error ? error.message : "Unknown error" },
           sources: [],
+          missingDocuments: [],
+          requiresFollowUp: true,
+          followUpReason: "Check failed - manual review required",
         };
 
-        // Update database with error
+        // Update database with error (preserve progress)
         await this.storage.updateIntegrityCheck(checkId, {
-          findings: allFindings,
+          findings: {
+            ...allFindings,
+            _progress: {
+              currentAgent: agentType,
+              completedAgents: [...progress.completedAgents],
+              timestamp: new Date().toISOString(),
+              error: error instanceof Error ? error.message : "Unknown error"
+            }
+          },
           riskScore: Math.round(overallRiskScore),
         });
       }
@@ -129,11 +159,15 @@ export class IntegrityOrchestrator {
     progress.currentAgent = null;
     progress.status = "completed";
 
+    // Final update - remove progress marker since check is complete
+    const finalFindings = { ...allFindings };
+    delete (finalFindings as any)._progress;
+    
     const finalCheck = await this.storage.updateIntegrityCheck(checkId, {
       status: "Completed",
-      result: this.generateOverallAssessment(allFindings, overallRiskScore),
+      result: this.generateOverallAssessment(finalFindings, overallRiskScore),
       riskScore: Math.round(overallRiskScore),
-      findings: allFindings,
+      findings: finalFindings,
       completedAt: new Date(),
     });
 

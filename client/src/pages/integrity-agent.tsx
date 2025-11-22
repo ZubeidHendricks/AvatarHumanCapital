@@ -28,7 +28,9 @@ import {
   XCircle,
   Play,
   User,
-  Zap
+  Zap,
+  FileWarning,
+  Bell
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { candidateService, integrityChecksService } from "@/lib/api";
@@ -597,14 +599,81 @@ export default function IntegrityAgent() {
                                     </div>
                                   )}
 
-                                  {check.findings && (
-                                    <div className="p-2 rounded bg-black/20 border border-white/5">
-                                      <div className="text-[10px] font-semibold text-primary mb-1">Key Findings:</div>
-                                      <pre className="text-[10px] text-muted-foreground whitespace-pre-wrap font-mono">
-                                        {JSON.stringify(check.findings, null, 2)}
-                                      </pre>
-                                    </div>
-                                  )}
+                                  {check.findings && (() => {
+                                    // Parse findings if it's a string (from database JSONB serialization)
+                                    let parsedFindings = check.findings;
+                                    if (typeof check.findings === 'string') {
+                                      try {
+                                        parsedFindings = JSON.parse(check.findings);
+                                      } catch {
+                                        // If parsing fails, keep as string for legacy display
+                                        parsedFindings = check.findings;
+                                      }
+                                    }
+
+                                    return (
+                                      <>
+                                        {typeof parsedFindings === 'object' && !Array.isArray(parsedFindings) ? (
+                                          <>
+                                            {/* Show each check type's findings */}
+                                            {Object.entries(parsedFindings as Record<string, any>).map(([checkType, checkData]: [string, any]) => {
+                                              // Skip progress metadata and non-object entries
+                                              if (checkType === '_progress' || !checkData || typeof checkData !== 'object' || Array.isArray(checkData)) {
+                                                return null;
+                                              }
+
+                                              return (
+                                                <div key={checkType} className="space-y-2">
+                                                  <div className="p-2 rounded bg-black/20 border border-white/5">
+                                                    <div className="text-[10px] font-semibold text-primary mb-1 uppercase">{checkType} Check:</div>
+                                                    <div className="text-[10px] text-muted-foreground whitespace-pre-wrap">
+                                                      {checkData.findings || 'No findings available'}
+                                                    </div>
+                                                    
+                                                    {/* Missing Documents Alert */}
+                                                    {checkData.missingDocuments && checkData.missingDocuments.length > 0 && (
+                                                      <div className="mt-2 p-2 rounded bg-yellow-500/10 border border-yellow-500/30">
+                                                        <div className="flex items-center gap-1 text-yellow-500 mb-1">
+                                                          <FileWarning className="w-3 h-3" />
+                                                          <span className="text-[10px] font-semibold">Missing Documents:</span>
+                                                        </div>
+                                                        <ul className="text-[10px] text-yellow-500/80 space-y-0.5 ml-4">
+                                                          {checkData.missingDocuments.map((doc: string, idx: number) => (
+                                                            <li key={idx} className="list-disc">{doc}</li>
+                                                          ))}
+                                                        </ul>
+                                                      </div>
+                                                    )}
+                                                    
+                                                    {/* Follow-Up Required Alert */}
+                                                    {checkData.requiresFollowUp && (
+                                                      <div className="mt-2 p-2 rounded bg-orange-500/10 border border-orange-500/30">
+                                                        <div className="flex items-center gap-1 text-orange-500 mb-1">
+                                                          <Bell className="w-3 h-3" />
+                                                          <span className="text-[10px] font-semibold">HR Follow-Up Required:</span>
+                                                        </div>
+                                                        <div className="text-[10px] text-orange-500/80">
+                                                          {checkData.followUpReason || 'Manual verification needed'}
+                                                        </div>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </>
+                                        ) : (
+                                          /* Fallback for string-based findings (legacy checks or in-progress status) */
+                                          <div className="p-2 rounded bg-black/20 border border-white/5">
+                                            <div className="text-[10px] font-semibold text-primary mb-1">Findings:</div>
+                                            <div className="text-[10px] text-muted-foreground whitespace-pre-wrap">
+                                              {String(parsedFindings)}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                 </CardContent>
                               </Card>
                             </motion.div>
