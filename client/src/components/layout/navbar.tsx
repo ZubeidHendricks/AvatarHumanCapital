@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown } from "lucide-react";
+import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown, UserSearch, Shield } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -76,6 +76,18 @@ export function Navbar() {
               </Link>
               <DropdownMenuSeparator className="bg-white/10" />
               <DropdownMenuLabel>Admin Experience</DropdownMenuLabel>
+              <Link href="/recruitment-agent">
+                <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
+                  <UserSearch className="w-4 h-4 mr-2 text-purple-400" />
+                  <span>AI Recruitment Agent</span>
+                </DropdownMenuItem>
+              </Link>
+              <Link href="/integrity-agent">
+                <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
+                  <Shield className="w-4 h-4 mr-2 text-blue-400" />
+                  <span>AI Integrity Checks</span>
+                </DropdownMenuItem>
+              </Link>
               <Link href="/onboarding">
                 <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
                   <Building2 className="w-4 h-4 mr-2 text-green-400" />
@@ -152,6 +164,16 @@ export function Navbar() {
               <Link href="/interview/video">
                 <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
                   <Video className="w-4 h-4" /> Video Interview
+                </Button>
+              </Link>
+              <Link href="/recruitment-agent">
+                <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
+                  <UserSearch className="w-4 h-4" /> AI Recruitment
+                </Button>
+              </Link>
+              <Link href="/integrity-agent">
+                <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
+                  <Shield className="w-4 h-4" /> AI Integrity Checks
                 </Button>
               </Link>
               <Link href="/onboarding">
