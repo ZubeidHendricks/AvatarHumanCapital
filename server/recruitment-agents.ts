@@ -58,7 +58,7 @@ Focus on South African market. Include relevant synonyms and variations.`;
 
     try {
       const completion = await groq.chat.completions.create({
-        model: "llama-3.1-70b-versatile",
+        model: "llama-3.3-70b-versatile",
         messages: [
           {
             role: "system",
@@ -130,7 +130,7 @@ Return as JSON array. Make profiles diverse and realistic for South African job 
 
     try {
       const completion = await groq.chat.completions.create({
-        model: "llama-3.1-70b-versatile",
+        model: "llama-3.3-70b-versatile",
         messages: [
           {
             role: "system",
@@ -194,7 +194,7 @@ Provide:
 
     try {
       const completion = await groq.chat.completions.create({
-        model: "llama-3.1-70b-versatile",
+        model: "llama-3.3-70b-versatile",
         messages: [
           {
             role: "system",
