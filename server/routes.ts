@@ -592,6 +592,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         });
 
+      // Set up initial reminder (24 hours from now)
+      const nextReminderAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await storage.updateIntegrityCheck(checkId, {
+        nextReminderAt,
+        reminderEnabled: 1,
+      });
+
       // Return immediately with pending status
       res.json({
         message: "Integrity check execution started",
@@ -601,6 +608,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error starting integrity check execution:", error);
       res.status(500).json({ message: "Failed to start integrity check execution" });
+    }
+  });
+
+  app.post("/api/integrity-checks/:id/send-reminder", async (req, res) => {
+    try {
+      const { ReminderService } = await import("./reminder-service");
+      const reminderService = new ReminderService(storage);
+      
+      await reminderService.sendReminder(req.params.id);
+      res.json({ message: "Reminder sent successfully" });
+    } catch (error) {
+      console.error("Error sending reminder:", error);
+      res.status(500).json({ message: "Failed to send reminder" });
+    }
+  });
+
+  app.patch("/api/integrity-checks/:id/reminder-config", async (req, res) => {
+    try {
+      const { intervalHours, enabled } = req.body;
+      
+      // Only apply provided values (respect undefined to keep existing values)
+      const config: { intervalHours?: number; enabled?: boolean } = {};
+      if (intervalHours !== undefined) config.intervalHours = intervalHours;
+      if (enabled !== undefined) config.enabled = enabled;
+      
+      // If no values provided, return error
+      if (Object.keys(config).length === 0) {
+        return res.status(400).json({ message: "At least one of intervalHours or enabled must be provided" });
+      }
+      
+      const { ReminderService } = await import("./reminder-service");
+      const reminderService = new ReminderService(storage);
+      await reminderService.configureReminder(req.params.id, config);
+      
+      const check = await storage.getIntegrityCheck(req.params.id);
+      res.json(check);
+    } catch (error) {
+      console.error("Error configuring reminder:", error);
+      res.status(500).json({ message: "Failed to configure reminder" });
+    }
+  });
+
+  app.post("/api/reminders/check-all", async (req, res) => {
+    try {
+      const { ReminderService } = await import("./reminder-service");
+      const reminderService = new ReminderService(storage);
+      
+      await reminderService.checkAndSendReminders();
+      res.json({ message: "Reminders checked and sent successfully" });
+    } catch (error) {
+      console.error("Error checking reminders:", error);
+      res.status(500).json({ message: "Failed to check reminders" });
     }
   });
 

@@ -95,5 +95,13 @@ export const integrityChecksService = {
   execute: async (id: string): Promise<{ message: string; checkId: string; status: string }> => {
     const response = await api.post(`/integrity-checks/${id}/execute`);
     return response.data;
+  },
+  sendReminder: async (id: string): Promise<{ message: string }> => {
+    const response = await api.post(`/integrity-checks/${id}/send-reminder`);
+    return response.data;
+  },
+  configureReminder: async (id: string, config: { intervalHours?: number; enabled?: boolean }): Promise<IntegrityCheck> => {
+    const response = await api.patch(`/integrity-checks/${id}/reminder-config`, config);
+    return response.data;
   }
 };

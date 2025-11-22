@@ -16,7 +16,7 @@ import {
   recruitmentSessions
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, lte } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -38,6 +38,7 @@ export interface IStorage {
   getAllIntegrityChecks(): Promise<IntegrityCheck[]>;
   getIntegrityCheck(id: string): Promise<IntegrityCheck | undefined>;
   getIntegrityChecksByCandidateId(candidateId: string): Promise<IntegrityCheck[]>;
+  getChecksNeedingReminders(now: Date): Promise<IntegrityCheck[]>;
   createIntegrityCheck(check: InsertIntegrityCheck): Promise<IntegrityCheck>;
   updateIntegrityCheck(id: string, check: Partial<InsertIntegrityCheck>): Promise<IntegrityCheck | undefined>;
   deleteIntegrityCheck(id: string): Promise<boolean>;
@@ -144,6 +145,15 @@ export class DatabaseStorage implements IStorage {
 
   async getIntegrityChecksByCandidateId(candidateId: string): Promise<IntegrityCheck[]> {
     return await db.select().from(integrityChecks).where(eq(integrityChecks.candidateId, candidateId)).orderBy(desc(integrityChecks.createdAt));
+  }
+
+  async getChecksNeedingReminders(now: Date): Promise<IntegrityCheck[]> {
+    return await db.select().from(integrityChecks).where(
+      and(
+        eq(integrityChecks.reminderEnabled, 1),
+        lte(integrityChecks.nextReminderAt, now)
+      )
+    );
   }
 
   async createIntegrityCheck(insertCheck: InsertIntegrityCheck): Promise<IntegrityCheck> {

@@ -77,5 +77,22 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start background reminder checker (runs every hour)
+    const REMINDER_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
+    setInterval(async () => {
+      try {
+        log("Running scheduled reminder check...");
+        const { ReminderService } = await import("./reminder-service");
+        const { storage } = await import("./storage");
+        const reminderService = new ReminderService(storage);
+        await reminderService.checkAndSendReminders();
+        log("Reminder check completed");
+      } catch (error) {
+        console.error("Error in scheduled reminder check:", error);
+      }
+    }, REMINDER_CHECK_INTERVAL);
+    
+    log("Background reminder checker started (runs every hour)");
   });
 })();
