@@ -21,7 +21,7 @@ export function Navbar() {
     queryKey: ["tenant-config"],
     queryFn: async () => {
       try {
-        const response = await api.get("/api/tenant-config");
+        const response = await api.get("/tenant-config");
         return response.data;
       } catch {
         return null;

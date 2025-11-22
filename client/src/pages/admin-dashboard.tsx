@@ -41,14 +41,14 @@ export default function AdminDashboard() {
   const { data: tenantConfig, isLoading: tenantLoading } = useQuery({
     queryKey: ["tenant-config"],
     queryFn: async () => {
-      const response = await api.get("/api/tenant-config");
+      const response = await api.get("/tenant-config");
       return response.data;
     },
   });
 
   const updateTenantMutation = useMutation({
     mutationFn: async (updates: any) => {
-      const response = await api.patch(`/api/tenant-config/${tenantConfig.id}`, updates);
+      const response = await api.patch(`/tenant-config/${tenantConfig.id}`, updates);
       return response.data;
     },
     onSuccess: () => {

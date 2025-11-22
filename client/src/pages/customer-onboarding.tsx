@@ -49,7 +49,7 @@ export default function CustomerOnboarding() {
 
   const saveTenantMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await api.post("/api/tenant-config", data);
+      const response = await api.post("/tenant-config", data);
       return response.data;
     },
     onSuccess: () => {

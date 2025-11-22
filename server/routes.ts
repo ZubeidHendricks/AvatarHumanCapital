@@ -731,6 +731,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tenant-config", async (req, res) => {
     try {
+      if (req.body.modulesEnabled && typeof req.body.modulesEnabled !== 'object') {
+        return res.status(400).json({ message: "modulesEnabled must be an object" });
+      }
+      
+      if (req.body.modulesEnabled) {
+        const validModules = ['recruitment', 'integrity', 'onboarding', 'hr_management'];
+        for (const [key, value] of Object.entries(req.body.modulesEnabled)) {
+          if (!validModules.includes(key)) {
+            return res.status(400).json({ message: `Invalid module key: ${key}` });
+          }
+          if (typeof value !== 'boolean') {
+            return res.status(400).json({ message: `Module ${key} must be a boolean` });
+          }
+        }
+      }
+      
       const existing = await storage.getTenantConfig();
       if (existing) {
         const updated = await storage.updateTenantConfig(existing.id, req.body);
