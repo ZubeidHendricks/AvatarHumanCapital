@@ -38,6 +38,28 @@ export default function AdminDashboard() {
     },
   });
 
+  const { data: tenantConfig, isLoading: tenantLoading } = useQuery({
+    queryKey: ["tenant-config"],
+    queryFn: async () => {
+      const response = await api.get("/api/tenant-config");
+      return response.data;
+    },
+  });
+
+  const updateTenantMutation = useMutation({
+    mutationFn: async (updates: any) => {
+      const response = await api.patch(`/api/tenant-config/${tenantConfig.id}`, updates);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tenant-config"] });
+      toast.success("Tenant configuration updated");
+    },
+    onError: () => {
+      toast.error("Failed to update tenant configuration");
+    },
+  });
+
   const updateSettingMutation = useMutation({
     mutationFn: async ({ key, value, category, description }: { key: string; value: string; category?: string; description?: string }) => {
       const response = await api.put(`/system-settings/${key}`, { value, category, description });
@@ -367,6 +389,79 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Module Configuration */}
+        <Card className="bg-black/40 border-white/10" data-testid="card-module-config">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Settings className="w-5 h-5 text-primary" />
+              Feature Modules
+            </CardTitle>
+            <CardDescription>
+              Enable or disable modules based on customer subscription
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {tenantLoading ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : tenantConfig ? (
+              <div className="space-y-4">
+                {[
+                  { key: "recruitment", label: "Recruitment & Selection", desc: "Job management, sourcing, screening, interviews" },
+                  { key: "integrity", label: "Integrity Evaluation", desc: "Background verification, risk assessment" },
+                  { key: "onboarding", label: "Employee Onboarding", desc: "Welcome, docs, IT provisioning, orientation" },
+                  { key: "hr_management", label: "HR Management", desc: "Performance, training, payroll, relations" },
+                ].map((module) => (
+                  <div key={module.key} className="flex items-center justify-between p-4 rounded-lg bg-black/20 border border-white/5">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-white">{module.label}</h3>
+                        {tenantConfig.modulesEnabled?.[module.key] && (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/20">
+                            Active
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{module.desc}</p>
+                    </div>
+                    <Switch
+                      checked={tenantConfig.modulesEnabled?.[module.key] || false}
+                      onCheckedChange={(checked) => {
+                        if (!tenantConfig?.id) {
+                          toast.error("Tenant configuration not loaded");
+                          return;
+                        }
+                        const newModules = { ...(tenantConfig.modulesEnabled || {}), [module.key]: checked };
+                        updateTenantMutation.mutate({ modulesEnabled: newModules });
+                      }}
+                      disabled={updateTenantMutation.isPending || !tenantConfig?.id}
+                      data-testid={`toggle-module-${module.key}`}
+                    />
+                  </div>
+                ))}
+                
+                <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 mt-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <p className="text-yellow-300 font-semibold">Module Visibility</p>
+                      <p className="text-yellow-200/80 mt-1">
+                        Disabled modules will be hidden from navigation and customer views. Enable only modules included in the customer's subscription.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-muted-foreground">
+                <p className="mb-4">No tenant configuration found</p>
+                <p className="text-xs">Complete customer onboarding first to configure modules</p>
+              </div>
             )}
           </CardContent>
         </Card>

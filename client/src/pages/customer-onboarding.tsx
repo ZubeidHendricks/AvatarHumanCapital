@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,17 +21,22 @@ import {
   ArrowLeft,
   UploadCloud,
   Lock,
-  BookOpen
+  BookOpen,
+  Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function CustomerOnboarding() {
   const [step, setStep] = useState(1);
+  const [_, setLocation] = useLocation();
   const [formData, setFormData] = useState({
     companyName: "",
     subdomain: "",
     primaryColor: "#0ea5e9",
+    industry: "Technology",
     modules: {
       recruitment: true,
       integrity: true,
@@ -40,6 +46,31 @@ export default function CustomerOnboarding() {
   });
 
   const totalSteps = 4;
+
+  const saveTenantMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await api.post("/api/tenant-config", data);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Workspace configured successfully!");
+      setTimeout(() => setLocation("/hr-dashboard"), 1000);
+    },
+    onError: () => {
+      toast.error("Failed to save configuration");
+    },
+  });
+
+  const handleLaunchTenant = () => {
+    saveTenantMutation.mutate({
+      companyName: formData.companyName,
+      subdomain: formData.subdomain,
+      primaryColor: formData.primaryColor,
+      industry: formData.industry,
+      modulesEnabled: formData.modules,
+      apiKeysConfigured: {},
+    });
+  };
 
   const nextStep = () => setStep(prev => Math.min(prev + 1, totalSteps));
   const prevStep = () => setStep(prev => Math.max(prev - 1, 1));
@@ -111,7 +142,11 @@ export default function CustomerOnboarding() {
 
                     <div className="space-y-2">
                       <Label>Industry Sector</Label>
-                      <select className="flex h-10 w-full items-center justify-between rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                      <select 
+                        className="flex h-10 w-full items-center justify-between rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={formData.industry}
+                        onChange={(e) => setFormData({...formData, industry: e.target.value})}
+                      >
                         <option>Technology</option>
                         <option>Finance</option>
                         <option>Healthcare</option>
@@ -319,11 +354,22 @@ export default function CustomerOnboarding() {
                   Next Step <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
-                <Link href="/hr-dashboard">
-                  <Button className="bg-green-600 hover:bg-green-500 text-white shadow-[0_0_20px_-5px_rgba(22,163,74,0.5)]">
-                    Launch Tenant <Cpu className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
+                <Button 
+                  onClick={handleLaunchTenant}
+                  disabled={saveTenantMutation.isPending || !formData.companyName}
+                  className="bg-green-600 hover:bg-green-500 text-white shadow-[0_0_20px_-5px_rgba(22,163,74,0.5)]"
+                >
+                  {saveTenantMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Configuring...
+                    </>
+                  ) : (
+                    <>
+                      Launch Tenant <Cpu className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
               )}
             </div>
           </div>

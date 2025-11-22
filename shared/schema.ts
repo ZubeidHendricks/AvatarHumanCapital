@@ -129,6 +129,19 @@ export const onboardingWorkflows = pgTable("onboarding_workflows", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const tenantConfig = pgTable("tenant_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyName: text("company_name").notNull(),
+  subdomain: text("subdomain"),
+  primaryColor: text("primary_color").default("#0ea5e9"),
+  logoUrl: text("logo_url"),
+  industry: text("industry"),
+  modulesEnabled: jsonb("modules_enabled").notNull().default(sql`'{}'::jsonb`),
+  apiKeysConfigured: jsonb("api_keys_configured").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -199,3 +212,12 @@ export const insertOnboardingWorkflowSchema = createInsertSchema(onboardingWorkf
 
 export type InsertOnboardingWorkflow = z.infer<typeof insertOnboardingWorkflowSchema>;
 export type OnboardingWorkflow = typeof onboardingWorkflows.$inferSelect;
+
+export const insertTenantConfigSchema = createInsertSchema(tenantConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTenantConfig = z.infer<typeof insertTenantConfigSchema>;
+export type TenantConfig = typeof tenantConfig.$inferSelect;

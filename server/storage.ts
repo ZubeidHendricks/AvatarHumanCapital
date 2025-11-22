@@ -13,13 +13,16 @@ import {
   type InsertSystemSetting,
   type OnboardingWorkflow,
   type InsertOnboardingWorkflow,
+  type TenantConfig,
+  type InsertTenantConfig,
   users,
   jobs,
   candidates,
   integrityChecks,
   recruitmentSessions,
   systemSettings,
-  onboardingWorkflows
+  onboardingWorkflows,
+  tenantConfig
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte } from "drizzle-orm";
@@ -69,6 +72,10 @@ export interface IStorage {
   createOnboardingWorkflow(workflow: InsertOnboardingWorkflow): Promise<OnboardingWorkflow>;
   updateOnboardingWorkflow(id: string, workflow: Partial<InsertOnboardingWorkflow>): Promise<OnboardingWorkflow | undefined>;
   deleteOnboardingWorkflow(id: string): Promise<boolean>;
+  
+  getTenantConfig(): Promise<TenantConfig | undefined>;
+  createTenantConfig(config: InsertTenantConfig): Promise<TenantConfig>;
+  updateTenantConfig(id: string, config: Partial<InsertTenantConfig>): Promise<TenantConfig | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -314,6 +321,28 @@ export class DatabaseStorage implements IStorage {
   async deleteOnboardingWorkflow(id: string): Promise<boolean> {
     const result = await db.delete(onboardingWorkflows).where(eq(onboardingWorkflows.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getTenantConfig(): Promise<TenantConfig | undefined> {
+    const [config] = await db.select().from(tenantConfig).orderBy(desc(tenantConfig.createdAt)).limit(1);
+    return config || undefined;
+  }
+
+  async createTenantConfig(insertConfig: InsertTenantConfig): Promise<TenantConfig> {
+    const [config] = await db
+      .insert(tenantConfig)
+      .values(insertConfig)
+      .returning();
+    return config;
+  }
+
+  async updateTenantConfig(id: string, updates: Partial<InsertTenantConfig>): Promise<TenantConfig | undefined> {
+    const [config] = await db
+      .update(tenantConfig)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tenantConfig.id, id))
+      .returning();
+    return config || undefined;
   }
 }
 

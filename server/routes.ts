@@ -719,6 +719,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/tenant-config", async (req, res) => {
+    try {
+      const config = await storage.getTenantConfig();
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching tenant config:", error);
+      res.status(500).json({ message: "Failed to fetch tenant config" });
+    }
+  });
+
+  app.post("/api/tenant-config", async (req, res) => {
+    try {
+      const existing = await storage.getTenantConfig();
+      if (existing) {
+        const updated = await storage.updateTenantConfig(existing.id, req.body);
+        return res.json(updated);
+      }
+      
+      const config = await storage.createTenantConfig(req.body);
+      res.json(config);
+    } catch (error) {
+      console.error("Error creating tenant config:", error);
+      res.status(500).json({ message: "Failed to create tenant config" });
+    }
+  });
+
+  app.patch("/api/tenant-config/:id", async (req, res) => {
+    try {
+      if (req.body.modulesEnabled && typeof req.body.modulesEnabled !== 'object') {
+        return res.status(400).json({ message: "modulesEnabled must be an object" });
+      }
+      
+      if (req.body.modulesEnabled) {
+        const validModules = ['recruitment', 'integrity', 'onboarding', 'hr_management'];
+        for (const [key, value] of Object.entries(req.body.modulesEnabled)) {
+          if (!validModules.includes(key)) {
+            return res.status(400).json({ message: `Invalid module key: ${key}` });
+          }
+          if (typeof value !== 'boolean') {
+            return res.status(400).json({ message: `Module ${key} must be a boolean` });
+          }
+        }
+      }
+      
+      const config = await storage.updateTenantConfig(req.params.id, req.body);
+      if (!config) {
+        return res.status(404).json({ message: "Tenant config not found" });
+      }
+      res.json(config);
+    } catch (error) {
+      console.error("Error updating tenant config:", error);
+      res.status(500).json({ message: "Failed to update tenant config" });
+    }
+  });
+
   app.get("/api/env-status", async (req, res) => {
     try {
       const requiredSecrets = [

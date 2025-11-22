@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown, UserSearch, Shield, Settings } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DropdownMenu,
@@ -11,9 +12,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { api } from "@/lib/api";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+
+  const { data: tenantConfig } = useQuery({
+    queryKey: ["tenant-config"],
+    queryFn: async () => {
+      try {
+        const response = await api.get("/api/tenant-config");
+        return response.data;
+      } catch {
+        return null;
+      }
+    },
+    retry: false,
+  });
+
+  const isModuleEnabled = (moduleKey: string) => {
+    if (!tenantConfig?.modulesEnabled) return true;
+    return tenantConfig.modulesEnabled[moduleKey] !== false;
+  };
 
   const navLinks = [
     { name: "Solutions", href: "/#solutions" },
@@ -76,18 +96,22 @@ export function Navbar() {
               </Link>
               <DropdownMenuSeparator className="bg-white/10" />
               <DropdownMenuLabel>Admin Experience</DropdownMenuLabel>
-              <Link href="/recruitment-agent">
-                <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
-                  <UserSearch className="w-4 h-4 mr-2 text-purple-400" />
-                  <span>AI Recruitment Agent</span>
-                </DropdownMenuItem>
-              </Link>
-              <Link href="/integrity-agent">
-                <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
-                  <Shield className="w-4 h-4 mr-2 text-blue-400" />
-                  <span>AI Integrity Checks</span>
-                </DropdownMenuItem>
-              </Link>
+              {isModuleEnabled("recruitment") && (
+                <Link href="/recruitment-agent">
+                  <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
+                    <UserSearch className="w-4 h-4 mr-2 text-purple-400" />
+                    <span>AI Recruitment Agent</span>
+                  </DropdownMenuItem>
+                </Link>
+              )}
+              {isModuleEnabled("integrity") && (
+                <Link href="/integrity-agent">
+                  <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
+                    <Shield className="w-4 h-4 mr-2 text-blue-400" />
+                    <span>AI Integrity Checks</span>
+                  </DropdownMenuItem>
+                </Link>
+              )}
               <Link href="/onboarding">
                 <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
                   <Building2 className="w-4 h-4 mr-2 text-green-400" />
@@ -173,16 +197,20 @@ export function Navbar() {
                   <Video className="w-4 h-4" /> Video Interview
                 </Button>
               </Link>
-              <Link href="/recruitment-agent">
-                <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
-                  <UserSearch className="w-4 h-4" /> AI Recruitment
-                </Button>
-              </Link>
-              <Link href="/integrity-agent">
-                <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
-                  <Shield className="w-4 h-4" /> AI Integrity Checks
-                </Button>
-              </Link>
+              {isModuleEnabled("recruitment") && (
+                <Link href="/recruitment-agent">
+                  <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
+                    <UserSearch className="w-4 h-4" /> AI Recruitment
+                  </Button>
+                </Link>
+              )}
+              {isModuleEnabled("integrity") && (
+                <Link href="/integrity-agent">
+                  <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
+                    <Shield className="w-4 h-4" /> AI Integrity Checks
+                  </Button>
+                </Link>
+              )}
               <Link href="/onboarding">
                 <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
                    <Building2 className="w-4 h-4" /> Customer Onboarding
