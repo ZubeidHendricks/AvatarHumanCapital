@@ -76,6 +76,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/candidates/bulk-import", async (req, res) => {
+    try {
+      const { candidates } = req.body;
+      
+      if (!Array.isArray(candidates)) {
+        return res.status(400).json({ message: "Candidates must be an array" });
+      }
+
+      const imported = [];
+      const failed = [];
+
+      for (const candidateData of candidates) {
+        try {
+          const result = insertCandidateSchema.safeParse(candidateData);
+          if (!result.success) {
+            failed.push({ data: candidateData, error: result.error.message });
+            continue;
+          }
+          
+          const candidate = await storage.createCandidate(result.data);
+          imported.push(candidate);
+        } catch (error) {
+          failed.push({ data: candidateData, error: error instanceof Error ? error.message : "Unknown error" });
+        }
+      }
+
+      res.status(201).json({
+        success: imported.length,
+        failed: failed.length,
+        imported,
+        errors: failed
+      });
+    } catch (error) {
+      console.error("Error bulk importing candidates:", error);
+      res.status(500).json({ message: "Failed to bulk import candidates" });
+    }
+  });
+
   app.get("/api/jobs", async (req, res) => {
     try {
       const jobs = await storage.getAllJobs();
