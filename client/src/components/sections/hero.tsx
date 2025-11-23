@@ -23,7 +23,13 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
+            className="flex flex-col items-center"
           >
+            <img 
+              src="/logos/main-logo.png" 
+              alt="Avatar Human Capital" 
+              className="h-24 md:h-32 w-auto object-contain mb-8"
+            />
             <span className="inline-block py-1 px-3 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium tracking-wide mb-6">
               NEXT GEN ADVISORY SERVICES
             </span>
