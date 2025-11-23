@@ -1031,10 +1031,10 @@ BENEFITS:
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Total Candidates</p>
                       <h3 className="text-2xl font-bold mt-2" data-testid="metric-total-candidates">
-                        {candidates?.length || 0}
+                        {(candidates ?? []).length}
                       </h3>
                       <p className="text-xs text-green-500 mt-1">
-                        +{candidates?.filter(c => c.match >= 80).length || 0} high match
+                        +{(candidates ?? []).filter(c => c.match != null && c.match >= 80).length} high match
                       </p>
                     </div>
                     <div className="p-3 rounded-lg bg-primary/10">
@@ -1050,10 +1050,10 @@ BENEFITS:
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Active Jobs</p>
                       <h3 className="text-2xl font-bold mt-2" data-testid="metric-active-jobs">
-                        {jobs?.filter(j => j.status === "Active").length || 0}
+                        {(jobs ?? []).filter(j => j.status === "Active").length}
                       </h3>
                       <p className="text-xs text-blue-400 mt-1">
-                        {jobs?.length || 0} total positions
+                        {(jobs ?? []).length} total positions
                       </p>
                     </div>
                     <div className="p-3 rounded-lg bg-blue-500/10">
@@ -1069,12 +1069,15 @@ BENEFITS:
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Avg Match Score</p>
                       <h3 className="text-2xl font-bold mt-2" data-testid="metric-avg-match">
-                        {candidates && candidates.length > 0 
-                          ? Math.round(candidates.reduce((sum, c) => sum + c.match, 0) / candidates.length)
-                          : 0}%
+                        {(() => {
+                          const scoredCandidates = (candidates ?? []).filter(c => c.match != null);
+                          return scoredCandidates.length > 0 
+                            ? Math.round(scoredCandidates.reduce((sum, c) => sum + c.match, 0) / scoredCandidates.length)
+                            : 0;
+                        })()}%
                       </h3>
                       <p className="text-xs text-amber-400 mt-1">
-                        Pipeline quality
+                        {(candidates ?? []).filter(c => c.match != null).length} scored
                       </p>
                     </div>
                     <div className="p-3 rounded-lg bg-amber-500/10">
@@ -1090,7 +1093,7 @@ BENEFITS:
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">In Progress</p>
                       <h3 className="text-2xl font-bold mt-2" data-testid="metric-in-progress">
-                        {candidates?.filter(c => c.stage === "Screening" || c.stage === "Interview").length || 0}
+                        {(candidates ?? []).filter(c => c.stage === "Screening" || c.stage === "Shortlisted" || c.stage === "Interview").length}
                       </h3>
                       <p className="text-xs text-purple-400 mt-1">
                         Active pipeline
@@ -1118,14 +1121,15 @@ BENEFITS:
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={[
-                      { stage: "Sourcing", count: candidates?.filter(c => c.stage === "Sourcing").length || 0 },
-                      { stage: "Screening", count: candidates?.filter(c => c.stage === "Screening").length || 0 },
-                      { stage: "Interview", count: candidates?.filter(c => c.stage === "Interview").length || 0 },
-                      { stage: "Offer", count: candidates?.filter(c => c.stage === "Offer").length || 0 },
-                      { stage: "Onboarding", count: candidates?.filter(c => c.stage === "Onboarding").length || 0 },
+                      { stage: "New", count: (candidates ?? []).filter(c => c.stage === "New").length },
+                      { stage: "Screening", count: (candidates ?? []).filter(c => c.stage === "Screening").length },
+                      { stage: "Shortlisted", count: (candidates ?? []).filter(c => c.stage === "Shortlisted").length },
+                      { stage: "Interview", count: (candidates ?? []).filter(c => c.stage === "Interview").length },
+                      { stage: "Offer", count: (candidates ?? []).filter(c => c.stage === "Offer").length },
+                      { stage: "Hired", count: (candidates ?? []).filter(c => c.stage === "Hired").length },
                     ]}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                      <XAxis dataKey="stage" stroke="#888" tick={{ fill: '#888' }} />
+                      <XAxis dataKey="stage" stroke="#888" tick={{ fill: '#888', fontSize: 12 }} />
                       <YAxis stroke="#888" tick={{ fill: '#888' }} />
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
@@ -1150,12 +1154,18 @@ BENEFITS:
                   <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                       <Pie
-                        data={[
-                          { name: "Excellent (90-100)", value: candidates?.filter(c => c.match >= 90).length || 0, color: "#10b981" },
-                          { name: "Good (80-89)", value: candidates?.filter(c => c.match >= 80 && c.match < 90).length || 0, color: "#3b82f6" },
-                          { name: "Fair (70-79)", value: candidates?.filter(c => c.match >= 70 && c.match < 80).length || 0, color: "#f59e0b" },
-                          { name: "Poor (<70)", value: candidates?.filter(c => c.match < 70).length || 0, color: "#ef4444" },
-                        ]}
+                        data={(() => {
+                          const safeCandidates = candidates ?? [];
+                          const scoredCandidates = safeCandidates.filter(c => c.match != null);
+                          const unscoredCount = safeCandidates.length - scoredCandidates.length;
+                          return [
+                            { name: "Excellent (90-100)", value: scoredCandidates.filter(c => c.match >= 90).length, color: "#10b981" },
+                            { name: "Good (80-89)", value: scoredCandidates.filter(c => c.match >= 80 && c.match < 90).length, color: "#3b82f6" },
+                            { name: "Fair (70-79)", value: scoredCandidates.filter(c => c.match >= 70 && c.match < 80).length, color: "#f59e0b" },
+                            { name: "Poor (<70)", value: scoredCandidates.filter(c => c.match < 70).length, color: "#ef4444" },
+                            { name: "Unscored", value: unscoredCount, color: "#6b7280" },
+                          ].filter(entry => entry.value > 0);
+                        })()}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -1164,14 +1174,20 @@ BENEFITS:
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {[
-                          { name: "Excellent (90-100)", value: candidates?.filter(c => c.match >= 90).length || 0, color: "#10b981" },
-                          { name: "Good (80-89)", value: candidates?.filter(c => c.match >= 80 && c.match < 90).length || 0, color: "#3b82f6" },
-                          { name: "Fair (70-79)", value: candidates?.filter(c => c.match >= 70 && c.match < 80).length || 0, color: "#f59e0b" },
-                          { name: "Poor (<70)", value: candidates?.filter(c => c.match < 70).length || 0, color: "#ef4444" },
-                        ].map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
+                        {(() => {
+                          const safeCandidates = candidates ?? [];
+                          const scoredCandidates = safeCandidates.filter(c => c.match != null);
+                          const unscoredCount = safeCandidates.length - scoredCandidates.length;
+                          return [
+                            { name: "Excellent (90-100)", value: scoredCandidates.filter(c => c.match >= 90).length, color: "#10b981" },
+                            { name: "Good (80-89)", value: scoredCandidates.filter(c => c.match >= 80 && c.match < 90).length, color: "#3b82f6" },
+                            { name: "Fair (70-79)", value: scoredCandidates.filter(c => c.match >= 70 && c.match < 80).length, color: "#f59e0b" },
+                            { name: "Poor (<70)", value: scoredCandidates.filter(c => c.match < 70).length, color: "#ef4444" },
+                            { name: "Unscored", value: unscoredCount, color: "#6b7280" },
+                          ].filter(entry => entry.value > 0).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ));
+                        })()}
                       </Pie>
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
@@ -1203,9 +1219,12 @@ BENEFITS:
                       <div>
                         <p className="text-sm text-muted-foreground">Conversion Rate</p>
                         <p className="text-xl font-bold text-green-400">
-                          {candidates && candidates.length > 0
-                            ? Math.round((candidates.filter(c => c.stage === "Offer" || c.stage === "Onboarding").length / candidates.length) * 100)
-                            : 0}%
+                          {(() => {
+                            const safeCandidates = candidates ?? [];
+                            return safeCandidates.length > 0
+                              ? Math.round((safeCandidates.filter(c => c.stage === "Offer" || c.stage === "Hired").length / safeCandidates.length) * 100)
+                              : 0;
+                          })()}%
                         </p>
                       </div>
                     </div>
@@ -1217,7 +1236,7 @@ BENEFITS:
                       <div>
                         <p className="text-sm text-muted-foreground">High-Quality Pool</p>
                         <p className="text-xl font-bold text-blue-400">
-                          {candidates?.filter(c => c.match >= 85).length || 0} candidates
+                          {(candidates ?? []).filter(c => c.match != null && c.match >= 85).length} candidates
                         </p>
                       </div>
                     </div>
@@ -1229,9 +1248,13 @@ BENEFITS:
                       <div>
                         <p className="text-sm text-muted-foreground">Avg Candidates/Job</p>
                         <p className="text-xl font-bold text-amber-400">
-                          {jobs && jobs.length > 0 && candidates
-                            ? Math.round(candidates.length / jobs.length)
-                            : 0}
+                          {(() => {
+                            const safeJobs = jobs ?? [];
+                            const safeCandidates = candidates ?? [];
+                            return safeJobs.length > 0
+                              ? Math.round(safeCandidates.length / safeJobs.length)
+                              : 0;
+                          })()}
                         </p>
                       </div>
                     </div>
