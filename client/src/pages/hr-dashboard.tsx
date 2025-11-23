@@ -42,8 +42,13 @@ import {
   Download,
   Trash2,
   Send,
-  Star
+  Star,
+  Target,
+  Clock,
+  Award,
+  BarChart3
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { motion } from "framer-motion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -1018,29 +1023,220 @@ BENEFITS:
           {/* PERFORMANCE TAB */}
            <TabsContent value="performance" className="space-y-6">
             
-             {/* AI Performance Banner */}
-            <div className="rounded-lg bg-gradient-to-r from-indigo-500/20 to-blue-600/20 border border-indigo-500/20 p-6 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold flex items-center gap-2 text-white">
-                  <TrendingUp className="w-5 h-5 text-indigo-400" />
-                  Analyze workforce performance?
-                </h3>
-                <p className="text-muted-foreground text-sm mt-1">
-                  Connect data streams to track KPIs, engagement, and retention risks in real-time.
-                </p>
-              </div>
-              <Button className="bg-indigo-500 text-indigo-950 hover:bg-indigo-400 shadow-lg shadow-indigo-500/20">
-                View Analytics
-              </Button>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="border-white/10 bg-card/20">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Total Candidates</p>
+                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-total-candidates">
+                        {candidates?.length || 0}
+                      </h3>
+                      <p className="text-xs text-green-500 mt-1">
+                        +{candidates?.filter(c => c.match >= 80).length || 0} high match
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-primary/10">
+                      <Users className="w-6 h-6 text-primary" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-white/10 bg-card/20">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Active Jobs</p>
+                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-active-jobs">
+                        {jobs?.filter(j => j.status === "Active").length || 0}
+                      </h3>
+                      <p className="text-xs text-blue-400 mt-1">
+                        {jobs?.length || 0} total positions
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-blue-500/10">
+                      <Briefcase className="w-6 h-6 text-blue-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-white/10 bg-card/20">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Avg Match Score</p>
+                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-avg-match">
+                        {candidates && candidates.length > 0 
+                          ? Math.round(candidates.reduce((sum, c) => sum + c.match, 0) / candidates.length)
+                          : 0}%
+                      </h3>
+                      <p className="text-xs text-amber-400 mt-1">
+                        Pipeline quality
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-amber-500/10">
+                      <Target className="w-6 h-6 text-amber-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-white/10 bg-card/20">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">In Progress</p>
+                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-in-progress">
+                        {candidates?.filter(c => c.stage === "Screening" || c.stage === "Interview").length || 0}
+                      </h3>
+                      <p className="text-xs text-purple-400 mt-1">
+                        Active pipeline
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-purple-500/10">
+                      <Clock className="w-6 h-6 text-purple-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Candidate Pipeline */}
+              <Card className="border-white/10 bg-card/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-primary" />
+                    Candidate Pipeline
+                  </CardTitle>
+                  <CardDescription>Candidates by recruitment stage</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={[
+                      { stage: "Sourcing", count: candidates?.filter(c => c.stage === "Sourcing").length || 0 },
+                      { stage: "Screening", count: candidates?.filter(c => c.stage === "Screening").length || 0 },
+                      { stage: "Interview", count: candidates?.filter(c => c.stage === "Interview").length || 0 },
+                      { stage: "Offer", count: candidates?.filter(c => c.stage === "Offer").length || 0 },
+                      { stage: "Onboarding", count: candidates?.filter(c => c.stage === "Onboarding").length || 0 },
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                      <XAxis dataKey="stage" stroke="#888" tick={{ fill: '#888' }} />
+                      <YAxis stroke="#888" tick={{ fill: '#888' }} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                        labelStyle={{ color: '#fff' }}
+                      />
+                      <Bar dataKey="count" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Match Score Distribution */}
+              <Card className="border-white/10 bg-card/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="w-5 h-5 text-amber-400" />
+                    Match Score Distribution
+                  </CardTitle>
+                  <CardDescription>Candidate quality breakdown</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: "Excellent (90-100)", value: candidates?.filter(c => c.match >= 90).length || 0, color: "#10b981" },
+                          { name: "Good (80-89)", value: candidates?.filter(c => c.match >= 80 && c.match < 90).length || 0, color: "#3b82f6" },
+                          { name: "Fair (70-79)", value: candidates?.filter(c => c.match >= 70 && c.match < 80).length || 0, color: "#f59e0b" },
+                          { name: "Poor (<70)", value: candidates?.filter(c => c.match < 70).length || 0, color: "#ef4444" },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={(entry) => entry.value > 0 ? `${entry.value}` : ''}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {[
+                          { name: "Excellent (90-100)", value: candidates?.filter(c => c.match >= 90).length || 0, color: "#10b981" },
+                          { name: "Good (80-89)", value: candidates?.filter(c => c.match >= 80 && c.match < 90).length || 0, color: "#3b82f6" },
+                          { name: "Fair (70-79)", value: candidates?.filter(c => c.match >= 70 && c.match < 80).length || 0, color: "#f59e0b" },
+                          { name: "Poor (<70)", value: candidates?.filter(c => c.match < 70).length || 0, color: "#ef4444" },
+                        ].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                      />
+                      <Legend 
+                        wrapperStyle={{ fontSize: '12px' }}
+                        iconType="circle"
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Performance Insights */}
             <Card className="border-white/10 bg-card/20">
               <CardHeader>
-                <CardTitle>Performance Metrics</CardTitle>
-                <CardDescription>Coming soon: Real-time KPI tracking dashboard.</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-green-400" />
+                  Key Performance Insights
+                </CardTitle>
+                <CardDescription>Real-time recruitment analytics</CardDescription>
               </CardHeader>
-              <CardContent className="h-[200px] flex items-center justify-center text-muted-foreground">
-                No active data streams connected.
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="w-8 h-8 text-green-400" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Conversion Rate</p>
+                        <p className="text-xl font-bold text-green-400">
+                          {candidates && candidates.length > 0
+                            ? Math.round((candidates.filter(c => c.stage === "Offer" || c.stage === "Onboarding").length / candidates.length) * 100)
+                            : 0}%
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <div className="flex items-center gap-3">
+                      <Users className="w-8 h-8 text-blue-400" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">High-Quality Pool</p>
+                        <p className="text-xl font-bold text-blue-400">
+                          {candidates?.filter(c => c.match >= 85).length || 0} candidates
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <div className="flex items-center gap-3">
+                      <Briefcase className="w-8 h-8 text-amber-400" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Avg Candidates/Job</p>
+                        <p className="text-xl font-bold text-amber-400">
+                          {jobs && jobs.length > 0 && candidates
+                            ? Math.round(candidates.length / jobs.length)
+                            : 0}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
