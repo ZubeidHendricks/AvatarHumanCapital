@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/ui/back-button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -259,17 +260,19 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-4 md:p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white flex items-center gap-2" data-testid="text-page-title">
-              <Settings className="w-8 h-8 text-primary" />
+            <BackButton fallbackPath="/hr-dashboard" className="mb-3" />
+            <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2" data-testid="text-page-title">
+              <Settings className="w-6 h-6 md:w-8 md:h-8 text-primary" />
               System Administration
             </h1>
-            <p className="text-muted-foreground mt-1">Configure system features and manage API integrations</p>
+            <p className="text-sm text-muted-foreground mt-1">Configure system features and manage API integrations</p>
           </div>
         </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Feature Toggles */}
         <Card className="bg-black/40 border-white/10" data-testid="card-feature-toggles">
           <CardHeader>
@@ -572,6 +575,7 @@ export default function AdminDashboard() {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );
