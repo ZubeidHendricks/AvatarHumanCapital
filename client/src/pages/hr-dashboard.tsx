@@ -1020,44 +1020,25 @@ BENEFITS:
             </Card>
           </TabsContent>
 
-          {/* PERFORMANCE TAB */}
+          {/* PERFORMANCE TAB - Employee Performance Management */}
            <TabsContent value="performance" className="space-y-6">
             
-            {/* KPI Cards */}
+            {/* Performance Overview KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="border-white/10 bg-card/20">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Total Candidates</p>
-                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-total-candidates">
-                        {(candidates ?? []).length}
-                      </h3>
-                      <p className="text-xs text-green-500 mt-1">
-                        +{(candidates ?? []).filter(c => c.match != null && c.match >= 80).length} high match
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-primary/10">
-                      <Users className="w-6 h-6 text-primary" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-white/10 bg-card/20">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Active Jobs</p>
-                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-active-jobs">
-                        {(jobs ?? []).filter(j => j.status === "Active").length}
+                      <p className="text-sm font-medium text-muted-foreground">Total Employees</p>
+                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-total-employees">
+                        {(candidates ?? []).filter(c => c.stage === "Hired").length}
                       </h3>
                       <p className="text-xs text-blue-400 mt-1">
-                        {(jobs ?? []).length} total positions
+                        Active workforce
                       </p>
                     </div>
                     <div className="p-3 rounded-lg bg-blue-500/10">
-                      <Briefcase className="w-6 h-6 text-blue-400" />
+                      <Users className="w-6 h-6 text-blue-400" />
                     </div>
                   </div>
                 </CardContent>
@@ -1067,21 +1048,35 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Avg Match Score</p>
-                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-avg-match">
-                        {(() => {
-                          const scoredCandidates = (candidates ?? []).filter(c => c.match != null);
-                          return scoredCandidates.length > 0 
-                            ? Math.round(scoredCandidates.reduce((sum, c) => sum + c.match, 0) / scoredCandidates.length)
-                            : 0;
-                        })()}%
+                      <p className="text-sm font-medium text-muted-foreground">Avg Performance</p>
+                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-avg-performance">
+                        4.2<span className="text-lg text-muted-foreground">/5.0</span>
+                      </h3>
+                      <p className="text-xs text-green-500 mt-1">
+                        +0.3 from last quarter
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-green-500/10">
+                      <Star className="w-6 h-6 text-green-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-white/10 bg-card/20">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Pending Reviews</p>
+                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-pending-reviews">
+                        8
                       </h3>
                       <p className="text-xs text-amber-400 mt-1">
-                        {(candidates ?? []).filter(c => c.match != null).length} scored
+                        3 overdue
                       </p>
                     </div>
                     <div className="p-3 rounded-lg bg-amber-500/10">
-                      <Target className="w-6 h-6 text-amber-400" />
+                      <Clock className="w-6 h-6 text-amber-400" />
                     </div>
                   </div>
                 </CardContent>
@@ -1091,174 +1086,159 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">In Progress</p>
-                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-in-progress">
-                        {(candidates ?? []).filter(c => c.stage === "Screening" || c.stage === "Shortlisted" || c.stage === "Interview").length}
+                      <p className="text-sm font-medium text-muted-foreground">KPI Achievement</p>
+                      <h3 className="text-2xl font-bold mt-2" data-testid="metric-kpi-achievement">
+                        87%
                       </h3>
                       <p className="text-xs text-purple-400 mt-1">
-                        Active pipeline
+                        Goals on track
                       </p>
                     </div>
                     <div className="p-3 rounded-lg bg-purple-500/10">
-                      <Clock className="w-6 h-6 text-purple-400" />
+                      <Target className="w-6 h-6 text-purple-400" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Candidate Pipeline */}
-              <Card className="border-white/10 bg-card/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-primary" />
-                    Candidate Pipeline
-                  </CardTitle>
-                  <CardDescription>Candidates by recruitment stage</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={[
-                      { stage: "New", count: (candidates ?? []).filter(c => c.stage === "New").length },
-                      { stage: "Screening", count: (candidates ?? []).filter(c => c.stage === "Screening").length },
-                      { stage: "Shortlisted", count: (candidates ?? []).filter(c => c.stage === "Shortlisted").length },
-                      { stage: "Interview", count: (candidates ?? []).filter(c => c.stage === "Interview").length },
-                      { stage: "Offer", count: (candidates ?? []).filter(c => c.stage === "Offer").length },
-                      { stage: "Hired", count: (candidates ?? []).filter(c => c.stage === "Hired").length },
-                    ]}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                      <XAxis dataKey="stage" stroke="#888" tick={{ fill: '#888', fontSize: 12 }} />
-                      <YAxis stroke="#888" tick={{ fill: '#888' }} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
-                        labelStyle={{ color: '#fff' }}
-                      />
-                      <Bar dataKey="count" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+            {/* Performance Reviews Section */}
+            <Card className="border-white/10 bg-card/20">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileCheck className="w-5 h-5 text-primary" />
+                      Performance Reviews
+                    </CardTitle>
+                    <CardDescription>Employee review status and schedules</CardDescription>
+                  </div>
+                  <Button className="bg-primary hover:bg-primary/90" data-testid="button-schedule-review">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Schedule Review
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[
+                    { employee: "Marcus Johnson", role: "Operations Lead", status: "Scheduled", date: "Dec 15, 2024", rating: null, reviewer: "John Smith" },
+                    { employee: "Sarah Jenkins", role: "Senior Project Manager", status: "In Progress", date: "Dec 10, 2024", rating: null, reviewer: "Emily Davis" },
+                    { employee: "David Chen", role: "Financial Analyst", status: "Completed", date: "Nov 28, 2024", rating: 4.5, reviewer: "Robert Brown" },
+                    { employee: "Emily Davis", role: "UX Designer", status: "Overdue", date: "Nov 20, 2024", rating: null, reviewer: "Sarah Lee" },
+                  ].map((review, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors" data-testid={`review-item-${idx}`}>
+                      <div className="flex items-center gap-4 flex-1">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-primary/20 text-primary">
+                            {review.employee.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="font-medium">{review.employee}</p>
+                          <p className="text-sm text-muted-foreground">{review.role}</p>
+                        </div>
+                        <div className="text-sm">
+                          <p className="text-muted-foreground">Reviewer</p>
+                          <p className="font-medium">{review.reviewer}</p>
+                        </div>
+                        <div className="text-sm">
+                          <p className="text-muted-foreground">Due Date</p>
+                          <p className="font-medium">{review.date}</p>
+                        </div>
+                        <div className="min-w-[100px]">
+                          {review.status === "Completed" && review.rating ? (
+                            <div className="flex items-center gap-1">
+                              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                              <span className="font-bold text-amber-400">{review.rating}</span>
+                              <span className="text-muted-foreground">/5.0</span>
+                            </div>
+                          ) : (
+                            <Badge 
+                              variant={review.status === "Overdue" ? "destructive" : review.status === "Completed" ? "default" : "secondary"}
+                              className={
+                                review.status === "Scheduled" ? "bg-blue-500/20 text-blue-400 border-blue-500/30" :
+                                review.status === "In Progress" ? "bg-purple-500/20 text-purple-400 border-purple-500/30" :
+                                review.status === "Overdue" ? "bg-red-500/20 text-red-400 border-red-500/30" :
+                                "bg-green-500/20 text-green-400 border-green-500/30"
+                              }
+                            >
+                              {review.status}
+                            </Badge>
+                          )}
+                        </div>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Match Score Distribution */}
-              <Card className="border-white/10 bg-card/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="w-5 h-5 text-amber-400" />
-                    Match Score Distribution
-                  </CardTitle>
-                  <CardDescription>Candidate quality breakdown</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={(() => {
-                          const safeCandidates = candidates ?? [];
-                          const scoredCandidates = safeCandidates.filter(c => c.match != null);
-                          const unscoredCount = safeCandidates.length - scoredCandidates.length;
-                          return [
-                            { name: "Excellent (90-100)", value: scoredCandidates.filter(c => c.match >= 90).length, color: "#10b981" },
-                            { name: "Good (80-89)", value: scoredCandidates.filter(c => c.match >= 80 && c.match < 90).length, color: "#3b82f6" },
-                            { name: "Fair (70-79)", value: scoredCandidates.filter(c => c.match >= 70 && c.match < 80).length, color: "#f59e0b" },
-                            { name: "Poor (<70)", value: scoredCandidates.filter(c => c.match < 70).length, color: "#ef4444" },
-                            { name: "Unscored", value: unscoredCount, color: "#6b7280" },
-                          ].filter(entry => entry.value > 0);
-                        })()}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={(entry) => entry.value > 0 ? `${entry.value}` : ''}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {(() => {
-                          const safeCandidates = candidates ?? [];
-                          const scoredCandidates = safeCandidates.filter(c => c.match != null);
-                          const unscoredCount = safeCandidates.length - scoredCandidates.length;
-                          return [
-                            { name: "Excellent (90-100)", value: scoredCandidates.filter(c => c.match >= 90).length, color: "#10b981" },
-                            { name: "Good (80-89)", value: scoredCandidates.filter(c => c.match >= 80 && c.match < 90).length, color: "#3b82f6" },
-                            { name: "Fair (70-79)", value: scoredCandidates.filter(c => c.match >= 70 && c.match < 80).length, color: "#f59e0b" },
-                            { name: "Poor (<70)", value: scoredCandidates.filter(c => c.match < 70).length, color: "#ef4444" },
-                            { name: "Unscored", value: unscoredCount, color: "#6b7280" },
-                          ].filter(entry => entry.value > 0).map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ));
-                        })()}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
-                      />
-                      <Legend 
-                        wrapperStyle={{ fontSize: '12px' }}
-                        iconType="circle"
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Performance Insights */}
+            {/* Employee KPIs/Goals */}
             <Card className="border-white/10 bg-card/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-green-400" />
-                  Key Performance Insights
+                  <Target className="w-5 h-5 text-amber-400" />
+                  Employee KPIs & Goals
                 </CardTitle>
-                <CardDescription>Real-time recruitment analytics</CardDescription>
+                <CardDescription>Current quarter performance objectives</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle2 className="w-8 h-8 text-green-400" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Conversion Rate</p>
-                        <p className="text-xl font-bold text-green-400">
-                          {(() => {
-                            const safeCandidates = candidates ?? [];
-                            return safeCandidates.length > 0
-                              ? Math.round((safeCandidates.filter(c => c.stage === "Offer" || c.stage === "Hired").length / safeCandidates.length) * 100)
-                              : 0;
-                          })()}%
-                        </p>
+                <div className="space-y-4">
+                  {[
+                    { employee: "Marcus Johnson", goal: "Complete 5 major projects", progress: 80, target: 5, achieved: 4, status: "On Track" },
+                    { employee: "Sarah Jenkins", goal: "Reduce operational costs by 15%", progress: 95, target: 15, achieved: 14.2, status: "Excellent" },
+                    { employee: "David Chen", goal: "Improve team productivity by 20%", progress: 60, target: 20, achieved: 12, status: "At Risk" },
+                    { employee: "Emily Davis", goal: "Complete certification training", progress: 100, target: 1, achieved: 1, status: "Achieved" },
+                  ].map((kpi, idx) => (
+                    <div key={idx} className="p-4 rounded-lg border border-white/10 bg-white/5" data-testid={`kpi-item-${idx}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                              {kpi.employee.split(' ').map(n => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-sm">{kpi.employee}</p>
+                            <p className="text-xs text-muted-foreground">{kpi.goal}</p>
+                          </div>
+                        </div>
+                        <Badge 
+                          className={
+                            kpi.status === "Excellent" || kpi.status === "Achieved" ? "bg-green-500/20 text-green-400 border-green-500/30" :
+                            kpi.status === "On Track" ? "bg-blue-500/20 text-blue-400 border-blue-500/30" :
+                            "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                          }
+                        >
+                          {kpi.status}
+                        </Badge>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Progress</span>
+                          <span className="font-medium">{kpi.progress}%</span>
+                        </div>
+                        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full transition-all ${
+                              kpi.progress >= 90 ? "bg-green-500" :
+                              kpi.progress >= 70 ? "bg-blue-500" :
+                              "bg-amber-500"
+                            }`}
+                            style={{ width: `${kpi.progress}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Achieved: {kpi.achieved}{typeof kpi.achieved === 'number' && kpi.achieved < 10 ? '%' : ''}</span>
+                          <span>Target: {kpi.target}{typeof kpi.target === 'number' && kpi.target < 10 ? '%' : ''}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                    <div className="flex items-center gap-3">
-                      <Users className="w-8 h-8 text-blue-400" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">High-Quality Pool</p>
-                        <p className="text-xl font-bold text-blue-400">
-                          {(candidates ?? []).filter(c => c.match != null && c.match >= 85).length} candidates
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                    <div className="flex items-center gap-3">
-                      <Briefcase className="w-8 h-8 text-amber-400" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Avg Candidates/Job</p>
-                        <p className="text-xl font-bold text-amber-400">
-                          {(() => {
-                            const safeJobs = jobs ?? [];
-                            const safeCandidates = candidates ?? [];
-                            return safeJobs.length > 0
-                              ? Math.round(safeCandidates.length / safeJobs.length)
-                              : 0;
-                          })()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
