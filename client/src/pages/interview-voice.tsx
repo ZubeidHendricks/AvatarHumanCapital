@@ -36,18 +36,19 @@ export default function InterviewVoice() {
   useEffect(() => {
     if (!voiceConfig || !isStarted || isConnected) return;
 
+    let hasConnected = false;
+
     const connectToHume = async () => {
       try {
-        // Use config_id if available, otherwise use default chat endpoint
-        const wsUrl = voiceConfig.configId 
-          ? `wss://api.hume.ai/v0/evi/chat?config_id=${voiceConfig.configId}&access_token=${voiceConfig.accessToken}`
-          : `wss://api.hume.ai/v0/evi/chat?access_token=${voiceConfig.accessToken}`;
+        // Don't use config_id - let session settings handle the prompt
+        const wsUrl = `wss://api.hume.ai/v0/evi/chat?access_token=${voiceConfig.accessToken}`;
         
-        console.log("Connecting to Hume AI with URL:", wsUrl.replace(voiceConfig.accessToken, '[TOKEN]'));
+        console.log("Connecting to Hume AI...");
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
           console.log("Connected to Hume AI");
+          hasConnected = true;
           setIsConnected(true);
           setState("listening");
           
@@ -61,7 +62,7 @@ export default function InterviewVoice() {
           };
           
           ws.send(JSON.stringify(sessionSettings));
-          console.log("Session settings sent:", sessionSettings);
+          console.log("Session settings sent");
           toast.success("Connected to AI interviewer");
         };
 
@@ -115,9 +116,15 @@ export default function InterviewVoice() {
         ws.onclose = (event) => {
           console.log("Disconnected from Hume AI. Code:", event.code, "Reason:", event.reason);
           setIsConnected(false);
-          setState("idle");
-          if (event.code !== 1000) {
-            toast.error(`Connection closed: ${event.reason || 'Unknown reason'}`);
+          
+          // Only show error if we had successfully connected before
+          if (hasConnected && event.code !== 1000) {
+            toast.error(`Connection closed: ${event.reason || 'Connection lost'}`);
+            setState("idle");
+          } else if (!hasConnected) {
+            toast.error("Failed to establish connection to Hume AI. Please try again.");
+            setIsStarted(false);
+            setState("idle");
           }
         };
 
