@@ -59,10 +59,11 @@ export const interviewService = {
     const response = await api.get("/interview/voice/config");
     return response.data;
   },
-  createVideoSession: async (candidateId?: string, candidateName?: string): Promise<{ sessionUrl: string; sessionId: string; status: string; candidateId?: string; candidateName?: string }> => {
+  createVideoSession: async (candidateId?: string, candidateName?: string, jobRole?: string): Promise<{ sessionUrl: string; sessionId: string; status: string; candidateId?: string; candidateName?: string }> => {
     const response = await api.post("/interview/video/session", { 
       candidateId, 
-      candidateName 
+      candidateName,
+      jobRole
     });
     return response.data;
   }

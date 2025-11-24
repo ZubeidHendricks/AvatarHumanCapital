@@ -493,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/interview/video/session", async (req, res) => {
     try {
-      const { candidateId, candidateName } = req.body;
+      const { candidateId, candidateName, jobRole } = req.body;
       const TAVUS_API_KEY = process.env.TAVUS_API_KEY;
 
       if (!TAVUS_API_KEY) {
@@ -508,15 +508,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const role = jobRole || "Interview Practice";
+      
+      const conversationalContext = `You are an HR Manager conducting a ${role} interview. Setup: confirm position, ask interview tone preference (friendly/neutral/strict), confirm readiness before starting. Interview Mode: Ask realistic questions for ${role}. Short, professional responses. Match their tone. Never break character unless asked. Ending: When done, ask to continue or exit. If exiting, give honest feedback: Strengths, Areas to improve, Real-world tips. Stay in character completely.`;
+
+      const customGreeting = `Hello! Ready to practice your ${role} interview? I'll ask about your preferred interview tone and then we'll begin when you're ready.`;
+
       const requestBody = {
         replica_id: process.env.TAVUS_REPLICA_ID || "default_replica",
         persona_id: process.env.TAVUS_PERSONA_ID || "default_persona",
-        conversation_name: `Interview Practice: ${candidateName}`,
-        conversational_context: `You are an elite roleplay facilitator who transforms into any character the user requests: hiring manager, difficult boss, skeptical client, etc. Ask 3 short questions to understand the role, then ask if they want to start. Once roleplay begins, stay in character completely—short snappy responses like a real person. When the scenario ends naturally, ask to continue or exit. If exiting, provide feedback on Strengths, Areas for improvement, and Real-world tips. Never break character unless asked. Match their tone, no repetition, realistic responses. The user ${candidateName} is practicing with you.`,
-        custom_greeting: `Hi ${candidateName}! I'm here to help you practice any interview or conversation scenario you'd like. Just tell me who you want me to be—maybe a tough hiring manager, a friendly recruiter, or even a difficult stakeholder—and what scenario you want to practice. What role should I take on today?`,
+        conversation_name: `${role} Interview: ${candidateName}`,
+        conversational_context: conversationalContext,
+        custom_greeting: customGreeting,
         properties: {
           candidate_id: candidateId,
-          position: "Interview Practice",
+          position: role,
           created_at: new Date().toISOString()
         }
       };

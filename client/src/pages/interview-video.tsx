@@ -3,22 +3,48 @@ import { useMutation } from "@tanstack/react-query";
 import { interviewService } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Video, PhoneOff, Settings, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link, useSearch } from "wouter";
 import { toast } from "sonner";
+
+const COMMON_ROLES = [
+  "Software Developer",
+  "Sales Executive",
+  "Project Manager",
+  "Product Manager",
+  "Data Analyst",
+  "Marketing Manager",
+  "HR Manager",
+  "Business Analyst",
+  "UX Designer",
+  "Customer Success Manager",
+  "Custom Role"
+];
 
 export default function InterviewVideo() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const candidateName = params.get("candidate") || "Candidate";
   const candidateId = params.get("id");
+  const jobParam = params.get("job");
 
   const [sessionUrl, setSessionUrl] = useState<string | null>(null);
   const [isSessionActive, setIsSessionActive] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>(jobParam || COMMON_ROLES[0]);
+  const [customRole, setCustomRole] = useState<string>("");
 
   const createSessionMutation = useMutation({
-    mutationFn: () => interviewService.createVideoSession(candidateId || undefined, candidateName),
+    mutationFn: () => {
+      const roleToUse = selectedRole === "Custom Role" ? customRole : selectedRole;
+      if (!roleToUse || roleToUse.trim() === "") {
+        throw new Error("Please specify a job role");
+      }
+      return interviewService.createVideoSession(candidateId || undefined, candidateName, roleToUse);
+    },
     onSuccess: (data) => {
       setSessionUrl(data.sessionUrl);
       setIsSessionActive(true);
@@ -26,11 +52,15 @@ export default function InterviewVideo() {
     },
     onError: (error: any) => {
       console.error("Failed to create session:", error);
-      toast.error("Failed to create video session. Please try again.");
+      toast.error(error.message || "Failed to create video session. Please try again.");
     }
   });
 
   const handleStartSession = () => {
+    if (selectedRole === "Custom Role" && (!customRole || customRole.trim() === "")) {
+      toast.error("Please enter a custom job role");
+      return;
+    }
     createSessionMutation.mutate();
   };
 
@@ -66,16 +96,57 @@ export default function InterviewVideo() {
         <div className="flex-1 flex flex-col gap-4">
           <div className="flex-1 relative">
             {!isSessionActive ? (
-              <div className="w-full h-full rounded-2xl border border-white/10 bg-card/30 flex flex-col items-center justify-center gap-6">
+              <div className="w-full h-full rounded-2xl border border-white/10 bg-card/30 flex flex-col items-center justify-center gap-6 p-8">
                 <div className="w-20 h-20 rounded-full bg-indigo-500/20 flex items-center justify-center animate-pulse">
                   <Video className="w-8 h-8 text-indigo-400" />
                 </div>
                 <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">Ready for your final interview?</h2>
+                  <h2 className="text-2xl font-bold">Ready for your interview practice?</h2>
                   <p className="text-muted-foreground max-w-md">
-                    This session uses Tavus video cloning technology for a hyper-personalized experience with an AI interviewer.
+                    Select a job role and practice with an AI HR Manager powered by Tavus video technology.
                   </p>
                 </div>
+                
+                <div className="w-full max-w-md space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="role-select" className="text-sm font-medium">
+                      Job Position
+                    </Label>
+                    <Select value={selectedRole} onValueChange={setSelectedRole}>
+                      <SelectTrigger 
+                        id="role-select" 
+                        className="bg-black/50 border-white/10"
+                        data-testid="select-job-role"
+                      >
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-white/10">
+                        {COMMON_ROLES.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {role}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedRole === "Custom Role" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-role" className="text-sm font-medium">
+                        Enter Custom Role
+                      </Label>
+                      <Input
+                        id="custom-role"
+                        value={customRole}
+                        onChange={(e) => setCustomRole(e.target.value)}
+                        placeholder="e.g., Senior DevOps Engineer"
+                        className="bg-black/50 border-white/10"
+                        data-testid="input-custom-role"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <Button 
                   size="lg" 
                   onClick={handleStartSession}
