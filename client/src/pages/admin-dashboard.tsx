@@ -262,7 +262,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
-      <div className="container mx-auto p-4 md:p-6 space-y-4">
+      <div className="container mx-auto p-4 md:p-6 space-y-4 pt-20 md:pt-24">
         <BackButton fallbackPath="/hr-dashboard" className="mb-3" />
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-4">

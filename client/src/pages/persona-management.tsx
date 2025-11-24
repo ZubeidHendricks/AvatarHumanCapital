@@ -77,7 +77,7 @@ This is an initial screening interview to assess the candidate's potential fit f
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <div className="container mx-auto px-4 py-8 max-w-5xl pt-24 md:pt-28">
         <BackButton />
         
         <div className="flex items-center gap-3 mb-6">
