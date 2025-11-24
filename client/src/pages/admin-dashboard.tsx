@@ -263,23 +263,26 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-black">
       <Navbar />
       <div className="container mx-auto p-4 md:p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <BackButton fallbackPath="/hr-dashboard" className="mb-3" />
-            <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2" data-testid="text-page-title">
-              <Settings className="w-6 h-6 md:w-8 md:h-8 text-primary" />
-              System Administration
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">Configure system features and manage API integrations</p>
+        <BackButton fallbackPath="/hr-dashboard" className="mb-3" />
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2" data-testid="text-page-title">
+                <Settings className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+                System Administration
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">Configure system features and manage API integrations</p>
+            </div>
+            <Button 
+              onClick={() => navigate("/persona-management")}
+              className="bg-purple-600 hover:bg-purple-700 shrink-0"
+              data-testid="button-persona-management"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">AI Personas</span>
+              <span className="sm:hidden">Personas</span>
+            </Button>
           </div>
-          <Button 
-            onClick={() => navigate("/persona-management")}
-            className="bg-purple-600 hover:bg-purple-700"
-            data-testid="button-persona-management"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            AI Personas
-          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
