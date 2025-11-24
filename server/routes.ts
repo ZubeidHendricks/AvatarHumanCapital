@@ -491,6 +491,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/tavus/persona", async (req, res) => {
+    try {
+      const { personaName, systemPrompt, context, replicaId } = req.body;
+      const TAVUS_API_KEY = process.env.TAVUS_API_KEY;
+
+      if (!TAVUS_API_KEY) {
+        return res.status(500).json({ 
+          message: "Tavus API key not configured" 
+        });
+      }
+
+      if (!systemPrompt) {
+        return res.status(400).json({
+          message: "System prompt is required"
+        });
+      }
+
+      const requestBody: any = {
+        pipeline_mode: "full",
+        system_prompt: systemPrompt
+      };
+
+      if (personaName) requestBody.persona_name = personaName;
+      if (context) requestBody.context = context;
+      if (replicaId) requestBody.default_replica_id = replicaId;
+
+      const response = await fetch("https://tavusapi.com/v2/personas", {
+        method: "POST",
+        headers: {
+          "x-api-key": TAVUS_API_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Tavus Persona API error - Status:", response.status);
+        console.error("Tavus Persona API error - Response:", error);
+        return res.status(response.status).json({ 
+          message: "Failed to create Tavus persona",
+          details: error,
+          status: response.status
+        });
+      }
+
+      const data = await response.json();
+      
+      res.json({
+        personaId: data.persona_id,
+        personaName: data.persona_name,
+        createdAt: data.created_at
+      });
+    } catch (error) {
+      console.error("Error creating Tavus persona:", error);
+      res.status(500).json({ message: "Failed to create persona" });
+    }
+  });
+
   app.post("/api/interview/video/session", async (req, res) => {
     try {
       const { candidateId, candidateName, jobRole } = req.body;
