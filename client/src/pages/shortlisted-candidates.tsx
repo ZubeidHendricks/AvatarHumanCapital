@@ -323,7 +323,7 @@ export default function ShortlistedCandidates() {
                 className="min-h-[150px] bg-black/50 border-white/10 font-sans" 
                 defaultValue={`Dear ${selectedCandidate?.fullName || 'Candidate'},
 
-We are impressed with your profile and would like to invite you to an initial voice interview with our AI recruiter, Chit-Chet.
+We are impressed with your profile and would like to invite you to an initial voice interview with our AI interview system.
 
 This allows us to get to know you better at your convenience. Please click the link below to start the session:
 

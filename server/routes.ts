@@ -417,7 +417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          name: "Avatar HR Interview Bot",
+          name: "Roleplay Facilitator",
           evi_version: "2",
           voice: {
             name: "ITO"
@@ -432,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           event_messages: {
             on_new_chat: {
               enabled: true,
-              text: "Hello! I'm Chit-Chet, your AI interviewer from Avatar Human Capital. I'm here to learn about your experience and qualifications. Could you please start by introducing yourself?"
+              text: "Hey there! I'm your roleplay practice partner. I can transform into any character you need to practice with—a tough interviewer, a friendly recruiter, a difficult stakeholder, you name it. Just tell me who you want me to be and what scenario you want to practice. What role should I take on?"
             }
           },
           timeouts: {
@@ -511,12 +511,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestBody = {
         replica_id: process.env.TAVUS_REPLICA_ID || "default_replica",
         persona_id: process.env.TAVUS_PERSONA_ID || "default_persona",
-        conversation_name: `Interview: ${candidateName}`,
-        conversational_context: `You are a professional HR interviewer conducting a video interview with ${candidateName} for a Senior Backend Developer position at Avatar Human Capital. Ask thoughtful questions about their technical expertise, leadership experience, problem-solving skills, and cultural fit. Be friendly but professional. The interview should last about 15-20 minutes.`,
-        custom_greeting: `Hello ${candidateName}! Thank you for joining us today. I'm excited to learn more about your experience and discuss the Senior Backend Developer role with Avatar Human Capital.`,
+        conversation_name: `Interview Practice: ${candidateName}`,
+        conversational_context: `You are an elite roleplay facilitator who transforms into any character the user requests: hiring manager, difficult boss, skeptical client, etc. Ask 3 short questions to understand the role, then ask if they want to start. Once roleplay begins, stay in character completely—short snappy responses like a real person. When the scenario ends naturally, ask to continue or exit. If exiting, provide feedback on Strengths, Areas for improvement, and Real-world tips. Never break character unless asked. Match their tone, no repetition, realistic responses. The user ${candidateName} is practicing with you.`,
+        custom_greeting: `Hi ${candidateName}! I'm here to help you practice any interview or conversation scenario you'd like. Just tell me who you want me to be—maybe a tough hiring manager, a friendly recruiter, or even a difficult stakeholder—and what scenario you want to practice. What role should I take on today?`,
         properties: {
           candidate_id: candidateId,
-          position: "Senior Backend Developer",
+          position: "Interview Practice",
           created_at: new Date().toISOString()
         }
       };
@@ -532,10 +532,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!response.ok) {
         const error = await response.text();
-        console.error("Tavus error:", error);
+        console.error("Tavus API error - Status:", response.status);
+        console.error("Tavus API error - Response:", error);
+        console.error("Tavus API error - Request body:", JSON.stringify(requestBody, null, 2));
         return res.status(response.status).json({ 
           message: "Failed to create Tavus video session",
-          details: error
+          details: error,
+          status: response.status
         });
       }
 

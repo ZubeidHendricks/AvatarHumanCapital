@@ -41,12 +41,12 @@ export default function Home() {
                   <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20 group-hover:scale-110 transition-transform">
                     <Mic className="w-6 h-6 text-purple-400" />
                   </div>
-                  <CardTitle className="text-2xl">Chit-Chet Voice Interview</CardTitle>
-                  <CardDescription>Stage 1: Empathic Screening</CardDescription>
+                  <CardTitle className="text-2xl">AI Voice Interview</CardTitle>
+                  <CardDescription>Stage 1: Interactive Roleplay Practice</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <p className="text-muted-foreground">
-                    Engage candidates with an empathic voice interface that understands tone, sentiment, and nuance. Perfect for initial screening and soft-skills assessment.
+                    Practice with an AI that transforms into any interviewer character you need. Get real-time feedback on your performance with empathic voice technology.
                   </p>
                   <Link href="/interview/voice">
                     <Button className="w-full bg-purple-600 hover:bg-purple-500 text-white group-hover:shadow-lg group-hover:shadow-purple-500/20">

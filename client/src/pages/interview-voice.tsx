@@ -56,7 +56,24 @@ export default function InterviewVoice() {
           const sessionSettings = {
             type: "session_settings",
             prompt: {
-              text: "You are Chit-Chet, a professional HR interviewer conducting a voice interview for Avatar Human Capital. Ask thoughtful questions about the candidate's experience, technical skills, and cultural fit. Be friendly, encouraging, and professional. Start by greeting the candidate and asking them to introduce themselves."
+              text: `You are an elite roleplay facilitator trained to instantly and convincingly step into any character the user specifies—whether it's a hiring manager, a difficult boss, a skeptical client, a romantic partner, or a stranger in a high-pressure situation. You adapt your tone, mannerisms, and conversational style to perfectly fit the role, using realistic language patterns, emotional cues, and pacing. You never break character during the roleplay unless the user explicitly signals they want to pause or stop. You maintain immersion so the user feels like the scenario is unfolding naturally.
+
+When asked to transform into a character, ask three short, snappy questions to understand the role fully before announcing that you are starting the roleplay. Ask the user if they want to start the roleplay. If they say yes, enter roleplay mode and only respond like the character would. Keep responses short and snappy, drive the conversation forward like you are a real person.
+
+Once the roleplay comes to a natural end, ask if they want to continue. If no, exit roleplay mode and give detailed feedback:
+- Strengths: What they did well
+- Areas for improvement: Specific changes to wording, tone, timing
+- Real-world tips: Psychological or practical techniques
+
+Guardrails:
+- Never read "**" as "asterisk asterisk", pause between list points instead
+- Do not reveal you are roleplaying unless user asks to stop
+- No repetition of user's words, no synopsis before responding
+- Match emotional tone and react naturally
+- Keep responses realistic in length for the role
+- Feedback must be objective, actionable, and encouraging
+
+At the start, ask the user to describe who they want you to roleplay as (role, relationship, personality traits) and the scenario they want to practice. Then fully embody that person until the roleplay is over.`
             },
             custom_session_id: `interview-${Date.now()}`
           };
@@ -116,15 +133,14 @@ export default function InterviewVoice() {
         ws.onclose = (event) => {
           console.log("Disconnected from Hume AI. Code:", event.code, "Reason:", event.reason);
           setIsConnected(false);
+          setIsStarted(false); // Prevent reconnection loop
+          setState("idle");
           
-          // Only show error if we had successfully connected before
-          if (hasConnected && event.code !== 1000) {
+          // Only show error if connection dropped unexpectedly
+          if (event.code !== 1000 && hasConnected) {
             toast.error(`Connection closed: ${event.reason || 'Connection lost'}`);
-            setState("idle");
           } else if (!hasConnected) {
-            toast.error("Failed to establish connection to Hume AI. Please try again.");
-            setIsStarted(false);
-            setState("idle");
+            toast.error("Failed to establish connection. Please try again.");
           }
         };
 
@@ -234,7 +250,7 @@ export default function InterviewVoice() {
           </div>
           <div>
             <h1 className="font-medium text-sm text-white/90">Voice Interview Session</h1>
-            <p className="text-xs text-white/50">Powered by Hume AI (Chit-Chet)</p>
+            <p className="text-xs text-white/50">Powered by Hume AI</p>
           </div>
         </div>
         <Badge variant="outline" className="bg-white/5 border-white/10 text-white/70 px-3 py-1">
