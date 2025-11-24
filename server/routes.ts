@@ -520,12 +520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         persona_id: process.env.TAVUS_PERSONA_ID || "default_persona",
         conversation_name: `${role} Interview: ${candidateName}`,
         conversational_context: conversationalContext,
-        custom_greeting: customGreeting,
-        properties: {
-          candidate_id: candidateId,
-          position: role,
-          created_at: new Date().toISOString()
-        }
+        custom_greeting: customGreeting
       };
 
       const response = await fetch("https://tavusapi.com/v2/conversations", {
