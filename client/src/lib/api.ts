@@ -55,6 +55,10 @@ export const candidateService = {
 };
 
 export const tavusService = {
+  listPersonas: async (): Promise<{ personas: any[] }> => {
+    const response = await api.get("/tavus/personas");
+    return response.data;
+  },
   createPersona: async (personaData: { 
     personaName?: string; 
     systemPrompt: string; 

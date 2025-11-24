@@ -491,6 +491,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/tavus/personas", async (req, res) => {
+    try {
+      const TAVUS_API_KEY = process.env.TAVUS_API_KEY;
+
+      if (!TAVUS_API_KEY) {
+        return res.status(500).json({ 
+          message: "Tavus API key not configured" 
+        });
+      }
+
+      const response = await fetch("https://tavusapi.com/v2/personas?limit=100&type=user", {
+        method: "GET",
+        headers: {
+          "x-api-key": TAVUS_API_KEY
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Tavus List Personas API error - Status:", response.status);
+        console.error("Tavus List Personas API error - Response:", error);
+        return res.status(response.status).json({ 
+          message: "Failed to fetch Tavus personas",
+          details: error,
+          status: response.status
+        });
+      }
+
+      const data = await response.json();
+      
+      res.json({
+        personas: data.data || []
+      });
+    } catch (error) {
+      console.error("Error fetching Tavus personas:", error);
+      res.status(500).json({ message: "Failed to fetch personas" });
+    }
+  });
+
   app.post("/api/tavus/persona", async (req, res) => {
     try {
       const { personaName, systemPrompt, context, replicaId } = req.body;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/navbar";
 import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, User, Sparkles, MessageSquare, Copy } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, CheckCircle2, User, Sparkles, MessageSquare, Copy, List } from "lucide-react";
 import { tavusService } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -19,6 +20,15 @@ export default function PersonaManagement() {
   const [context, setContext] = useState("");
   const [replicaId, setReplicaId] = useState("r9d30b0e55ac");
   const [createdPersona, setCreatedPersona] = useState<{ personaId: string; personaName: string; createdAt: string } | null>(null);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
+
+  const { data: personasData, isLoading: personasLoading, refetch: refetchPersonas, error: personasError } = useQuery({
+    queryKey: ["tavus-personas"],
+    queryFn: async () => {
+      return await tavusService.listPersonas();
+    },
+    retry: false,
+  });
 
   const createPersonaMutation = useMutation({
     mutationFn: async () => {
@@ -35,11 +45,24 @@ export default function PersonaManagement() {
     onSuccess: (data) => {
       toast.success("Persona created successfully!");
       setCreatedPersona(data);
+      refetchPersonas();
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to create persona");
     },
   });
+
+  const handleSelectPersona = (personaId: string) => {
+    setSelectedPersonaId(personaId);
+    const persona = personasData?.personas.find((p: any) => p.persona_id === personaId);
+    if (persona) {
+      setPersonaName(persona.persona_name || "");
+      setSystemPrompt(persona.system_prompt || "");
+      setContext(persona.context || "");
+      setReplicaId(persona.default_replica_id || persona.replica_id || "r9d30b0e55ac");
+      toast.success(`Loaded ${persona.persona_name || "persona"}`);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,6 +144,54 @@ This is an initial screening interview to assess the candidate's potential fit f
         )}
 
         <div className="grid gap-6">
+          <Card className="bg-black/40 border-white/10">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <List className="h-5 w-5" />
+                Your Existing Personas
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Select a persona to view or edit, or create a new one below
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {personasLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : personasError ? (
+                <div className="text-amber-400 text-sm">
+                  <p>Could not load personas. Please check your Tavus API key in settings.</p>
+                </div>
+              ) : personasData?.personas && personasData.personas.length > 0 ? (
+                <div className="space-y-2">
+                  <Label className="text-white">Select a Persona</Label>
+                  <Select value={selectedPersonaId} onValueChange={handleSelectPersona}>
+                    <SelectTrigger className="bg-black/40 border-white/10 text-white">
+                      <SelectValue placeholder="Choose a persona to edit..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-950 border-white/10">
+                      {personasData.personas.map((persona: any) => (
+                        <SelectItem 
+                          key={persona.persona_id} 
+                          value={persona.persona_id}
+                          className="text-white hover:bg-white/10 focus:bg-white/10"
+                        >
+                          {persona.persona_name || persona.persona_id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-2">
+                    You have {personasData.personas.length} persona{personasData.personas.length !== 1 ? 's' : ''} available
+                  </p>
+                </div>
+              ) : (
+                <p className="text-gray-400 text-sm">No personas found. Create your first one below!</p>
+              )}
+            </CardContent>
+          </Card>
+
           <Card className="bg-black/40 border-white/10">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
