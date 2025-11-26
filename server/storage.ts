@@ -19,6 +19,8 @@ import {
   type InsertInterview,
   type InterviewAssessment,
   type InsertInterviewAssessment,
+  type TenantRequest,
+  type InsertTenantRequest,
   users,
   jobs,
   candidates,
@@ -28,7 +30,8 @@ import {
   onboardingWorkflows,
   tenantConfig,
   interviews,
-  interviewAssessments
+  interviewAssessments,
+  tenantRequests
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte } from "drizzle-orm";
@@ -95,6 +98,14 @@ export interface IStorage {
   getInterviewAssessment(tenantId: string, interviewId: string): Promise<InterviewAssessment | undefined>;
   createInterviewAssessment(tenantId: string, assessment: InsertInterviewAssessment): Promise<InterviewAssessment>;
   updateInterviewAssessment(tenantId: string, id: string, assessment: Partial<InsertInterviewAssessment>): Promise<InterviewAssessment | undefined>;
+  
+  // Tenant Requests (NOT tenant-scoped - global requests for new tenants)
+  getAllTenantRequests(): Promise<TenantRequest[]>;
+  getTenantRequestById(id: string): Promise<TenantRequest | undefined>;
+  getTenantRequestsByStatus(status: string): Promise<TenantRequest[]>;
+  createTenantRequest(request: InsertTenantRequest): Promise<TenantRequest>;
+  updateTenantRequest(id: string, updates: Partial<InsertTenantRequest>): Promise<TenantRequest | undefined>;
+  deleteTenantRequest(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -539,6 +550,42 @@ export class DatabaseStorage implements IStorage {
       .where(eq(interviewAssessments.id, id))
       .returning();
     return assessment || undefined;
+  }
+
+  // Tenant Requests (NOT tenant-scoped - global requests for new tenants)
+  async getAllTenantRequests(): Promise<TenantRequest[]> {
+    return await db.select().from(tenantRequests).orderBy(desc(tenantRequests.createdAt));
+  }
+
+  async getTenantRequestById(id: string): Promise<TenantRequest | undefined> {
+    const [request] = await db.select().from(tenantRequests).where(eq(tenantRequests.id, id));
+    return request || undefined;
+  }
+
+  async getTenantRequestsByStatus(status: string): Promise<TenantRequest[]> {
+    return await db.select().from(tenantRequests).where(eq(tenantRequests.status, status)).orderBy(desc(tenantRequests.createdAt));
+  }
+
+  async createTenantRequest(insertRequest: InsertTenantRequest): Promise<TenantRequest> {
+    const [request] = await db
+      .insert(tenantRequests)
+      .values(insertRequest)
+      .returning();
+    return request;
+  }
+
+  async updateTenantRequest(id: string, updates: Partial<InsertTenantRequest>): Promise<TenantRequest | undefined> {
+    const [request] = await db
+      .update(tenantRequests)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tenantRequests.id, id))
+      .returning();
+    return request || undefined;
+  }
+
+  async deleteTenantRequest(id: string): Promise<boolean> {
+    const result = await db.delete(tenantRequests).where(eq(tenantRequests.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 

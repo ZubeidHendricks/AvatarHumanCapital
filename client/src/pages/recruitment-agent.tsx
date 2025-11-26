@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,11 @@ export default function RecruitmentAgent() {
   const [minMatchScore, setMinMatchScore] = useState(60);
   const [pollingSessions, setPollingSessions] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
+  const jobsKey = useTenantQueryKey(['jobs']);
+  const recruitmentSessionsKey = useTenantQueryKey(['recruitment-sessions']);
 
   const { data: jobs, isLoading: jobsLoading } = useQuery<Job[]>({
-    queryKey: ["jobs"],
+    queryKey: jobsKey,
     queryFn: async () => {
       const response = await api.get("/jobs");
       return response.data;
@@ -27,7 +30,7 @@ export default function RecruitmentAgent() {
   });
 
   const { data: sessions, isLoading: sessionsLoading } = useQuery<RecruitmentSession[]>({
-    queryKey: ["recruitment-sessions"],
+    queryKey: recruitmentSessionsKey,
     queryFn: async () => {
       const response = await api.get("/recruitment-sessions");
       return response.data;
@@ -41,7 +44,7 @@ export default function RecruitmentAgent() {
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["recruitment-sessions"] });
+      queryClient.invalidateQueries({ queryKey: recruitmentSessionsKey });
       setPollingSessions(prev => new Set(prev).add(data.session.id));
     },
   });

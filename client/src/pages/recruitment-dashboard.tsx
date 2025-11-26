@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { candidateService, jobsService } from "@/lib/api";
+import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Navbar } from "@/components/layout/navbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -114,15 +115,17 @@ const fitScoreData = [
 
 export default function RecruitmentDashboard() {
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
+  const candidatesKey = useTenantQueryKey(['candidates']);
+  const jobsKey = useTenantQueryKey(['jobs']);
 
   const { data: candidates, isLoading: loadingCandidates } = useQuery({
-    queryKey: ['candidates'],
+    queryKey: candidatesKey,
     queryFn: candidateService.getAll,
     retry: 1,
   });
 
   const { data: jobs, isLoading: loadingJobs } = useQuery({
-    queryKey: ['jobs'],
+    queryKey: jobsKey,
     queryFn: jobsService.getAll,
     retry: 1,
   });

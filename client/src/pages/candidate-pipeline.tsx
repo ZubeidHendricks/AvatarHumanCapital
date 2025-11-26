@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { candidateService } from "@/lib/api";
+import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Navbar } from "@/components/layout/navbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,9 +64,10 @@ const PIPELINE_STAGES = [
 export default function CandidatePipeline() {
   const queryClient = useQueryClient();
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
+  const candidatesKey = useTenantQueryKey(['candidates']);
 
   const { data: candidates, isLoading } = useQuery({
-    queryKey: ['candidates'],
+    queryKey: candidatesKey,
     queryFn: candidateService.getAll,
     retry: 1,
   });

@@ -2,7 +2,6 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown, UserSearch, Shield, Settings, Users, Briefcase, TrendingUp } from "lucide-react";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DropdownMenu,
@@ -12,28 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { api } from "@/lib/api";
+import { useTenant } from "@/hooks/useTenant";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-
-  const { data: tenantConfig } = useQuery({
-    queryKey: ["tenant-config"],
-    queryFn: async () => {
-      try {
-        const response = await api.get("/tenant-config");
-        return response.data;
-      } catch {
-        return null;
-      }
-    },
-    retry: false,
-  });
-
-  const isModuleEnabled = (moduleKey: string) => {
-    if (!tenantConfig?.modulesEnabled) return true;
-    return tenantConfig.modulesEnabled[moduleKey] !== false;
-  };
+  const { tenant, isModuleEnabled } = useTenant();
 
   const navLinks = [
     { name: "Solutions", href: "/#solutions" },

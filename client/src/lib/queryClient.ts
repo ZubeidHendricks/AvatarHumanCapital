@@ -55,3 +55,14 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Utility to invalidate all tenant-scoped queries when switching tenants
+export function invalidateAllTenantQueries(tenantId: string) {
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const queryKey = query.queryKey;
+      // Invalidate if first element matches the tenant ID
+      return Array.isArray(queryKey) && queryKey[0] === tenantId;
+    },
+  });
+}

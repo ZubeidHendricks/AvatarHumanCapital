@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { candidateService } from "@/lib/api";
+import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Navbar } from "@/components/layout/navbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,9 +71,11 @@ const whatsappFeed = [
 ];
 
 export default function ExecutiveDashboard() {
+  const candidatesKey = useTenantQueryKey(['candidates']);
+
   // Fetch real candidate data
   const { data: candidates, isLoading: loadingCandidates } = useQuery({
-    queryKey: ['candidates'],
+    queryKey: candidatesKey,
     queryFn: candidateService.getAll,
     retry: 1,
   });

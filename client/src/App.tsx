@@ -23,6 +23,7 @@ import ShortlistedCandidates from "@/pages/shortlisted-candidates";
 import CandidatePipeline from "@/pages/candidate-pipeline";
 import AdminDashboard from "@/pages/admin-dashboard";
 import PersonaManagement from "@/pages/persona-management";
+import TenantRequests from "@/pages/tenant-requests";
 
 function Router() {
   return (
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/executive-dashboard" component={ExecutiveDashboard} />
       <Route path="/recruitment-dashboard" component={RecruitmentDashboard} />
       <Route path="/admin-dashboard" component={AdminDashboard} />
+      <Route path="/tenant-requests" component={TenantRequests} />
       <Route path="/persona-management" component={PersonaManagement} />
       <Route path="/recruitment-agent" component={RecruitmentAgent} />
       <Route path="/integrity-agent" component={IntegrityAgent} />

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { candidateService, jobsService } from "@/lib/api";
 import { Navbar } from "@/components/layout/navbar";
+import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -159,16 +160,18 @@ export default function CandidatesList() {
   const [inviteLink, setInviteLink] = useState("");
 
   const queryClient = useQueryClient();
+  const candidatesKey = useTenantQueryKey(['candidates']);
+  const jobsKey = useTenantQueryKey(['jobs']);
 
   // Fetch candidates and jobs from API
   const { data: candidates, isLoading: loadingCandidates } = useQuery({
-    queryKey: ['candidates'],
+    queryKey: candidatesKey,
     queryFn: candidateService.getAll,
     retry: 1,
   });
 
   const { data: jobs, isLoading: loadingJobs } = useQuery({
-    queryKey: ['jobs'],
+    queryKey: jobsKey,
     queryFn: jobsService.getAll,
     retry: 1,
   });
@@ -178,7 +181,7 @@ export default function CandidatesList() {
     mutationFn: ({ id, updates }: { id: string; updates: any }) => 
       candidateService.update(id, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: candidatesKey });
     },
   });
 
@@ -186,7 +189,7 @@ export default function CandidatesList() {
   const deleteCandidateMutation = useMutation({
     mutationFn: (id: string) => candidateService.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: candidatesKey });
     },
   });
 

@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { jobsService, candidateService } from "@/lib/api";
 import { Navbar } from "@/components/layout/navbar";
+import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -89,7 +90,8 @@ export default function HRDashboard() {
   const [emailMessage, setEmailMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
-
+  const candidatesKey = useTenantQueryKey(['candidates']);
+  const jobsKey = useTenantQueryKey(['jobs']);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [jobTitle, setJobTitle] = useState("");
@@ -101,21 +103,21 @@ export default function HRDashboard() {
   const createJobMutation = useMutation({
     mutationFn: jobsService.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: jobsKey });
     },
   });
 
   const createCandidateMutation = useMutation({
     mutationFn: candidateService.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: candidatesKey });
     },
   });
 
   const deleteCandidateMutation = useMutation({
     mutationFn: candidateService.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: candidatesKey });
       toast.success("Candidate removed successfully");
     },
     onError: () => {
@@ -126,7 +128,7 @@ export default function HRDashboard() {
   const updateCandidateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => candidateService.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: candidatesKey });
       toast.success("Candidate updated successfully");
     },
     onError: () => {
@@ -336,7 +338,7 @@ BENEFITS:
     isLoading: loadingJobs, 
     isError: jobsError 
   } = useQuery({
-    queryKey: ['jobs'],
+    queryKey: jobsKey,
     queryFn: async () => {
       try {
         return await jobsService.getAll();
@@ -354,7 +356,7 @@ BENEFITS:
     isLoading: loadingCandidates,
     isError: candidatesError
   } = useQuery({
-    queryKey: ['candidates'],
+    queryKey: candidatesKey,
     queryFn: async () => {
       try {
         return await candidateService.getAll();
@@ -395,7 +397,7 @@ BENEFITS:
                 <JobCreationChat 
                   onJobCreated={() => {
                     setIsCreateJobOpen(false);
-                    queryClient.invalidateQueries({ queryKey: ['jobs'] });
+                    queryClient.invalidateQueries({ queryKey: jobsKey });
                     toast.success("Job created successfully! AI will start sourcing candidates.");
                   }}
                   onCancel={() => setIsCreateJobOpen(false)}

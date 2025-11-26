@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { candidateService } from "@/lib/api";
+import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,10 +35,11 @@ export default function ShortlistedCandidates() {
   const [inviteLink, setInviteLink] = useState("");
 
   const queryClient = useQueryClient();
+  const candidatesKey = useTenantQueryKey(['candidates']);
 
   // Fetch all candidates from API
   const { data: candidates, isLoading: loadingCandidates } = useQuery({
-    queryKey: ['candidates'],
+    queryKey: candidatesKey,
     queryFn: candidateService.getAll,
     retry: 1,
   });
@@ -47,7 +49,7 @@ export default function ShortlistedCandidates() {
     mutationFn: ({ id, updates }: { id: string; updates: any }) => 
       candidateService.update(id, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: candidatesKey });
     },
   });
 

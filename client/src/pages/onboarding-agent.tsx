@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +65,8 @@ export default function OnboardingAgent() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const candidatesKey = useTenantQueryKey(['candidates']);
+  const onboardingWorkflowKey = useTenantQueryKey(selectedCandidate?.id ? ['onboarding-workflow', selectedCandidate.id] : ['onboarding-workflow']);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -72,7 +75,7 @@ export default function OnboardingAgent() {
   }, [messages]);
 
   const { data: candidates = [], isLoading: candidatesLoading } = useQuery<Candidate[]>({
-    queryKey: ["candidates"],
+    queryKey: candidatesKey,
     queryFn: async () => {
       const response = await api.get("/candidates");
       return response.data;
@@ -80,7 +83,7 @@ export default function OnboardingAgent() {
   });
 
   const { data: workflow, isLoading: workflowLoading } = useQuery<OnboardingWorkflow | null>({
-    queryKey: ["onboarding-workflow", selectedCandidate?.id],
+    queryKey: onboardingWorkflowKey,
     queryFn: async () => {
       if (!selectedCandidate) return null;
       const response = await api.get(`/onboarding/status/${selectedCandidate.id}`);
@@ -140,7 +143,7 @@ export default function OnboardingAgent() {
     },
     onSuccess: (data) => {
       setWorkflowId(data.workflow.id);
-      queryClient.invalidateQueries({ queryKey: ["onboarding-workflow", selectedCandidate?.id] });
+      queryClient.invalidateQueries({ queryKey: onboardingWorkflowKey });
       
       const agentResponse: Message = {
         id: Date.now().toString(),

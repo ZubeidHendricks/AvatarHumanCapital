@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, jsonb, vector } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, jsonb, vector, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -10,7 +10,9 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role").notNull().default("user"), // 'user', 'tenant_admin', 'super_admin'
   isSuperAdmin: integer("is_super_admin").notNull().default(0), // 1 = can access multiple tenants
-});
+}, (table) => ({
+  tenantIdIdx: index("users_tenant_id_idx").on(table.tenantId),
+}));
 
 export const jobs = pgTable("jobs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -48,7 +50,9 @@ export const jobs = pgTable("jobs", {
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("jobs_tenant_id_idx").on(table.tenantId),
+}));
 
 export const candidates = pgTable("candidates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -75,7 +79,10 @@ export const candidates = pgTable("candidates", {
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("candidates_tenant_id_idx").on(table.tenantId),
+  jobIdIdx: index("candidates_job_id_idx").on(table.jobId),
+}));
 
 export const integrityChecks = pgTable("integrity_checks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -94,7 +101,10 @@ export const integrityChecks = pgTable("integrity_checks", {
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("integrity_checks_tenant_id_idx").on(table.tenantId),
+  candidateIdIdx: index("integrity_checks_candidate_id_idx").on(table.candidateId),
+}));
 
 export const recruitmentSessions = pgTable("recruitment_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -110,7 +120,10 @@ export const recruitmentSessions = pgTable("recruitment_sessions", {
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("recruitment_sessions_tenant_id_idx").on(table.tenantId),
+  jobIdIdx: index("recruitment_sessions_job_id_idx").on(table.jobId),
+}));
 
 export const systemSettings = pgTable("system_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -142,7 +155,9 @@ export const recruitmentMetrics = pgTable("recruitment_metrics", {
   pipelineLost: integer("pipeline_lost").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("recruitment_metrics_tenant_id_idx").on(table.tenantId),
+}));
 
 export const onboardingWorkflows = pgTable("onboarding_workflows", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -157,7 +172,10 @@ export const onboardingWorkflows = pgTable("onboarding_workflows", {
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("onboarding_workflows_tenant_id_idx").on(table.tenantId),
+  candidateIdIdx: index("onboarding_workflows_candidate_id_idx").on(table.candidateId),
+}));
 
 export const tenantConfig = pgTable("tenant_config", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -210,7 +228,11 @@ export const interviews = pgTable("interviews", {
   endedAt: timestamp("ended_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("interviews_tenant_id_idx").on(table.tenantId),
+  candidateIdIdx: index("interviews_candidate_id_idx").on(table.candidateId),
+  jobIdIdx: index("interviews_job_id_idx").on(table.jobId),
+}));
 
 export const interviewAssessments = pgTable("interview_assessments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -319,7 +341,15 @@ export const insertTenantRequestSchema = createInsertSchema(tenantRequests).omit
   reviewedAt: true,
 });
 
+// Schema for admin updating/reviewing tenant requests (with validation)
+export const updateTenantRequestSchema = z.object({
+  status: z.enum(['pending', 'approved', 'rejected', 'cancelled']).optional(),
+  adminNotes: z.string().optional(),
+  reviewedAt: z.string().optional(), // ISO timestamp
+});
+
 export type InsertTenantRequest = z.infer<typeof insertTenantRequestSchema>;
+export type UpdateTenantRequest = z.infer<typeof updateTenantRequestSchema>;
 export type TenantRequest = typeof tenantRequests.$inferSelect;
 
 export const insertInterviewSchema = createInsertSchema(interviews, {

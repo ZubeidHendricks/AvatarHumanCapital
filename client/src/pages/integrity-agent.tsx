@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/ui/back-button";
@@ -138,6 +139,8 @@ export default function IntegrityAgent() {
   const [isRunningEvaluation, setIsRunningEvaluation] = useState(false);
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
+  const candidatesKey = useTenantQueryKey(['candidates']);
+  const integrityChecksKey = useTenantQueryKey(['integrity-checks']);
 
   // Auto-select candidate from URL query parameter
   useEffect(() => {
@@ -149,17 +152,17 @@ export default function IntegrityAgent() {
   }, []);
 
   const { data: candidates = [], isLoading: loadingCandidates } = useQuery({
-    queryKey: ["candidates"],
+    queryKey: candidatesKey,
     queryFn: candidateService.getAll,
   });
 
   const { data: allChecks = [], isLoading: loadingChecks } = useQuery({
-    queryKey: ["integrity-checks"],
+    queryKey: integrityChecksKey,
     queryFn: integrityChecksService.getAll,
   });
 
   const { data: candidateChecks = [], refetch: refetchCandidateChecks } = useQuery({
-    queryKey: ["integrity-checks", selectedCandidateId],
+    queryKey: [...integrityChecksKey, selectedCandidateId],
     queryFn: () => integrityChecksService.getByCandidateId(selectedCandidateId),
     enabled: !!selectedCandidateId,
   });
@@ -236,7 +239,7 @@ export default function IntegrityAgent() {
             setIsRunningEvaluation(false);
             setCurrentStepIndex(checkTypes.length - 1);
             await refetchCandidateChecks();
-            queryClient.invalidateQueries({ queryKey: ["integrity-checks"] });
+            queryClient.invalidateQueries({ queryKey: integrityChecksKey });
             toast.success("AI integrity evaluation completed!");
           } else if (updatedCheck.status === "Failed") {
             clearInterval(pollInterval);

@@ -1,13 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCandidateSchema, insertJobSchema, insertIntegrityCheckSchema, insertRecruitmentSessionSchema, insertInterviewSchema, updateInterviewSchema } from "@shared/schema";
+import { insertCandidateSchema, insertJobSchema, insertIntegrityCheckSchema, insertRecruitmentSessionSchema, insertInterviewSchema, updateInterviewSchema, insertTenantRequestSchema, updateTenantRequestSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { IntegrityOrchestrator } from "./integrity-orchestrator";
 import { RecruitmentOrchestrator } from "./recruitment-orchestrator";
 import { cvParser } from "./cv-parser";
 import { embeddingService } from "./embedding-service";
 import { getOrCreateConversation, deleteConversation } from "./job-creation-agent";
+import { requireAdmin } from "./admin-middleware";
 import multer from "multer";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -1239,6 +1240,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching onboarding workflow:", error);
       res.status(500).json({ message: "Failed to fetch onboarding workflow" });
+    }
+  });
+
+  // ===== Tenant Request Routes (for new customer onboarding) =====
+  // Note: Public POST route is registered in server/index.ts BEFORE tenant middleware
+  
+  // Admin route: Get all tenant requests (requires admin authorization)
+  app.get("/api/tenant-requests", requireAdmin, async (req, res) => {
+    try {
+      const status = req.query.status as string | undefined;
+      
+      const requests = status 
+        ? await storage.getTenantRequestsByStatus(status)
+        : await storage.getAllTenantRequests();
+      
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching tenant requests:", error);
+      res.status(500).json({ message: "Failed to fetch tenant requests" });
+    }
+  });
+
+  // Admin route: Get a specific tenant request (requires admin authorization)
+  app.get("/api/tenant-requests/:id", requireAdmin, async (req, res) => {
+    try {
+      const request = await storage.getTenantRequestById(req.params.id);
+      
+      if (!request) {
+        return res.status(404).json({ message: "Tenant request not found" });
+      }
+      
+      res.json(request);
+    } catch (error) {
+      console.error("Error fetching tenant request:", error);
+      res.status(500).json({ message: "Failed to fetch tenant request" });
+    }
+  });
+
+  // Admin route: Update a tenant request (requires admin authorization, for approval/rejection)
+  app.patch("/api/tenant-requests/:id", requireAdmin, async (req, res) => {
+    try {
+      const result = updateTenantRequestSchema.safeParse(req.body);
+      if (!result.success) {
+        const validationError = fromZodError(result.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      
+      const request = await storage.updateTenantRequest(req.params.id, result.data);
+      
+      if (!request) {
+        return res.status(404).json({ message: "Tenant request not found" });
+      }
+      
+      res.json(request);
+    } catch (error) {
+      console.error("Error updating tenant request:", error);
+      res.status(500).json({ message: "Failed to update tenant request" });
+    }
+  });
+
+  // Admin route: Delete a tenant request (requires admin authorization)
+  app.delete("/api/tenant-requests/:id", requireAdmin, async (req, res) => {
+    try {
+      const deleted = await storage.deleteTenantRequest(req.params.id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Tenant request not found" });
+      }
+      
+      res.json({ message: "Tenant request deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting tenant request:", error);
+      res.status(500).json({ message: "Failed to delete tenant request" });
     }
   });
 

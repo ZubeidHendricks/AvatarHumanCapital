@@ -3,6 +3,9 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { resolveTenant } from "./tenant-middleware";
 import { seedDefaultTenant } from "./seed-default-tenant";
+import { storage } from "./storage";
+import { insertTenantRequestSchema } from "@shared/schema";
+import { fromZodError } from "zod-validation-error";
 
 const app = express();
 
@@ -17,6 +20,24 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+
+// PUBLIC route for tenant request submission (registered BEFORE tenant middleware)
+// This allows anyone to submit a tenant request without needing an existing tenant
+app.post("/api/tenant-requests", async (req, res) => {
+  try {
+    const result = insertTenantRequestSchema.safeParse(req.body);
+    if (!result.success) {
+      const validationError = fromZodError(result.error);
+      return res.status(400).json({ message: validationError.message });
+    }
+    
+    const request = await storage.createTenantRequest(result.data);
+    res.status(201).json(request);
+  } catch (error) {
+    console.error("Error submitting tenant request:", error);
+    res.status(500).json({ message: "Failed to submit tenant request" });
+  }
+});
 
 // Apply tenant resolution middleware ONLY to API routes to avoid blocking static assets
 app.use('/api', resolveTenant);
