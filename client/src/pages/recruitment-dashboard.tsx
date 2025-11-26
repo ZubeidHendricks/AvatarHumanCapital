@@ -54,12 +54,12 @@ const jobHealthData = [
 ];
 
 const talentPipelineData = [
-  { stage: "Matching", count: 2, color: "#8b5cf6" },
-  { stage: "Screening", count: 3, color: "#6366f1" },
-  { stage: "Shortlisted", count: 30, color: "#3b82f6" },
-  { stage: "Interview", count: 92, color: "#0ea5e9" },
-  { stage: "Offer", count: 152, color: "#10b981" },
-  { stage: "Hired", count: 27, color: "#22c55e" },
+  { stage: "Screening", count: 200, color: "#0c5f7a" },
+  { stage: "Shortlisted", count: 65, color: "#0c5f7a" },
+  { stage: "Interview", count: 10, color: "#0c5f7a" },
+  { stage: "Lost", count: 24, color: "#0c5f7a" },
+  { stage: "Offer", count: 5, color: "#0c5f7a" },
+  { stage: "Hired", count: 2, color: "#0c5f7a" },
 ];
 
 export default function RecruitmentDashboard() {
@@ -75,20 +75,20 @@ export default function RecruitmentDashboard() {
       return talentPipelineData;
     }
 
-    const matching = candidates.filter(c => c.stage === "Matching").length;
     const screening = candidates.filter(c => c.stage === "Screening").length;
     const shortlisted = candidates.filter(c => c.stage === "Shortlisted").length;
     const interview = candidates.filter(c => c.stage === "Interview").length;
+    const lost = candidates.filter(c => c.stage === "Lost" || c.status === "Rejected").length;
     const offer = candidates.filter(c => c.stage === "Offer").length;
     const hired = candidates.filter(c => c.stage === "Hired").length;
 
     return [
-      { stage: "Matching", count: matching, color: "#8b5cf6" },
-      { stage: "Screening", count: screening, color: "#6366f1" },
-      { stage: "Shortlisted", count: shortlisted, color: "#3b82f6" },
-      { stage: "Interview", count: interview, color: "#0ea5e9" },
-      { stage: "Offer", count: offer, color: "#10b981" },
-      { stage: "Hired", count: hired, color: "#22c55e" },
+      { stage: "Screening", count: screening, color: "#0c5f7a" },
+      { stage: "Shortlisted", count: shortlisted, color: "#0c5f7a" },
+      { stage: "Interview", count: interview, color: "#0c5f7a" },
+      { stage: "Lost", count: lost, color: "#0c5f7a" },
+      { stage: "Offer", count: offer, color: "#0c5f7a" },
+      { stage: "Hired", count: hired, color: "#0c5f7a" },
     ];
   }, [candidates]);
 
@@ -97,6 +97,11 @@ export default function RecruitmentDashboard() {
   const avgRevenuePerPlacement = totalRevenue / totalPlacements;
 
   const totalJobHealth = jobHealthData.reduce((sum, j) => sum + j.value, 0);
+  
+  // Calculate metrics from live data
+  const totalCandidates = candidates?.length || 0;
+  const totalShortlisted = candidates?.filter(c => c.stage === "Shortlisted").length || 0;
+  const totalLost = candidates?.filter(c => c.stage === "Lost" || c.status === "Rejected").length || 0;
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -117,56 +122,58 @@ export default function RecruitmentDashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-black/40 border-white/10">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-400">Total Placements</CardTitle>
-                <Briefcase className="h-4 w-4 text-purple-400" />
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
+          <Card className="bg-[#0c5f7a] border-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-normal text-white/80">Total Revenue YTD</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{totalPlacements}</div>
-              <p className="text-xs text-gray-500 mt-1">Year to date</p>
+              <div className="text-2xl font-bold text-white">R{(totalRevenue / 1000000).toFixed(2)}m</div>
             </CardContent>
           </Card>
 
-          <Card className="bg-black/40 border-white/10">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-400">Total Revenue</CardTitle>
-                <DollarSign className="h-4 w-4 text-green-400" />
-              </div>
+          <Card className="bg-[#0c5f7a] border-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-normal text-white/80">Active Job Searches</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">R{(totalRevenue / 1000).toFixed(0)}k</div>
-              <p className="text-xs text-gray-500 mt-1">Across all placements</p>
+              <div className="text-2xl font-bold text-white">{totalJobHealth}</div>
             </CardContent>
           </Card>
 
-          <Card className="bg-black/40 border-white/10">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-400">Avg Revenue/Placement</CardTitle>
-                <TrendingUp className="h-4 w-4 text-blue-400" />
-              </div>
+          <Card className="bg-[#0c5f7a] border-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-normal text-white/80">Total Candidates</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">R{(avgRevenuePerPlacement / 1000).toFixed(0)}k</div>
-              <p className="text-xs text-gray-500 mt-1">Per successful hire</p>
+              <div className="text-2xl font-bold text-white">{totalCandidates}</div>
             </CardContent>
           </Card>
 
-          <Card className="bg-black/40 border-white/10">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-400">Active Candidates</CardTitle>
-                <Users className="h-4 w-4 text-cyan-400" />
-              </div>
+          <Card className="bg-[#0c5f7a] border-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-normal text-white/80">Total Shortlisted</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{candidates?.length || 0}</div>
-              <p className="text-xs text-gray-500 mt-1">In pipeline</p>
+              <div className="text-2xl font-bold text-white">{totalShortlisted}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-[#0c5f7a] border-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-normal text-white/80">Total Placements</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{totalPlacements}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-[#0c5f7a] border-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-normal text-white/80">Total Lost</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{totalLost}</div>
             </CardContent>
           </Card>
         </div>
