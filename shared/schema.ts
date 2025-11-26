@@ -173,6 +173,24 @@ export const tenantConfig = pgTable("tenant_config", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const tenantRequests = pgTable("tenant_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyName: text("company_name").notNull(),
+  requestedSubdomain: text("requested_subdomain").notNull(),
+  contactName: text("contact_name").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  contactPhone: text("contact_phone"),
+  industry: text("industry"),
+  companySize: text("company_size"), // 'small', 'medium', 'large', 'enterprise'
+  message: text("message"),
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected', 'cancelled'
+  adminNotes: text("admin_notes"),
+  reviewedBy: varchar("reviewed_by"), // User ID of admin who reviewed
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const interviews = pgTable("interviews", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id"),
@@ -287,6 +305,17 @@ export const insertTenantConfigSchema = createInsertSchema(tenantConfig).omit({
 
 export type InsertTenantConfig = z.infer<typeof insertTenantConfigSchema>;
 export type TenantConfig = typeof tenantConfig.$inferSelect;
+
+export const insertTenantRequestSchema = createInsertSchema(tenantRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  reviewedBy: true,
+  reviewedAt: true,
+});
+
+export type InsertTenantRequest = z.infer<typeof insertTenantRequestSchema>;
+export type TenantRequest = typeof tenantRequests.$inferSelect;
 
 export const insertInterviewSchema = createInsertSchema(interviews, {
   candidateId: z.string().nullable().optional(),
