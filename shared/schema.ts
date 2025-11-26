@@ -115,6 +115,27 @@ export const systemSettings = pgTable("system_settings", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const recruitmentMetrics = pgTable("recruitment_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  month: timestamp("month").notNull(),
+  placements: integer("placements").notNull().default(0),
+  revenue: integer("revenue").notNull().default(0),
+  avgRevenue: integer("avg_revenue").notNull().default(0),
+  jobsOnTrack: integer("jobs_on_track").notNull().default(0),
+  jobsAtRisk: integer("jobs_at_risk").notNull().default(0),
+  jobsLost: integer("jobs_lost").notNull().default(0),
+  jobsCompleted: integer("jobs_completed").notNull().default(0),
+  pipelineMatching: integer("pipeline_matching").notNull().default(0),
+  pipelineScreening: integer("pipeline_screening").notNull().default(0),
+  pipelineShortlisted: integer("pipeline_shortlisted").notNull().default(0),
+  pipelineInterview: integer("pipeline_interview").notNull().default(0),
+  pipelineOffer: integer("pipeline_offer").notNull().default(0),
+  pipelineHired: integer("pipeline_hired").notNull().default(0),
+  pipelineLost: integer("pipeline_lost").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const onboardingWorkflows = pgTable("onboarding_workflows", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
@@ -293,3 +314,14 @@ export const insertInterviewAssessmentSchema = createInsertSchema(interviewAsses
 
 export type InsertInterviewAssessment = z.infer<typeof insertInterviewAssessmentSchema>;
 export type InterviewAssessment = typeof interviewAssessments.$inferSelect;
+
+export const insertRecruitmentMetricSchema = createInsertSchema(recruitmentMetrics, {
+  month: z.coerce.date(),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRecruitmentMetric = z.infer<typeof insertRecruitmentMetricSchema>;
+export type RecruitmentMetric = typeof recruitmentMetrics.$inferSelect;
