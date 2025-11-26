@@ -5,12 +5,16 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  role: text("role").notNull().default("user"), // 'user', 'tenant_admin', 'super_admin'
+  isSuperAdmin: integer("is_super_admin").notNull().default(0), // 1 = can access multiple tenants
 });
 
 export const jobs = pgTable("jobs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
   title: text("title").notNull(),
   department: text("department").notNull(),
   description: text("description"),
@@ -48,6 +52,7 @@ export const jobs = pgTable("jobs", {
 
 export const candidates = pgTable("candidates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
   fullName: text("full_name").notNull(),
   email: text("email"),
   phone: text("phone"),
@@ -74,6 +79,7 @@ export const candidates = pgTable("candidates", {
 
 export const integrityChecks = pgTable("integrity_checks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
   candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
   checkType: text("check_type").notNull(),
   status: text("status").notNull().default("Pending"),
@@ -92,6 +98,7 @@ export const integrityChecks = pgTable("integrity_checks", {
 
 export const recruitmentSessions = pgTable("recruitment_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
   jobId: varchar("job_id").notNull().references(() => jobs.id),
   status: text("status").notNull().default("Running"),
   searchQuery: text("search_query"),
@@ -117,6 +124,7 @@ export const systemSettings = pgTable("system_settings", {
 
 export const recruitmentMetrics = pgTable("recruitment_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
   month: timestamp("month").notNull(),
   placements: integer("placements").notNull().default(0),
   revenue: integer("revenue").notNull().default(0),
@@ -138,6 +146,7 @@ export const recruitmentMetrics = pgTable("recruitment_metrics", {
 
 export const onboardingWorkflows = pgTable("onboarding_workflows", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
   candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
   status: text("status").notNull().default("In Progress"),
   currentStep: text("current_step"),
@@ -153,9 +162,10 @@ export const onboardingWorkflows = pgTable("onboarding_workflows", {
 export const tenantConfig = pgTable("tenant_config", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyName: text("company_name").notNull(),
-  subdomain: text("subdomain"),
+  subdomain: text("subdomain").notNull().unique(),
   primaryColor: text("primary_color").default("#0ea5e9"),
   logoUrl: text("logo_url"),
+  tagline: text("tagline"), // Custom welcome message for landing page
   industry: text("industry"),
   modulesEnabled: jsonb("modules_enabled").notNull().default(sql`'{}'::jsonb`),
   apiKeysConfigured: jsonb("api_keys_configured").notNull().default(sql`'{}'::jsonb`),
@@ -165,6 +175,7 @@ export const tenantConfig = pgTable("tenant_config", {
 
 export const interviews = pgTable("interviews", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
   candidateId: varchar("candidate_id").references(() => candidates.id),
   jobId: varchar("job_id").references(() => jobs.id),
   type: text("type").notNull(), // 'voice' | 'video'
