@@ -233,6 +233,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export const insertJobSchema = createInsertSchema(jobs).omit({
   id: true,
+  tenantId: true, // Injected server-side from req.tenant.id to prevent spoofing
   createdAt: true,
   updatedAt: true,
   requirementsEmbedding: true, // Generated automatically by the system
@@ -240,6 +241,7 @@ export const insertJobSchema = createInsertSchema(jobs).omit({
 
 export const insertCandidateSchema = createInsertSchema(candidates).omit({
   id: true,
+  tenantId: true, // Injected server-side from req.tenant.id to prevent spoofing
   createdAt: true,
   updatedAt: true,
 });
@@ -248,6 +250,7 @@ export const insertIntegrityCheckSchema = createInsertSchema(integrityChecks, {
   completedAt: z.coerce.date().optional().nullable(),
 }).omit({
   id: true,
+  tenantId: true, // Injected server-side from req.tenant.id to prevent spoofing
   createdAt: true,
   updatedAt: true,
 });
@@ -256,6 +259,7 @@ export const insertRecruitmentSessionSchema = createInsertSchema(recruitmentSess
   completedAt: z.coerce.date().optional().nullable(),
 }).omit({
   id: true,
+  tenantId: true, // Injected server-side from req.tenant.id to prevent spoofing
   createdAt: true,
   updatedAt: true,
   embedding: true,
@@ -290,6 +294,7 @@ export const insertOnboardingWorkflowSchema = createInsertSchema(onboardingWorkf
   startDate: z.coerce.date().optional().nullable(),
 }).omit({
   id: true,
+  tenantId: true, // Injected server-side from req.tenant.id to prevent spoofing
   createdAt: true,
   updatedAt: true,
 });
@@ -325,6 +330,7 @@ export const insertInterviewSchema = createInsertSchema(interviews, {
   endedAt: z.coerce.date().optional().nullable(),
 }).omit({
   id: true,
+  tenantId: true, // Injected server-side from req.tenant.id to prevent spoofing
   createdAt: true,
   updatedAt: true,
 });
@@ -359,6 +365,7 @@ export const insertRecruitmentMetricSchema = createInsertSchema(recruitmentMetri
   month: z.coerce.date(),
 }).omit({
   id: true,
+  tenantId: true, // Injected server-side from req.tenant.id to prevent spoofing
   createdAt: true,
   updatedAt: true,
 });
