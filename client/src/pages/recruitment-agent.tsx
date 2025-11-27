@@ -146,9 +146,21 @@ export default function RecruitmentAgent() {
   const runningSessions = sessions?.filter(s => s.status === "Running") || [];
   const completedSessions = sessions?.filter(s => s.status === "Completed") || [];
 
+  // Get the most recent completed session to show its candidates
+  const latestSession = sessions
+    ?.filter(s => s.status === "Completed")
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+  // Filter candidates by selected job OR by the latest session's job
+  const activeJobId = selectedJobId || latestSession?.jobId;
+  
   const topCandidates = candidates
-    ?.sort((a, b) => (b.match || 0) - (a.match || 0))
+    ?.filter(c => activeJobId ? c.jobId === activeJobId : true)
+    .sort((a, b) => (b.match || 0) - (a.match || 0))
     .slice(0, 10) || [];
+
+  // Get the job title for display
+  const displayJobTitle = activeJobId ? jobs?.find(j => j.id === activeJobId)?.title : null;
 
   const getAgentAvatar = (agent: string) => {
     switch (agent) {
@@ -461,15 +473,32 @@ export default function RecruitmentAgent() {
               {/* Top Candidates */}
               <Card className="bg-zinc-900/50 border-zinc-800">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2 cursor-pointer" onClick={() => topCandidates.length > 0 && setShowCandidateDialog(true)}>
+                  <CardTitle className="text-lg flex items-center gap-2">
                     <Star className="h-5 w-5 text-yellow-400" />
                     Top Matches
-                    {topCandidates.length > 0 && (
-                      <Badge variant="outline" className="ml-auto text-xs">
-                        Click to view all
-                      </Badge>
-                    )}
                   </CardTitle>
+                  {displayJobTitle && (
+                    <CardDescription className="text-xs text-purple-400 flex items-center gap-1">
+                      <Briefcase className="h-3 w-3" />
+                      For: {displayJobTitle}
+                    </CardDescription>
+                  )}
+                  {!displayJobTitle && jobs && jobs.length > 0 && (
+                    <div className="mt-2">
+                      <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                        <SelectTrigger className="bg-zinc-800 border-zinc-700 h-8 text-xs">
+                          <SelectValue placeholder="Filter by job..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-800 border-zinc-700">
+                          {jobs.map((job) => (
+                            <SelectItem key={job.id} value={job.id} className="text-xs">
+                              {job.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[300px]">
@@ -586,9 +615,14 @@ export default function RecruitmentAgent() {
             <DialogTitle className="text-xl flex items-center gap-2">
               <Star className="h-5 w-5 text-yellow-400" />
               Top Matched Candidates
+              {displayJobTitle && (
+                <Badge className="ml-2 bg-purple-500/20 text-purple-400 border-purple-500/30">
+                  {displayJobTitle}
+                </Badge>
+              )}
             </DialogTitle>
             <DialogDescription className="text-zinc-400">
-              AI-ranked candidates based on job requirements and skill matching
+              {topCandidates.length} candidates ranked by AI based on job requirements and skill matching
             </DialogDescription>
           </DialogHeader>
           
