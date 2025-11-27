@@ -1,13 +1,40 @@
 import axios from "axios";
 import type { Candidate, InsertCandidate, Job, InsertJob, IntegrityCheck, InsertIntegrityCheck, Interview } from "@shared/schema";
 
-const API_URL = "/api";
+// Determine the API URL based on environment
+// In development (Replit), use relative URLs
+// In production (Vercel/custom domain), use the backend API URL
+const getApiUrl = () => {
+  const hostname = window.location.hostname;
+  
+  // Development environments - use relative URL
+  if (hostname === 'localhost' || 
+      hostname.includes('replit') || 
+      hostname.includes('127.0.0.1') ||
+      hostname.includes('.repl.co')) {
+    return '/api';
+  }
+  
+  // Production - check for environment variable or use Replit deployment
+  // For custom domains like avatarhuman.capital, we need to proxy through the same origin
+  // or use a dedicated backend URL
+  const backendUrl = import.meta.env.VITE_API_URL;
+  if (backendUrl) {
+    return backendUrl;
+  }
+  
+  // Default to relative URL (works when frontend and backend are on same domain)
+  return '/api';
+};
+
+const API_URL = getApiUrl();
 
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // Important for cross-origin requests with cookies
 });
 
 export const jobsService = {
