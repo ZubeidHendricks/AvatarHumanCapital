@@ -34,24 +34,29 @@ interface JobSpecData {
 export class JobCreationAgent {
   private conversationHistory: ConversationMessage[] = [];
   private collectedData: JobSpecData = {};
-  private systemPrompt = `You are an expert HR assistant helping to create job requisitions for blue-collar positions in South Africa (truck drivers, logistics workers, warehouse staff, forklift operators, etc.).
+  private systemPrompt = `You are an expert HR assistant helping to create job requisitions in South Africa.
 
-Your role is to:
-1. Ask relevant questions ONE AT A TIME to gather job requirements
-2. Be conversational and helpful
-3. Understand South African context (licenses like Code 10/14/EC, PrDP, locations, currency ZAR)
-4. Extract structured data from responses
-5. Ask follow-up questions based on the job type
+Your goal is to quickly gather the essential job details in a friendly, efficient conversation. Focus on getting:
+1. Job title (what position?)
+2. Department/team
+3. Location (city/province)
+4. Key requirements (experience, licenses, skills)
+5. Salary range or pay rate (in ZAR)
 
-Important job types and their requirements:
-- **Truck Drivers**: Licenses (Code 10, Code 14, Code EC), PrDP, vehicle type, experience, routes
-- **Forklift Operators**: Forklift license, warehouse experience, shift work
-- **Warehouse Workers**: Physical fitness, equipment operation, inventory management
-- **Logistics Coordinators**: Planning experience, transport management, scheduling
+For blue-collar roles, understand South African context:
+- Truck driver licenses: Code 10, Code 14, Code EC, PrDP
+- Forklift/warehouse certifications
+- Physical requirements
 
-After gathering all information, you'll provide a structured summary for confirmation.
+IMPORTANT INSTRUCTIONS:
+- Ask 2-3 related questions at once to speed up the process
+- When you have enough info (job title + 3 other fields), summarize what you've collected and confirm if the user wants to create the job
+- Be concise and friendly
+- If the user provides multiple details at once, acknowledge them all
 
-Start by asking what type of position they're hiring for.`;
+When summarizing, say something like: "I've collected all the essential details. Ready to create this job posting?"
+
+Start by greeting and asking what position they need to fill.`;
 
   constructor() {
     this.conversationHistory.push({
@@ -201,25 +206,30 @@ Return ONLY the JSON, no other text.`;
    * Check if we have complete job specification
    */
   private hasCompleteJobSpec(): boolean {
-    // Minimum required fields for a blue-collar job posting
-    const hasBasicInfo = !!(
-      this.collectedData.title &&
-      this.collectedData.department &&
-      this.collectedData.location
-    );
-
-    const hasCompensation = !!(
+    // Minimum required: just title and at least one other field
+    const hasTitle = !!this.collectedData.title;
+    
+    const hasAnyOtherField = !!(
+      this.collectedData.department ||
+      this.collectedData.description ||
+      this.collectedData.location ||
+      this.collectedData.employmentType ||
       this.collectedData.salaryMin ||
-      this.collectedData.salaryMax
-    );
-
-    const hasRequirements = !!(
+      this.collectedData.salaryMax ||
       this.collectedData.minYearsExperience !== undefined ||
       (this.collectedData.licenseRequirements && this.collectedData.licenseRequirements.length > 0) ||
       (this.collectedData.certificationsRequired && this.collectedData.certificationsRequired.length > 0)
     );
 
-    return hasBasicInfo && (hasCompensation || hasRequirements);
+    // Count how many fields are filled
+    const filledFields = Object.entries(this.collectedData).filter(([_, v]) => {
+      if (v === undefined || v === null || v === '') return false;
+      if (Array.isArray(v) && v.length === 0) return false;
+      return true;
+    }).length;
+
+    // Complete if we have title + at least 3 other fields
+    return hasTitle && filledFields >= 4;
   }
 
   /**
