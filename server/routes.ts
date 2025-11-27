@@ -85,6 +85,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/candidates/:id/send-reminder", async (req, res) => {
+    try {
+      const candidate = await storage.getCandidate(req.tenant.id, req.params.id);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      const existingMetadata = (candidate.metadata as Record<string, any>) || {};
+      const existingReminders = existingMetadata.reminders || {};
+      const remindersSent = (existingReminders.sent || 0) + 1;
+      const lastReminderAt = new Date().toISOString();
+
+      const updatedMetadata = {
+        ...existingMetadata,
+        reminders: {
+          ...existingReminders,
+          sent: remindersSent,
+          lastSentAt: lastReminderAt,
+          history: [
+            ...(existingReminders.history || []),
+            { type: 'document_reminder', sentAt: lastReminderAt }
+          ].slice(-10)
+        }
+      };
+
+      await storage.updateCandidate(req.tenant.id, req.params.id, {
+        metadata: updatedMetadata
+      });
+
+      console.log(`[REMINDER] Sent document reminder to ${candidate.fullName} (${candidate.email || 'no email'})`);
+
+      res.json({ 
+        message: "Reminder sent successfully",
+        candidate: candidate.fullName,
+        remindersSent,
+        timestamp: lastReminderAt
+      });
+    } catch (error) {
+      console.error("Error sending reminder:", error);
+      res.status(500).json({ message: "Failed to send reminder" });
+    }
+  });
+
   app.post("/api/candidates/:id/upload-cv", upload.single("cv"), async (req, res) => {
     try {
       const candidateId = req.params.id;

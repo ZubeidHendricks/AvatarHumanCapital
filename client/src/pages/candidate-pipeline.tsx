@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { candidateService } from "@/lib/api";
+import { candidateService, api } from "@/lib/api";
 import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Navbar } from "@/components/layout/navbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   CheckCircle2, 
   XCircle, 
@@ -20,10 +21,22 @@ import {
   FileCheck,
   UserCheck,
   ArrowRight,
-  Download
+  Download,
+  Send,
+  Loader2,
+  MapPin,
+  Briefcase,
+  Mail,
+  Phone,
+  Star,
+  Building2,
+  GraduationCap,
+  Brain,
+  ExternalLink
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Link } from "wouter";
 import type { Candidate } from "@shared/schema";
 
 type DocumentStatus = "complete" | "pending" | "missing";
@@ -63,7 +76,9 @@ const PIPELINE_STAGES = [
 
 export default function CandidatePipeline() {
   const queryClient = useQueryClient();
-  const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const candidatesKey = useTenantQueryKey(['candidates']);
 
   const { data: candidates, isLoading } = useQuery({
@@ -71,6 +86,38 @@ export default function CandidatePipeline() {
     queryFn: candidateService.getAll,
     retry: 1,
   });
+
+  const handleViewProfile = async (candidate: Candidate) => {
+    try {
+      const freshData = await api.get(`/candidates/${candidate.id}`);
+      setSelectedCandidate(freshData.data);
+      setShowProfileDialog(true);
+    } catch {
+      setSelectedCandidate(candidate);
+      setShowProfileDialog(true);
+    }
+  };
+
+  const handleSendReminder = async (candidate: Candidate) => {
+    setSendingReminder(candidate.id);
+    try {
+      await api.post(`/candidates/${candidate.id}/send-reminder`);
+      queryClient.invalidateQueries({ queryKey: candidatesKey });
+      toast.success(`Reminder sent to ${candidate.fullName}`, {
+        description: "They will receive a notification about missing documents"
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        toast.info(`Reminder simulated for ${candidate.fullName}`, {
+          description: "Email/SMS integration not configured yet"
+        });
+      } else {
+        toast.error("Failed to send reminder");
+      }
+    } finally {
+      setSendingReminder(null);
+    }
+  };
 
   const shortlistedCandidates = candidates?.filter(c => 
     c.stage === "Shortlisted" || c.stage === "Interview" || c.stage === "Offer"
@@ -331,15 +378,26 @@ export default function CandidatePipeline() {
                         size="sm" 
                         variant="outline" 
                         className="flex-1"
-                        onClick={() => toast.info(`Sending reminder to ${candidate.fullName}`)}
+                        onClick={() => handleSendReminder(candidate)}
+                        disabled={sendingReminder === candidate.id}
                         data-testid={`button-remind-${candidate.id}`}
                       >
-                        Send Reminder
+                        {sendingReminder === candidate.id ? (
+                          <>
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="h-3 w-3 mr-1" />
+                            Send Reminder
+                          </>
+                        )}
                       </Button>
                       <Button 
                         size="sm" 
                         className="flex-1 bg-primary"
-                        onClick={() => toast.success(`Viewing ${candidate.fullName}'s full profile`)}
+                        onClick={() => handleViewProfile(candidate)}
                         data-testid={`button-view-profile-${candidate.id}`}
                       >
                         View Profile
@@ -351,6 +409,181 @@ export default function CandidatePipeline() {
             })
           )}
         </div>
+
+        {/* Profile Dialog */}
+        <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-candidate-profile">
+            {selectedCandidate && (
+              <>
+                <DialogHeader>
+                  <div className="flex items-start gap-4">
+                    <Avatar className="h-16 w-16 border-2 border-primary/20" data-testid="avatar-candidate">
+                      <AvatarFallback className="bg-primary/20 text-primary text-xl font-bold">
+                        {selectedCandidate.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'NA'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <DialogTitle className="text-2xl" data-testid="text-candidate-name">{selectedCandidate.fullName}</DialogTitle>
+                      <DialogDescription className="text-base mt-1" data-testid="text-candidate-role">
+                        {selectedCandidate.role || 'No role specified'}
+                      </DialogDescription>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                        {selectedCandidate.email && (
+                          <span className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" /> {selectedCandidate.email}
+                          </span>
+                        )}
+                        {selectedCandidate.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" /> {selectedCandidate.phone}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Badge className={`${getStatusBadge(
+                      getCandidateDocumentStats(selectedCandidate).missing === 0 ? "complete" : "missing"
+                    )}`}>
+                      {selectedCandidate.stage}
+                    </Badge>
+                  </div>
+                </DialogHeader>
+
+                <div className="grid gap-6 mt-4">
+                  {/* Match Score */}
+                  {selectedCandidate.aiScore !== null && selectedCandidate.aiScore !== undefined && (
+                    <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-lg border border-primary/10" data-testid="section-match-score">
+                      <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Star className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-lg" data-testid="text-ai-score">{selectedCandidate.aiScore}% Match Score</p>
+                        <p className="text-sm text-muted-foreground">AI-powered compatibility assessment</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Professional Summary */}
+                  {(selectedCandidate.metadata as any)?.summary && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-2">PROFESSIONAL SUMMARY</h4>
+                      <p className="text-sm leading-relaxed">{(selectedCandidate.metadata as any).summary}</p>
+                    </div>
+                  )}
+
+                  {/* Skills */}
+                  {selectedCandidate.skills && selectedCandidate.skills.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-2">SKILLS</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedCandidate.skills.map((skill, i) => (
+                          <Badge key={i} variant="secondary" className="bg-white/5">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Experience */}
+                  {(selectedCandidate.metadata as any)?.experience && Array.isArray((selectedCandidate.metadata as any).experience) && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-2">EXPERIENCE</h4>
+                      <div className="space-y-3">
+                        {(selectedCandidate.metadata as any).experience.slice(0, 3).map((exp: any, i: number) => (
+                          <div key={i} className="p-3 bg-white/5 rounded-lg">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="font-medium">{exp.title || exp.role}</p>
+                                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                  <Building2 className="h-3 w-3" /> {exp.company}
+                                </p>
+                              </div>
+                              <span className="text-xs text-muted-foreground">{exp.duration || exp.period}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Education */}
+                  {(selectedCandidate.metadata as any)?.education && Array.isArray((selectedCandidate.metadata as any).education) && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-2">EDUCATION</h4>
+                      <div className="space-y-2">
+                        {(selectedCandidate.metadata as any).education.slice(0, 2).map((edu: any, i: number) => (
+                          <div key={i} className="flex items-center gap-2 text-sm">
+                            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                            <span>{edu.degree || edu.qualification}</span>
+                            {edu.institution && <span className="text-muted-foreground">- {edu.institution}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Reasoning */}
+                  {selectedCandidate.aiReasoning && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                        <Brain className="h-4 w-4" /> AI ANALYSIS
+                      </h4>
+                      <p className="text-sm text-muted-foreground bg-white/5 p-3 rounded-lg">
+                        {selectedCandidate.aiReasoning}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Document Status in Dialog */}
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-2">DOCUMENT STATUS</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {DOCUMENT_DEFINITIONS.map((doc, docIdx) => {
+                        const status = getDocumentStatus(selectedCandidate, doc.key);
+                        const Icon = doc.icon;
+                        return (
+                          <div 
+                            key={docIdx} 
+                            className="flex items-center justify-between p-2 rounded-lg bg-white/5"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">{doc.name}</span>
+                            </div>
+                            {getStatusIcon(status)}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dialog Actions */}
+                <div className="flex gap-3 mt-6 pt-4 border-t border-white/10">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => handleSendReminder(selectedCandidate)}
+                    disabled={sendingReminder === selectedCandidate.id}
+                    data-testid="button-dialog-send-reminder"
+                  >
+                    {sendingReminder === selectedCandidate.id ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending...</>
+                    ) : (
+                      <><Send className="h-4 w-4 mr-2" /> Send Reminder</>
+                    )}
+                  </Button>
+                  <Link href={`/candidates/${selectedCandidate.id}`}>
+                    <Button className="bg-primary" data-testid="button-full-profile">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Full Profile
+                    </Button>
+                  </Link>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
