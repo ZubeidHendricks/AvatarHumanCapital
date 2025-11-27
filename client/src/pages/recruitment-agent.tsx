@@ -13,10 +13,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   Loader2, Users, Target, TrendingUp, CheckCircle, AlertCircle, Search, Sparkles,
   Bot, Brain, FileSearch, UserCheck, Zap, Clock, ArrowRight, Play, MessageSquare,
-  ChevronRight, Star, Briefcase, MapPin, Award, Activity
+  ChevronRight, Star, Briefcase, MapPin, Award, Activity, X, Building2, GraduationCap,
+  Mail, Phone, Linkedin, FileText, ThumbsUp, Eye
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Job, RecruitmentSession, Candidate } from "@shared/schema";
@@ -51,6 +53,8 @@ export default function RecruitmentAgent() {
   const [agentMessages, setAgentMessages] = useState<typeof AGENT_MESSAGES>([]);
   const [isSimulating, setIsSimulating] = useState(false);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [showCandidateDialog, setShowCandidateDialog] = useState(false);
   
   const queryClient = useQueryClient();
   const jobsKey = useTenantQueryKey(['jobs']);
@@ -133,9 +137,18 @@ export default function RecruitmentAgent() {
     });
   };
 
+  const handleCandidateClick = (candidate: Candidate) => {
+    setSelectedCandidate(candidate);
+    setShowCandidateDialog(true);
+  };
+
   const selectedJob = jobs?.find(j => j.id === selectedJobId);
   const runningSessions = sessions?.filter(s => s.status === "Running") || [];
   const completedSessions = sessions?.filter(s => s.status === "Completed") || [];
+
+  const topCandidates = candidates
+    ?.sort((a, b) => (b.match || 0) - (a.match || 0))
+    .slice(0, 10) || [];
 
   const getAgentAvatar = (agent: string) => {
     switch (agent) {
@@ -155,6 +168,25 @@ export default function RecruitmentAgent() {
       case "Ranking Engine": return "bg-orange-500";
       default: return "bg-gray-500";
     }
+  };
+
+  const getMatchColor = (score: number) => {
+    if (score >= 85) return 'text-green-400 bg-green-500/20 border-green-500/30';
+    if (score >= 70) return 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
+    if (score >= 50) return 'text-orange-400 bg-orange-500/20 border-orange-500/30';
+    return 'text-zinc-400 bg-zinc-500/20 border-zinc-500/30';
+  };
+
+  const getMatchLabel = (score: number) => {
+    if (score >= 85) return 'Excellent Match';
+    if (score >= 70) return 'Good Match';
+    if (score >= 50) return 'Fair Match';
+    return 'Low Match';
+  };
+
+  const getCandidateJob = (jobId: string | null) => {
+    if (!jobId || !jobs) return null;
+    return jobs.find(j => j.id === jobId);
   };
 
   return (
@@ -429,52 +461,52 @@ export default function RecruitmentAgent() {
               {/* Top Candidates */}
               <Card className="bg-zinc-900/50 border-zinc-800">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
+                  <CardTitle className="text-lg flex items-center gap-2 cursor-pointer" onClick={() => topCandidates.length > 0 && setShowCandidateDialog(true)}>
                     <Star className="h-5 w-5 text-yellow-400" />
                     Top Matches
+                    {topCandidates.length > 0 && (
+                      <Badge variant="outline" className="ml-auto text-xs">
+                        Click to view all
+                      </Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[300px]">
-                    {candidates && candidates.length > 0 ? (
+                    {topCandidates.length > 0 ? (
                       <div className="space-y-3">
-                        {candidates
-                          .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
-                          .slice(0, 5)
-                          .map((candidate, index) => (
-                            <div
-                              key={candidate.id}
-                              className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50 hover:border-purple-500/30 transition-all cursor-pointer"
-                            >
-                              <div className="relative">
-                                <Avatar className="h-10 w-10 bg-gradient-to-br from-purple-500 to-blue-500">
-                                  <AvatarFallback className="text-white text-sm font-bold bg-transparent">
-                                    {candidate.fullName?.split(' ').map(n => n[0]).join('') || '?'}
-                                  </AvatarFallback>
-                                </Avatar>
-                                {index < 3 && (
-                                  <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                                    index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-zinc-400' : 'bg-amber-600'
-                                  }`}>
-                                    {index + 1}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{candidate.fullName}</p>
-                                <p className="text-xs text-zinc-500 truncate">{candidate.role || 'No role'}</p>
-                              </div>
-                              <div className="text-right">
-                                <Badge className={`${
-                                  (candidate.aiScore || 0) >= 80 ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                                  (candidate.aiScore || 0) >= 60 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                                  'bg-zinc-500/20 text-zinc-400 border-zinc-500/30'
+                        {topCandidates.slice(0, 5).map((candidate, index) => (
+                          <div
+                            key={candidate.id}
+                            onClick={() => handleCandidateClick(candidate)}
+                            className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50 hover:border-purple-500/30 hover:bg-zinc-800 transition-all cursor-pointer"
+                            data-testid={`candidate-card-${candidate.id}`}
+                          >
+                            <div className="relative">
+                              <Avatar className="h-10 w-10 bg-gradient-to-br from-purple-500 to-blue-500">
+                                <AvatarFallback className="text-white text-sm font-bold bg-transparent">
+                                  {candidate.fullName?.split(' ').map(n => n[0]).join('') || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              {index < 3 && (
+                                <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                                  index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-zinc-400' : 'bg-amber-600'
                                 }`}>
-                                  {candidate.aiScore || 0}%
-                                </Badge>
-                              </div>
+                                  {index + 1}
+                                </div>
+                              )}
                             </div>
-                          ))}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{candidate.fullName}</p>
+                              <p className="text-xs text-zinc-500 truncate">{candidate.role || 'No role'}</p>
+                            </div>
+                            <div className="text-right">
+                              <Badge className={getMatchColor(candidate.match || 0)}>
+                                {candidate.match || 0}%
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <div className="text-center py-8 text-zinc-500">
@@ -483,7 +515,7 @@ export default function RecruitmentAgent() {
                       </div>
                     )}
                   </ScrollArea>
-                  {candidates && candidates.length > 0 && (
+                  {topCandidates.length > 0 && (
                     <Link href="/candidates-list">
                       <Button variant="outline" className="w-full mt-3 border-zinc-700 hover:bg-zinc-800" data-testid="button-view-all-candidates">
                         View All Candidates
@@ -546,6 +578,149 @@ export default function RecruitmentAgent() {
           </div>
         </div>
       </div>
+
+      {/* Candidate Details Dialog */}
+      <Dialog open={showCandidateDialog} onOpenChange={setShowCandidateDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-zinc-900 border-zinc-800 text-white">
+          <DialogHeader className="border-b border-zinc-800 pb-4">
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <Star className="h-5 w-5 text-yellow-400" />
+              Top Matched Candidates
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              AI-ranked candidates based on job requirements and skill matching
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="max-h-[70vh] pr-4">
+            <div className="space-y-4 py-4">
+              {topCandidates.map((candidate, index) => {
+                const candidateJob = getCandidateJob(candidate.jobId);
+                const metadata = candidate.metadata as any;
+                
+                return (
+                  <div
+                    key={candidate.id}
+                    className={`p-4 rounded-lg border transition-all ${
+                      selectedCandidate?.id === candidate.id 
+                        ? 'bg-purple-500/10 border-purple-500/50' 
+                        : 'bg-zinc-800/50 border-zinc-700/50 hover:border-zinc-600'
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      {/* Avatar & Rank */}
+                      <div className="relative flex-shrink-0">
+                        <Avatar className="h-14 w-14 bg-gradient-to-br from-purple-500 to-blue-500">
+                          <AvatarFallback className="text-white text-lg font-bold bg-transparent">
+                            {candidate.fullName?.split(' ').map(n => n[0]).join('') || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        {index < 3 && (
+                          <div className={`absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${
+                            index === 0 ? 'bg-yellow-500 text-black' : index === 1 ? 'bg-zinc-400 text-black' : 'bg-amber-600 text-white'
+                          }`}>
+                            {index + 1}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Main Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3 className="font-semibold text-lg">{candidate.fullName}</h3>
+                            <p className="text-zinc-400">{candidate.role}</p>
+                            {metadata?.company && (
+                              <p className="text-sm text-zinc-500 flex items-center gap-1 mt-1">
+                                <Building2 className="h-3 w-3" /> {metadata.company}
+                              </p>
+                            )}
+                            {(candidate.location || metadata?.location) && (
+                              <p className="text-sm text-zinc-500 flex items-center gap-1">
+                                <MapPin className="h-3 w-3" /> {candidate.location || metadata?.location}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Match Score */}
+                          <div className="text-right flex-shrink-0">
+                            <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg ${getMatchColor(candidate.match || 0)}`}>
+                              <div className="text-center">
+                                <p className="text-2xl font-bold">{candidate.match || 0}%</p>
+                                <p className="text-xs opacity-80">{getMatchLabel(candidate.match || 0)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Skills */}
+                        {candidate.skills && candidate.skills.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-xs text-zinc-500 mb-2">Skills</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {(candidate.skills as string[]).slice(0, 8).map((skill, i) => (
+                                <Badge key={i} variant="outline" className="text-xs bg-zinc-800 border-zinc-700">
+                                  {skill}
+                                </Badge>
+                              ))}
+                              {(candidate.skills as string[]).length > 8 && (
+                                <Badge variant="outline" className="text-xs bg-zinc-800 border-zinc-700">
+                                  +{(candidate.skills as string[]).length - 8} more
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Experience */}
+                        {metadata?.experience && (
+                          <div className="mt-3">
+                            <p className="text-xs text-zinc-500 mb-1">Experience</p>
+                            <p className="text-sm text-zinc-300">{metadata.experience}</p>
+                          </div>
+                        )}
+
+                        {/* AI Reasoning */}
+                        {metadata?.aiReasoning && (
+                          <div className="mt-3 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                            <p className="text-xs text-purple-400 mb-1 flex items-center gap-1">
+                              <Brain className="h-3 w-3" /> AI Analysis
+                            </p>
+                            <p className="text-sm text-zinc-300">{metadata.aiReasoning}</p>
+                          </div>
+                        )}
+
+                        {/* Applied For Job */}
+                        {candidateJob && (
+                          <div className="mt-3 pt-3 border-t border-zinc-700/50">
+                            <p className="text-xs text-zinc-500 flex items-center gap-1">
+                              <Briefcase className="h-3 w-3" /> Applied for: <span className="text-zinc-300">{candidateJob.title}</span>
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="mt-4 flex gap-2">
+                          <Link href={`/candidates-list?candidateId=${candidate.id}`}>
+                            <Button size="sm" className="bg-purple-600 hover:bg-purple-500">
+                              <Eye className="h-4 w-4 mr-1" />
+                              View Full Profile
+                            </Button>
+                          </Link>
+                          <Button size="sm" variant="outline" className="border-zinc-700 hover:bg-zinc-800">
+                            <ThumbsUp className="h-4 w-4 mr-1" />
+                            Shortlist
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
