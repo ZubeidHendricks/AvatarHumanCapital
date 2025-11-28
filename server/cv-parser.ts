@@ -9,36 +9,36 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-// CV Data Schema
+// CV Data Schema - use nullish() to accept both null and undefined
 const EducationSchema = z.object({
   degree: z.string(),
   institution: z.string(),
-  year: z.string().optional(),
-  location: z.string().optional(),
+  year: z.string().nullish(),
+  location: z.string().nullish(),
 });
 
 const ExperienceSchema = z.object({
   title: z.string(),
   company: z.string(),
   duration: z.string(),
-  location: z.string().optional(),
+  location: z.string().nullish(),
   responsibilities: z.array(z.string()),
 });
 
 const CVDataSchema = z.object({
   fullName: z.string(),
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  location: z.string().optional(),
-  summary: z.string().optional(),
-  role: z.string().optional(),
-  yearsOfExperience: z.number().optional(),
+  email: z.string().nullish(),
+  phone: z.string().nullish(),
+  location: z.string().nullish(),
+  summary: z.string().nullish(),
+  role: z.string().nullish(),
+  yearsOfExperience: z.number().nullish(),
   skills: z.array(z.string()),
   education: z.array(EducationSchema),
   experience: z.array(ExperienceSchema),
-  languages: z.array(z.string()).optional(),
-  certifications: z.array(z.string()).optional(),
-  linkedinUrl: z.string().optional(),
+  languages: z.array(z.string()).nullish(),
+  certifications: z.array(z.string()).nullish(),
+  linkedinUrl: z.string().nullish(),
 });
 
 export type CVData = z.infer<typeof CVDataSchema>;
