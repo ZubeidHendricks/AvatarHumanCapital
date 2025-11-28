@@ -2210,6 +2210,214 @@ Format your response as JSON:
     }
   });
 
+  // ==================== EMPLOYEE AMBITIONS ====================
+  
+  // Get all ambitions
+  app.get("/api/workforce/ambitions", async (req, res) => {
+    try {
+      const ambitions = await storage.getEmployeeAmbitions(req.tenant.id);
+      res.json(ambitions);
+    } catch (error) {
+      console.error("Error fetching ambitions:", error);
+      res.json([]);
+    }
+  });
+
+  // Get ambitions for a specific employee
+  app.get("/api/workforce/employees/:employeeId/ambitions", async (req, res) => {
+    try {
+      const ambitions = await storage.getAmbitionsByEmployeeId(req.tenant.id, req.params.employeeId);
+      res.json(ambitions);
+    } catch (error) {
+      console.error("Error fetching employee ambitions:", error);
+      res.json([]);
+    }
+  });
+
+  // Create an ambition
+  app.post("/api/workforce/ambitions", async (req, res) => {
+    try {
+      const ambition = await storage.createEmployeeAmbition(req.tenant.id, req.body);
+      res.status(201).json(ambition);
+    } catch (error) {
+      console.error("Error creating ambition:", error);
+      res.status(500).json({ message: "Failed to create ambition" });
+    }
+  });
+
+  // Update an ambition
+  app.patch("/api/workforce/ambitions/:id", async (req, res) => {
+    try {
+      const ambition = await storage.updateEmployeeAmbition(req.tenant.id, req.params.id, req.body);
+      if (!ambition) {
+        return res.status(404).json({ message: "Ambition not found" });
+      }
+      res.json(ambition);
+    } catch (error) {
+      console.error("Error updating ambition:", error);
+      res.status(500).json({ message: "Failed to update ambition" });
+    }
+  });
+
+  // Delete an ambition
+  app.delete("/api/workforce/ambitions/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteEmployeeAmbition(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Ambition not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting ambition:", error);
+      res.status(500).json({ message: "Failed to delete ambition" });
+    }
+  });
+
+  // ==================== MENTORSHIPS ====================
+  
+  // Get all mentorships with related data
+  app.get("/api/workforce/mentorships", async (req, res) => {
+    try {
+      const mentorships = await storage.getMentorships(req.tenant.id);
+      res.json(mentorships);
+    } catch (error) {
+      console.error("Error fetching mentorships:", error);
+      res.json([]);
+    }
+  });
+
+  // Find potential mentors for a skill
+  app.get("/api/workforce/mentors/find", async (req, res) => {
+    try {
+      const { skillId, minProficiency = "6" } = req.query;
+      if (!skillId) {
+        return res.status(400).json({ message: "skillId is required" });
+      }
+      const mentors = await storage.findPotentialMentors(
+        req.tenant.id, 
+        skillId as string, 
+        parseInt(minProficiency as string)
+      );
+      res.json(mentors);
+    } catch (error) {
+      console.error("Error finding mentors:", error);
+      res.json([]);
+    }
+  });
+
+  // Create a mentorship
+  app.post("/api/workforce/mentorships", async (req, res) => {
+    try {
+      const mentorship = await storage.createMentorship(req.tenant.id, req.body);
+      res.status(201).json(mentorship);
+    } catch (error) {
+      console.error("Error creating mentorship:", error);
+      res.status(500).json({ message: "Failed to create mentorship" });
+    }
+  });
+
+  // Update a mentorship
+  app.patch("/api/workforce/mentorships/:id", async (req, res) => {
+    try {
+      const mentorship = await storage.updateMentorship(req.tenant.id, req.params.id, req.body);
+      if (!mentorship) {
+        return res.status(404).json({ message: "Mentorship not found" });
+      }
+      res.json(mentorship);
+    } catch (error) {
+      console.error("Error updating mentorship:", error);
+      res.status(500).json({ message: "Failed to update mentorship" });
+    }
+  });
+
+  // Delete a mentorship
+  app.delete("/api/workforce/mentorships/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteMentorship(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Mentorship not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting mentorship:", error);
+      res.status(500).json({ message: "Failed to delete mentorship" });
+    }
+  });
+
+  // ==================== GROWTH AREAS ====================
+  
+  // Get all growth areas
+  app.get("/api/workforce/growth-areas", async (req, res) => {
+    try {
+      const areas = await storage.getGrowthAreas(req.tenant.id);
+      res.json(areas);
+    } catch (error) {
+      console.error("Error fetching growth areas:", error);
+      res.json([]);
+    }
+  });
+
+  // Get growth areas for a specific employee
+  app.get("/api/workforce/employees/:employeeId/growth-areas", async (req, res) => {
+    try {
+      const areas = await storage.getGrowthAreasByEmployeeId(req.tenant.id, req.params.employeeId);
+      res.json(areas);
+    } catch (error) {
+      console.error("Error fetching employee growth areas:", error);
+      res.json([]);
+    }
+  });
+
+  // Generate growth areas for an employee (auto-detect skill gaps)
+  app.post("/api/workforce/employees/:employeeId/generate-growth-areas", async (req, res) => {
+    try {
+      const areas = await storage.generateGrowthAreasForEmployee(req.tenant.id, req.params.employeeId);
+      res.status(201).json(areas);
+    } catch (error) {
+      console.error("Error generating growth areas:", error);
+      res.status(500).json({ message: "Failed to generate growth areas" });
+    }
+  });
+
+  // Create a growth area
+  app.post("/api/workforce/growth-areas", async (req, res) => {
+    try {
+      const area = await storage.createGrowthArea(req.tenant.id, req.body);
+      res.status(201).json(area);
+    } catch (error) {
+      console.error("Error creating growth area:", error);
+      res.status(500).json({ message: "Failed to create growth area" });
+    }
+  });
+
+  // Update a growth area
+  app.patch("/api/workforce/growth-areas/:id", async (req, res) => {
+    try {
+      const area = await storage.updateGrowthArea(req.tenant.id, req.params.id, req.body);
+      if (!area) {
+        return res.status(404).json({ message: "Growth area not found" });
+      }
+      res.json(area);
+    } catch (error) {
+      console.error("Error updating growth area:", error);
+      res.status(500).json({ message: "Failed to update growth area" });
+    }
+  });
+
+  // Delete a growth area
+  app.delete("/api/workforce/growth-areas/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteGrowthArea(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Growth area not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting growth area:", error);
+      res.status(500).json({ message: "Failed to delete growth area" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
