@@ -38,60 +38,69 @@ export class WhatsAppService {
     senderType: "ai" | "human" = "human",
     senderId?: string
   ): Promise<WhatsappMessage | null> {
-    if (!this.isConfigured()) {
-      console.warn("WhatsApp API not configured");
-      return null;
-    }
+    let whatsappMessageId: string | undefined;
+    let status: "sent" | "pending" | "failed" = "pending";
+    let apiError: string | undefined;
 
-    try {
-      const response = await fetch(
-        `${WHATSAPP_API_URL}/${this.phoneNumberId}/messages`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${this.token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            to: phone,
-            type: "text",
-            text: { body },
-          }),
+    // Try to send via WhatsApp API if configured
+    if (this.isConfigured()) {
+      try {
+        const response = await fetch(
+          `${WHATSAPP_API_URL}/${this.phoneNumberId}/messages`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${this.token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              messaging_product: "whatsapp",
+              to: phone,
+              type: "text",
+              text: { body },
+            }),
+          }
+        );
+
+        const data: WhatsappApiResponse = await response.json();
+
+        if (response.ok && !data.error) {
+          whatsappMessageId = data.messages?.[0]?.id;
+          status = "sent";
+        } else {
+          apiError = data.error?.message || "Failed to send message";
+          status = "failed";
+          console.warn("WhatsApp API error:", apiError);
         }
-      );
-
-      const data: WhatsappApiResponse = await response.json();
-
-      if (!response.ok || data.error) {
-        throw new Error(data.error?.message || "Failed to send message");
+      } catch (error: any) {
+        apiError = error.message;
+        status = "failed";
+        console.warn("WhatsApp API request failed:", error.message);
       }
-
-      const whatsappMessageId = data.messages?.[0]?.id;
-
-      const message = await storage.createWhatsappMessage(tenantId, {
-        conversationId,
-        whatsappMessageId,
-        direction: "outbound",
-        senderType,
-        senderId,
-        messageType: "text",
-        body,
-        status: "sent",
-        sentAt: new Date(),
-        payload: data as any,
-      });
-
-      await storage.updateWhatsappConversation(tenantId, conversationId, {
-        lastMessageAt: new Date(),
-        lastMessagePreview: body.substring(0, 100),
-      });
-
-      return message;
-    } catch (error) {
-      console.error("Failed to send WhatsApp message:", error);
-      throw error;
+    } else {
+      console.warn("WhatsApp API not configured - storing message locally");
     }
+
+    // Always store the message locally
+    const message = await storage.createWhatsappMessage(tenantId, {
+      conversationId,
+      whatsappMessageId,
+      direction: "outbound",
+      senderType,
+      senderId,
+      messageType: "text",
+      body,
+      status,
+      sentAt: new Date(),
+      payload: apiError ? { error: apiError } : undefined,
+    });
+
+    await storage.updateWhatsappConversation(tenantId, conversationId, {
+      lastMessageAt: new Date(),
+      lastMessagePreview: body.substring(0, 100),
+    });
+
+    return message;
   }
 
   async sendDocumentRequest(

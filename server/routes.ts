@@ -3273,12 +3273,9 @@ Format your response as JSON:
         senderType || "human"
       );
       
-      if (!message) {
-        return res.status(503).json({ message: "WhatsApp API not configured" });
-      }
-      
+      // Message is always stored locally, even if WhatsApp API fails
       res.status(201).json(message);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending WhatsApp message:", error);
       res.status(500).json({ message: "Failed to send message" });
     }
