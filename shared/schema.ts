@@ -514,6 +514,69 @@ export const departments = pgTable("departments", {
   tenantIdIdx: index("departments_tenant_id_idx").on(table.tenantId),
 }));
 
+// Employee Ambitions - Career goals and target roles
+export const employeeAmbitions = pgTable("employee_ambitions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  targetJobId: varchar("target_job_id").references(() => jobs.id), // Target role they're aiming for
+  targetJobTitle: text("target_job_title"), // Free-form if no job exists
+  targetDepartment: text("target_department"),
+  targetTimeframe: text("target_timeframe"), // '6_months', '1_year', '2_years', '3_plus_years'
+  motivation: text("motivation"), // Why they want this role
+  status: text("status").notNull().default("active"), // 'active', 'achieved', 'paused', 'cancelled'
+  matchScore: integer("match_score"), // 0-100 how close they are to the target
+  skillGaps: jsonb("skill_gaps"), // Array of {skillId, required, current, gap}
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("employee_ambitions_tenant_id_idx").on(table.tenantId),
+  employeeIdIdx: index("employee_ambitions_employee_id_idx").on(table.employeeId),
+}));
+
+// Mentorship Relationships - Connecting experts with learners
+export const mentorships = pgTable("mentorships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  mentorId: varchar("mentor_id").notNull().references(() => employees.id),
+  menteeId: varchar("mentee_id").notNull().references(() => employees.id),
+  skillId: varchar("skill_id").references(() => skills.id), // Primary skill focus
+  status: text("status").notNull().default("active"), // 'pending', 'active', 'completed', 'cancelled'
+  matchScore: integer("match_score"), // How well matched are they
+  matchReason: text("match_reason"), // Why they were matched
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  notes: text("notes"),
+  metadata: jsonb("metadata"), // Additional context
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("mentorships_tenant_id_idx").on(table.tenantId),
+  mentorIdIdx: index("mentorships_mentor_id_idx").on(table.mentorId),
+  menteeIdIdx: index("mentorships_mentee_id_idx").on(table.menteeId),
+}));
+
+// Growth Areas - Clusters of skills needing improvement
+export const growthAreas = pgTable("growth_areas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  name: text("name").notNull(), // e.g., "Technical Leadership", "Data Skills"
+  description: text("description"),
+  priority: text("priority").notNull().default("medium"), // 'critical', 'high', 'medium', 'low'
+  skillIds: text("skill_ids").array(), // Skills in this growth area
+  currentScore: integer("current_score"), // Average proficiency 0-100
+  targetScore: integer("target_score"), // Where they need to be
+  progress: integer("progress").default(0), // 0-100 progress toward target
+  suggestedActions: jsonb("suggested_actions"), // Array of {type, description, resource}
+  status: text("status").notNull().default("active"), // 'active', 'in_progress', 'completed'
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("growth_areas_tenant_id_idx").on(table.tenantId),
+  employeeIdIdx: index("growth_areas_employee_id_idx").on(table.employeeId),
+}));
+
 // Insert schemas for new tables
 export const insertSkillSchema = createInsertSchema(skills).omit({
   id: true,
@@ -577,3 +640,44 @@ export type SkillActivity = typeof skillActivities.$inferSelect;
 
 export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
 export type Department = typeof departments.$inferSelect;
+
+// Ambitions insert schema and types
+export const insertEmployeeAmbitionSchema = createInsertSchema(employeeAmbitions, {
+  skillGaps: z.any().optional(),
+}).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeAmbition = z.infer<typeof insertEmployeeAmbitionSchema>;
+export type EmployeeAmbition = typeof employeeAmbitions.$inferSelect;
+
+// Mentorship insert schema and types
+export const insertMentorshipSchema = createInsertSchema(mentorships, {
+  metadata: z.any().optional(),
+  startDate: z.coerce.date().optional().nullable(),
+  endDate: z.coerce.date().optional().nullable(),
+}).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMentorship = z.infer<typeof insertMentorshipSchema>;
+export type Mentorship = typeof mentorships.$inferSelect;
+
+// Growth Areas insert schema and types
+export const insertGrowthAreaSchema = createInsertSchema(growthAreas, {
+  suggestedActions: z.any().optional(),
+}).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGrowthArea = z.infer<typeof insertGrowthAreaSchema>;
+export type GrowthArea = typeof growthAreas.$inferSelect;
