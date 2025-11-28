@@ -16,10 +16,13 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Search, Filter, Users, TrendingUp, CheckCircle,
   ChevronRight, Plus, X, MapPin, Brain, Send, Loader2,
-  Sparkles, AlertTriangle, ArrowRight, Bell, Flame, Database
+  Sparkles, AlertTriangle, ArrowRight, Bell, Flame, Database,
+  Target, Award, GraduationCap, Star, UserCheck, Compass, TrendingDown
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api";
-import type { Employee, Skill, Job, EmployeeSkill, SkillActivity, Department } from "@shared/schema";
+import type { Employee, Skill, Job, EmployeeSkill, SkillActivity, Department, EmployeeAmbition, Mentorship, GrowthArea } from "@shared/schema";
 
 interface DepartmentGap {
   department: string;
@@ -76,6 +79,11 @@ export default function WorkforceIntelligence() {
   const [isAiThinking, setIsAiThinking] = useState(false);
   const queryClient = useQueryClient();
   
+  const [selectedSkillPassportEmployee, setSelectedSkillPassportEmployee] = useState<string | null>(null);
+  const [newAmbitionEmployee, setNewAmbitionEmployee] = useState<string>("");
+  const [newAmbitionTitle, setNewAmbitionTitle] = useState("");
+  const [showAmbitionForm, setShowAmbitionForm] = useState(false);
+  
   const employeesKey = useTenantQueryKey(["workforce-employees"]);
   const skillsKey = useTenantQueryKey(["skills"]);
   const departmentGapsKey = useTenantQueryKey(["department-gaps"]);
@@ -84,6 +92,9 @@ export default function WorkforceIntelligence() {
   const skillAssessmentsKey = useTenantQueryKey(["skill-assessments"]);
   const skillActivitiesKey = useTenantQueryKey(["skill-activities"]);
   const allEmployeeSkillsKey = useTenantQueryKey(["all-employee-skills"]);
+  const ambitionsKey = useTenantQueryKey(["ambitions"]);
+  const mentorshipsKey = useTenantQueryKey(["mentorships"]);
+  const growthAreasKey = useTenantQueryKey(["growth-areas"]);
 
   // Fetch employees with their skills (for People Profiles and Matching)
   const { data: employeesWithSkills = [], isLoading: employeesLoading } = useQuery<EmployeeWithSkills[]>({
@@ -151,6 +162,74 @@ export default function WorkforceIntelligence() {
     queryFn: async () => {
       const response = await api.get("/workforce/all-employee-skills");
       return response.data;
+    },
+  });
+
+  // Fetch ambitions
+  const { data: ambitions = [] } = useQuery<EmployeeAmbition[]>({
+    queryKey: ambitionsKey,
+    queryFn: async () => {
+      const response = await api.get("/workforce/ambitions");
+      return response.data;
+    },
+  });
+
+  // Fetch mentorships with related data
+  interface MentorshipWithDetails extends Mentorship {
+    mentor: Employee;
+    mentee: Employee;
+    skill?: Skill;
+  }
+  const { data: mentorships = [] } = useQuery<MentorshipWithDetails[]>({
+    queryKey: mentorshipsKey,
+    queryFn: async () => {
+      const response = await api.get("/workforce/mentorships");
+      return response.data;
+    },
+  });
+
+  // Fetch growth areas
+  const { data: growthAreas = [] } = useQuery<GrowthArea[]>({
+    queryKey: growthAreasKey,
+    queryFn: async () => {
+      const response = await api.get("/workforce/growth-areas");
+      return response.data;
+    },
+  });
+
+  // Create ambition mutation
+  const createAmbitionMutation = useMutation({
+    mutationFn: async (data: { employeeId: string; targetJobTitle: string; targetDepartment?: string; targetDate?: string }) => {
+      const response = await api.post("/workforce/ambitions", data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ambitionsKey });
+      setShowAmbitionForm(false);
+      setNewAmbitionTitle("");
+      setNewAmbitionEmployee("");
+    },
+  });
+
+  // Create mentorship mutation
+  const createMentorshipMutation = useMutation({
+    mutationFn: async (data: { mentorId: string; menteeId: string; skillId?: string; goals?: string }) => {
+      const response = await api.post("/workforce/mentorships", data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mentorshipsKey });
+    },
+  });
+
+  // Generate growth areas mutation
+  const generateGrowthAreasMutation = useMutation({
+    mutationFn: async (employeeId: string) => {
+      const response = await api.post(`/workforce/employees/${employeeId}/generate-growth-areas`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: growthAreasKey });
     },
   });
 
@@ -435,12 +514,28 @@ export default function WorkforceIntelligence() {
           </div>
 
           <Tabs defaultValue="dashboard" className="space-y-6">
-            <TabsList className="bg-zinc-900 border border-zinc-800 p-1">
+            <TabsList className="bg-zinc-900 border border-zinc-800 p-1 flex-wrap h-auto gap-1">
               <TabsTrigger value="dashboard" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white">
                 Dashboard
               </TabsTrigger>
               <TabsTrigger value="skills" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white">
                 Skill Assessment
+              </TabsTrigger>
+              <TabsTrigger value="passport" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white">
+                <Award className="h-4 w-4 mr-1" />
+                Skill Passport
+              </TabsTrigger>
+              <TabsTrigger value="ambitions" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white">
+                <Target className="h-4 w-4 mr-1" />
+                Ambitions
+              </TabsTrigger>
+              <TabsTrigger value="mentors" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white">
+                <UserCheck className="h-4 w-4 mr-1" />
+                Mentors
+              </TabsTrigger>
+              <TabsTrigger value="growth" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white">
+                <TrendingUp className="h-4 w-4 mr-1" />
+                Growth Areas
               </TabsTrigger>
               <TabsTrigger value="matching" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white">
                 Matching
@@ -769,6 +864,540 @@ export default function WorkforceIntelligence() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Skill Passport Tab */}
+            <TabsContent value="passport" className="space-y-6">
+              <Card className="bg-zinc-900/50 border-zinc-800">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg text-white flex items-center gap-2">
+                        <Award className="h-5 w-5 text-amber-400" />
+                        Skill Passport
+                      </CardTitle>
+                      <CardDescription className="text-zinc-400">
+                        Detailed skill profiles with visual proficiency scales
+                      </CardDescription>
+                    </div>
+                    <Select 
+                      value={selectedSkillPassportEmployee || ""} 
+                      onValueChange={setSelectedSkillPassportEmployee}
+                    >
+                      <SelectTrigger className="w-[250px] bg-zinc-800 border-zinc-700 text-white">
+                        <SelectValue placeholder="Select an employee" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-800 border-zinc-700">
+                        {employeesWithSkills.map(emp => (
+                          <SelectItem key={emp.id} value={emp.id} className="text-white hover:bg-zinc-700">
+                            {emp.fullName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {!selectedSkillPassportEmployee ? (
+                    <div className="text-center py-12">
+                      <Award className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-zinc-300 mb-2">Select an Employee</h3>
+                      <p className="text-zinc-500">Choose an employee to view their complete skill passport</p>
+                    </div>
+                  ) : (() => {
+                    const emp = employeesWithSkills.find(e => e.id === selectedSkillPassportEmployee);
+                    if (!emp) return null;
+                    
+                    const groupedSkills = emp.skills?.reduce((acc, es) => {
+                      const category = es.skill?.category || 'General';
+                      if (!acc[category]) acc[category] = [];
+                      acc[category].push(es);
+                      return acc;
+                    }, {} as Record<string, typeof emp.skills>) || {};
+                    
+                    const overallScore = emp.skills?.length 
+                      ? Math.round(emp.skills.reduce((sum, s) => sum + s.proficiencyLevel, 0) / emp.skills.length / 8 * 100)
+                      : 0;
+                    
+                    return (
+                      <div className="space-y-6">
+                        {/* Employee Header */}
+                        <div className="flex items-start gap-4 p-4 bg-zinc-800/50 rounded-lg">
+                          <Avatar className="h-16 w-16">
+                            <AvatarFallback className="bg-amber-500/20 text-amber-400 text-xl">
+                              {getInitials(emp.fullName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <h3 className="text-xl font-semibold text-white">{emp.fullName}</h3>
+                            <p className="text-zinc-400">{emp.jobTitle || 'No title'}</p>
+                            <div className="flex items-center gap-4 mt-2 text-sm text-zinc-500">
+                              <span>{emp.department || 'No department'}</span>
+                              <span>{emp.location || 'No location'}</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-3xl font-bold text-amber-400">{overallScore}%</div>
+                            <p className="text-xs text-zinc-500">Overall Proficiency</p>
+                          </div>
+                        </div>
+                        
+                        {/* Skills by Category */}
+                        {Object.entries(groupedSkills).map(([category, categorySkills]) => (
+                          <div key={category} className="space-y-3">
+                            <h4 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">{category}</h4>
+                            <div className="space-y-3">
+                              {categorySkills.map((es, idx) => {
+                                const colors = SKILL_STATUS_COLORS[es.status as keyof typeof SKILL_STATUS_COLORS] || SKILL_STATUS_COLORS.good_match;
+                                const percentage = Math.round((es.proficiencyLevel / 8) * 100);
+                                const levelLabels = ['Novice', 'Beginner', 'Intermediate', 'Competent', 'Proficient', 'Advanced', 'Expert', 'Master'];
+                                return (
+                                  <div key={idx} className={`p-4 rounded-lg border ${colors.border} ${colors.bg}`}>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium text-white">{es.skill?.name}</span>
+                                        <Badge className={`text-xs ${colors.bg} ${colors.text} border-0`}>
+                                          {es.status?.replace('_', ' ')}
+                                        </Badge>
+                                      </div>
+                                      <div className="text-right">
+                                        <span className="text-lg font-bold text-white">{es.proficiencyLevel}/8</span>
+                                        <p className="text-xs text-zinc-400">{levelLabels[es.proficiencyLevel - 1] || 'Unknown'}</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-1">
+                                      {[1, 2, 3, 4, 5, 6, 7, 8].map(level => (
+                                        <div
+                                          key={level}
+                                          className={`h-3 flex-1 rounded-sm ${
+                                            level <= es.proficiencyLevel 
+                                              ? 'bg-gradient-to-r from-amber-500 to-orange-500' 
+                                              : 'bg-zinc-700'
+                                          }`}
+                                        />
+                                      ))}
+                                    </div>
+                                    <div className="flex justify-between text-xs text-zinc-500 mt-1">
+                                      <span>Novice</span>
+                                      <span>Master</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {(!emp.skills || emp.skills.length === 0) && (
+                          <div className="text-center py-8">
+                            <GraduationCap className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
+                            <p className="text-zinc-400">No skills assessed for this employee</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Ambitions Tab */}
+            <TabsContent value="ambitions" className="space-y-6">
+              <Card className="bg-zinc-900/50 border-zinc-800">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg text-white flex items-center gap-2">
+                        <Target className="h-5 w-5 text-purple-400" />
+                        Career Ambitions
+                      </CardTitle>
+                      <CardDescription className="text-zinc-400">
+                        Track employee career goals and progression paths
+                      </CardDescription>
+                    </div>
+                    <Button 
+                      onClick={() => setShowAmbitionForm(true)}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Ambition
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {showAmbitionForm && (
+                    <Card className="mb-6 bg-zinc-800/50 border-zinc-700">
+                      <CardContent className="p-4 space-y-4">
+                        <h4 className="font-medium text-white">Create New Career Ambition</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-zinc-400">Employee</Label>
+                            <Select value={newAmbitionEmployee} onValueChange={setNewAmbitionEmployee}>
+                              <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                                <SelectValue placeholder="Select employee" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-zinc-800 border-zinc-700">
+                                {employeesWithSkills.map(emp => (
+                                  <SelectItem key={emp.id} value={emp.id} className="text-white">
+                                    {emp.fullName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-zinc-400">Target Role</Label>
+                            <Input 
+                              value={newAmbitionTitle}
+                              onChange={(e) => setNewAmbitionTitle(e.target.value)}
+                              placeholder="e.g., Senior Developer, Team Lead"
+                              className="bg-zinc-900 border-zinc-700 text-white"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={() => {
+                              if (newAmbitionEmployee && newAmbitionTitle) {
+                                createAmbitionMutation.mutate({
+                                  employeeId: newAmbitionEmployee,
+                                  targetJobTitle: newAmbitionTitle
+                                });
+                              }
+                            }}
+                            disabled={!newAmbitionEmployee || !newAmbitionTitle || createAmbitionMutation.isPending}
+                            className="bg-purple-500 hover:bg-purple-600"
+                          >
+                            {createAmbitionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Ambition'}
+                          </Button>
+                          <Button variant="outline" onClick={() => setShowAmbitionForm(false)} className="border-zinc-700">
+                            Cancel
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                  
+                  {ambitions.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Target className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-zinc-300 mb-2">No Career Ambitions Set</h3>
+                      <p className="text-zinc-500 mb-4">Help employees define their career goals</p>
+                      <Button 
+                        onClick={() => setShowAmbitionForm(true)}
+                        variant="outline" 
+                        className="border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create First Ambition
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {ambitions.map(ambition => {
+                        const emp = employeesWithSkills.find(e => e.id === ambition.employeeId);
+                        return (
+                          <Card key={ambition.id} className="bg-zinc-800/50 border-zinc-700 hover:border-purple-500/50 transition-colors">
+                            <CardContent className="p-4">
+                              <div className="flex items-start gap-3 mb-3">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarFallback className="bg-purple-500/20 text-purple-400">
+                                    {emp ? getInitials(emp.fullName) : '?'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <h4 className="font-medium text-white">{emp?.fullName || 'Unknown'}</h4>
+                                  <p className="text-xs text-zinc-500">{emp?.jobTitle || 'No current role'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Compass className="h-4 w-4 text-purple-400" />
+                                  <span className="text-sm text-zinc-300">Target: <span className="font-medium text-white">{ambition.targetJobTitle}</span></span>
+                                </div>
+                                {ambition.targetDepartment && (
+                                  <div className="flex items-center gap-2">
+                                    <Users className="h-4 w-4 text-zinc-500" />
+                                    <span className="text-sm text-zinc-400">{ambition.targetDepartment}</span>
+                                  </div>
+                                )}
+                                {ambition.targetDate && (
+                                  <div className="flex items-center gap-2">
+                                    <Target className="h-4 w-4 text-zinc-500" />
+                                    <span className="text-sm text-zinc-400">By {new Date(ambition.targetDate).toLocaleDateString()}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="mt-3">
+                                <div className="flex items-center justify-between text-xs text-zinc-500 mb-1">
+                                  <span>Progress</span>
+                                  <span>{ambition.progress || 0}%</span>
+                                </div>
+                                <Progress value={ambition.progress || 0} className="h-2" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Mentors Tab */}
+            <TabsContent value="mentors" className="space-y-6">
+              <Card className="bg-zinc-900/50 border-zinc-800">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg text-white flex items-center gap-2">
+                        <UserCheck className="h-5 w-5 text-green-400" />
+                        Mentor Matching
+                      </CardTitle>
+                      <CardDescription className="text-zinc-400">
+                        Connect employees with expert mentors based on skill needs
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Potential Mentors Grid */}
+                  <div className="mb-8">
+                    <h3 className="text-sm font-semibold text-zinc-300 mb-4 uppercase tracking-wide">Available Mentors</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {employeesWithSkills
+                        .filter(emp => emp.skills?.some(s => s.proficiencyLevel >= 7))
+                        .slice(0, 6)
+                        .map(emp => {
+                          const expertSkills = emp.skills?.filter(s => s.proficiencyLevel >= 7) || [];
+                          return (
+                            <Card key={emp.id} className="bg-zinc-800/50 border-zinc-700 hover:border-green-500/50 transition-colors">
+                              <CardContent className="p-4">
+                                <div className="flex items-start gap-3">
+                                  <Avatar className="h-12 w-12">
+                                    <AvatarFallback className="bg-green-500/20 text-green-400">
+                                      {getInitials(emp.fullName)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1">
+                                    <h4 className="font-medium text-white">{emp.fullName}</h4>
+                                    <p className="text-xs text-zinc-500">{emp.jobTitle}</p>
+                                    <Badge className="mt-1 text-xs bg-green-500/20 text-green-400 border-0">
+                                      <Star className="h-3 w-3 mr-1" />
+                                      Expert in {expertSkills.length} skill{expertSkills.length !== 1 ? 's' : ''}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-1">
+                                  {expertSkills.slice(0, 3).map((es, i) => (
+                                    <Badge key={i} variant="outline" className="text-xs border-green-500/30 text-green-400">
+                                      {es.skill?.name} ({es.proficiencyLevel}/8)
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                    </div>
+                    {employeesWithSkills.filter(emp => emp.skills?.some(s => s.proficiencyLevel >= 7)).length === 0 && (
+                      <div className="text-center py-8">
+                        <UserCheck className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
+                        <p className="text-zinc-400">No expert mentors identified yet</p>
+                        <p className="text-zinc-500 text-sm">Employees with proficiency level 7+ can become mentors</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Active Mentorships */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-zinc-300 mb-4 uppercase tracking-wide">Active Mentorships</h3>
+                    {mentorships.length === 0 ? (
+                      <div className="text-center py-8 bg-zinc-800/30 rounded-lg">
+                        <GraduationCap className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
+                        <p className="text-zinc-400">No active mentorships</p>
+                        <p className="text-zinc-500 text-sm">Create mentorship pairs to help employees grow</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {mentorships.map(m => (
+                          <Card key={m.id} className="bg-zinc-800/50 border-zinc-700">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarFallback className="bg-green-500/20 text-green-400">
+                                        {getInitials(m.mentor?.fullName || '')}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-medium text-white text-sm">{m.mentor?.fullName}</p>
+                                      <p className="text-xs text-zinc-500">Mentor</p>
+                                    </div>
+                                  </div>
+                                  <ArrowRight className="h-5 w-5 text-zinc-600" />
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarFallback className="bg-blue-500/20 text-blue-400">
+                                        {getInitials(m.mentee?.fullName || '')}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-medium text-white text-sm">{m.mentee?.fullName}</p>
+                                      <p className="text-xs text-zinc-500">Mentee</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  {m.skill && (
+                                    <Badge className="bg-amber-500/20 text-amber-400 border-0">
+                                      {m.skill.name}
+                                    </Badge>
+                                  )}
+                                  <Badge className={`ml-2 ${
+                                    m.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                                    m.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
+                                    'bg-yellow-500/20 text-yellow-400'
+                                  } border-0`}>
+                                    {m.status}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Growth Areas Tab */}
+            <TabsContent value="growth" className="space-y-6">
+              <Card className="bg-zinc-900/50 border-zinc-800">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg text-white flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-blue-400" />
+                        Growth Areas
+                      </CardTitle>
+                      <CardDescription className="text-zinc-400">
+                        Identify skill clusters needing improvement and track development
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Generate Growth Areas for Employee */}
+                  <Card className="mb-6 bg-zinc-800/50 border-zinc-700">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-white mb-1">Auto-Generate Growth Areas</h4>
+                          <p className="text-sm text-zinc-500">Analyze employee skills and create personalized development plans</p>
+                        </div>
+                        <Select onValueChange={(empId) => generateGrowthAreasMutation.mutate(empId)}>
+                          <SelectTrigger className="w-[200px] bg-zinc-900 border-zinc-700 text-white">
+                            <SelectValue placeholder="Select employee" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-zinc-800 border-zinc-700">
+                            {employeesWithSkills.map(emp => (
+                              <SelectItem key={emp.id} value={emp.id} className="text-white">
+                                {emp.fullName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  {growthAreas.length === 0 ? (
+                    <div className="text-center py-12">
+                      <TrendingDown className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-zinc-300 mb-2">No Growth Areas Identified</h3>
+                      <p className="text-zinc-500">Generate growth areas for employees to identify skill gaps</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {growthAreas.map(area => {
+                        const emp = employeesWithSkills.find(e => e.id === area.employeeId);
+                        const priorityColors = {
+                          critical: 'border-red-500/50 bg-red-500/10',
+                          high: 'border-orange-500/50 bg-orange-500/10',
+                          medium: 'border-yellow-500/50 bg-yellow-500/10',
+                          low: 'border-green-500/50 bg-green-500/10'
+                        };
+                        const priorityBadgeColors = {
+                          critical: 'bg-red-500/20 text-red-400',
+                          high: 'bg-orange-500/20 text-orange-400',
+                          medium: 'bg-yellow-500/20 text-yellow-400',
+                          low: 'bg-green-500/20 text-green-400'
+                        };
+                        return (
+                          <Card key={area.id} className={`border ${priorityColors[area.priority as keyof typeof priorityColors] || priorityColors.medium}`}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-10 w-10">
+                                    <AvatarFallback className="bg-blue-500/20 text-blue-400">
+                                      {emp ? getInitials(emp.fullName) : '?'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <h4 className="font-medium text-white">{area.name}</h4>
+                                    <p className="text-sm text-zinc-500">{emp?.fullName || 'Unknown employee'}</p>
+                                  </div>
+                                </div>
+                                <Badge className={`${priorityBadgeColors[area.priority as keyof typeof priorityBadgeColors] || priorityBadgeColors.medium} border-0`}>
+                                  {area.priority} priority
+                                </Badge>
+                              </div>
+                              
+                              <p className="text-sm text-zinc-400 mb-3">{area.description}</p>
+                              
+                              <div className="grid grid-cols-3 gap-4 mb-3">
+                                <div className="text-center p-2 bg-zinc-800/50 rounded">
+                                  <div className="text-lg font-bold text-white">{area.currentScore}%</div>
+                                  <p className="text-xs text-zinc-500">Current</p>
+                                </div>
+                                <div className="text-center p-2 bg-zinc-800/50 rounded">
+                                  <div className="text-lg font-bold text-amber-400">{area.targetScore}%</div>
+                                  <p className="text-xs text-zinc-500">Target</p>
+                                </div>
+                                <div className="text-center p-2 bg-zinc-800/50 rounded">
+                                  <div className="text-lg font-bold text-green-400">{area.progress || 0}%</div>
+                                  <p className="text-xs text-zinc-500">Progress</p>
+                                </div>
+                              </div>
+                              
+                              <Progress value={area.progress || 0} className="h-2" />
+                              
+                              {area.suggestedActions && (area.suggestedActions as any[]).length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-zinc-700">
+                                  <p className="text-xs font-medium text-zinc-400 mb-2">Suggested Actions:</p>
+                                  <div className="space-y-1">
+                                    {(area.suggestedActions as any[]).slice(0, 2).map((action: any, i: number) => (
+                                      <div key={i} className="flex items-center gap-2 text-sm text-zinc-300">
+                                        <CheckCircle className="h-3 w-3 text-zinc-500" />
+                                        <span>{action.description}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
