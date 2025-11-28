@@ -21,6 +21,14 @@ import {
   type InsertInterviewAssessment,
   type TenantRequest,
   type InsertTenantRequest,
+  type Skill,
+  type InsertSkill,
+  type Employee,
+  type InsertEmployee,
+  type Department,
+  type InsertDepartment,
+  type SkillActivity,
+  type InsertSkillActivity,
   users,
   jobs,
   candidates,
@@ -31,7 +39,11 @@ import {
   tenantConfig,
   interviews,
   interviewAssessments,
-  tenantRequests
+  tenantRequests,
+  skills,
+  employees,
+  departments,
+  skillActivities
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte } from "drizzle-orm";
@@ -106,6 +118,25 @@ export interface IStorage {
   createTenantRequest(request: InsertTenantRequest): Promise<TenantRequest>;
   updateTenantRequest(id: string, updates: Partial<InsertTenantRequest>): Promise<TenantRequest | undefined>;
   deleteTenantRequest(id: string): Promise<boolean>;
+  
+  // Workforce Intelligence - Skills
+  getAllSkills(tenantId: string): Promise<Skill[]>;
+  getSkill(tenantId: string, id: string): Promise<Skill | undefined>;
+  createSkill(tenantId: string, skill: InsertSkill): Promise<Skill>;
+  
+  // Workforce Intelligence - Employees
+  getAllEmployees(tenantId: string): Promise<Employee[]>;
+  getEmployee(tenantId: string, id: string): Promise<Employee | undefined>;
+  createEmployee(tenantId: string, employee: InsertEmployee): Promise<Employee>;
+  
+  // Workforce Intelligence - Departments
+  getAllDepartments(tenantId: string): Promise<Department[]>;
+  getDepartment(tenantId: string, id: string): Promise<Department | undefined>;
+  createDepartment(tenantId: string, department: InsertDepartment): Promise<Department>;
+  
+  // Workforce Intelligence - Skill Activities
+  getSkillActivities(tenantId: string): Promise<SkillActivity[]>;
+  createSkillActivity(tenantId: string, activity: InsertSkillActivity): Promise<SkillActivity>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -586,6 +617,73 @@ export class DatabaseStorage implements IStorage {
   async deleteTenantRequest(id: string): Promise<boolean> {
     const result = await db.delete(tenantRequests).where(eq(tenantRequests.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Workforce Intelligence - Skills
+  async getAllSkills(tenantId: string): Promise<Skill[]> {
+    return await db.select().from(skills).where(eq(skills.tenantId, tenantId)).orderBy(desc(skills.createdAt));
+  }
+
+  async getSkill(tenantId: string, id: string): Promise<Skill | undefined> {
+    const [skill] = await db.select().from(skills).where(and(eq(skills.id, id), eq(skills.tenantId, tenantId)));
+    return skill || undefined;
+  }
+
+  async createSkill(tenantId: string, insertSkill: InsertSkill): Promise<Skill> {
+    const [skill] = await db
+      .insert(skills)
+      .values({ ...insertSkill, tenantId })
+      .returning();
+    return skill;
+  }
+
+  // Workforce Intelligence - Employees
+  async getAllEmployees(tenantId: string): Promise<Employee[]> {
+    return await db.select().from(employees).where(eq(employees.tenantId, tenantId)).orderBy(desc(employees.createdAt));
+  }
+
+  async getEmployee(tenantId: string, id: string): Promise<Employee | undefined> {
+    const [employee] = await db.select().from(employees).where(and(eq(employees.id, id), eq(employees.tenantId, tenantId)));
+    return employee || undefined;
+  }
+
+  async createEmployee(tenantId: string, insertEmployee: InsertEmployee): Promise<Employee> {
+    const [employee] = await db
+      .insert(employees)
+      .values({ ...insertEmployee, tenantId })
+      .returning();
+    return employee;
+  }
+
+  // Workforce Intelligence - Departments
+  async getAllDepartments(tenantId: string): Promise<Department[]> {
+    return await db.select().from(departments).where(eq(departments.tenantId, tenantId)).orderBy(departments.name);
+  }
+
+  async getDepartment(tenantId: string, id: string): Promise<Department | undefined> {
+    const [department] = await db.select().from(departments).where(and(eq(departments.id, id), eq(departments.tenantId, tenantId)));
+    return department || undefined;
+  }
+
+  async createDepartment(tenantId: string, insertDepartment: InsertDepartment): Promise<Department> {
+    const [department] = await db
+      .insert(departments)
+      .values({ ...insertDepartment, tenantId })
+      .returning();
+    return department;
+  }
+
+  // Workforce Intelligence - Skill Activities
+  async getSkillActivities(tenantId: string): Promise<SkillActivity[]> {
+    return await db.select().from(skillActivities).where(eq(skillActivities.tenantId, tenantId)).orderBy(desc(skillActivities.createdAt));
+  }
+
+  async createSkillActivity(tenantId: string, insertActivity: InsertSkillActivity): Promise<SkillActivity> {
+    const [activity] = await db
+      .insert(skillActivities)
+      .values({ ...insertActivity, tenantId })
+      .returning();
+    return activity;
   }
 }
 

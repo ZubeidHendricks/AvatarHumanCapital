@@ -402,3 +402,178 @@ export const insertRecruitmentMetricSchema = createInsertSchema(recruitmentMetri
 
 export type InsertRecruitmentMetric = z.infer<typeof insertRecruitmentMetricSchema>;
 export type RecruitmentMetric = typeof recruitmentMetrics.$inferSelect;
+
+// ==================== WORKFORCE INTELLIGENCE ====================
+
+// Skills Taxonomy - Master list of skills
+export const skills = pgTable("skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  name: text("name").notNull(),
+  category: text("category").notNull(), // 'Technical', 'Soft Skills', 'Leadership', 'Domain'
+  description: text("description"),
+  parentSkillId: varchar("parent_skill_id"), // For hierarchical skills
+  isEssential: integer("is_essential").default(0), // 1 = marked as essential
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("skills_tenant_id_idx").on(table.tenantId),
+  categoryIdx: index("skills_category_idx").on(table.category),
+}));
+
+// Employees (People Profiles) - Internal workforce
+export const employees = pgTable("employees", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  fullName: text("full_name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  department: text("department"),
+  team: text("team"),
+  jobTitle: text("job_title"),
+  manager: text("manager"),
+  location: text("location"),
+  employmentType: text("employment_type"), // 'full_time', 'part_time', 'contract'
+  startDate: timestamp("start_date"),
+  avatarUrl: text("avatar_url"),
+  linkedinUrl: text("linkedin_url"),
+  cvUrl: text("cv_url"),
+  bio: text("bio"),
+  tags: text("tags").array(), // For grouping/filtering
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("employees_tenant_id_idx").on(table.tenantId),
+  departmentIdx: index("employees_department_idx").on(table.department),
+  teamIdx: index("employees_team_idx").on(table.team),
+}));
+
+// Employee Skill Assessments - Links employees to skills with proficiency levels
+export const employeeSkills = pgTable("employee_skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  skillId: varchar("skill_id").notNull().references(() => skills.id),
+  proficiencyLevel: integer("proficiency_level").notNull().default(1), // 1-8 scale
+  status: text("status").notNull().default("assessed"), // 'critical_gap', 'training_needed', 'good_match', 'beyond_expectations'
+  source: text("source").notNull().default("self"), // 'self', 'manager', 'cv_parsed', 'assessment'
+  notes: text("notes"),
+  assessedAt: timestamp("assessed_at").notNull().defaultNow(),
+  assessedBy: varchar("assessed_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("employee_skills_tenant_id_idx").on(table.tenantId),
+  employeeIdIdx: index("employee_skills_employee_id_idx").on(table.employeeId),
+  skillIdIdx: index("employee_skills_skill_id_idx").on(table.skillId),
+}));
+
+// Job Skill Requirements - Skills required for each job
+export const jobSkills = pgTable("job_skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  jobId: varchar("job_id").notNull().references(() => jobs.id),
+  skillId: varchar("skill_id").notNull().references(() => skills.id),
+  requiredLevel: integer("required_level").notNull().default(3), // Minimum proficiency required (1-8)
+  importance: text("importance").notNull().default("required"), // 'essential', 'required', 'preferred', 'nice_to_have'
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("job_skills_tenant_id_idx").on(table.tenantId),
+  jobIdIdx: index("job_skills_job_id_idx").on(table.jobId),
+}));
+
+// Skill Activity Log - Track skill updates for learning path feed
+export const skillActivities = pgTable("skill_activities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  employeeId: varchar("employee_id").references(() => employees.id),
+  skillId: varchar("skill_id").references(() => skills.id),
+  activityType: text("activity_type").notNull(), // 'skill_added', 'skill_improved', 'gap_closed', 'assessment_completed'
+  description: text("description"),
+  previousLevel: integer("previous_level"),
+  newLevel: integer("new_level"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("skill_activities_tenant_id_idx").on(table.tenantId),
+  employeeIdIdx: index("skill_activities_employee_id_idx").on(table.employeeId),
+}));
+
+// Departments - For skill analysis grouping
+export const departments = pgTable("departments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  name: text("name").notNull(),
+  headCount: integer("head_count").default(0),
+  skillGapScore: integer("skill_gap_score").default(0), // Higher = more gaps
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("departments_tenant_id_idx").on(table.tenantId),
+}));
+
+// Insert schemas for new tables
+export const insertSkillSchema = createInsertSchema(skills).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmployeeSchema = createInsertSchema(employees, {
+  startDate: z.coerce.date().optional().nullable(),
+}).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmployeeSkillSchema = createInsertSchema(employeeSkills, {
+  assessedAt: z.coerce.date().optional(),
+}).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertJobSkillSchema = createInsertSchema(jobSkills).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+});
+
+export const insertSkillActivitySchema = createInsertSchema(skillActivities).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+});
+
+export const insertDepartmentSchema = createInsertSchema(departments).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types for new tables
+export type InsertSkill = z.infer<typeof insertSkillSchema>;
+export type Skill = typeof skills.$inferSelect;
+
+export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
+export type Employee = typeof employees.$inferSelect;
+
+export type InsertEmployeeSkill = z.infer<typeof insertEmployeeSkillSchema>;
+export type EmployeeSkill = typeof employeeSkills.$inferSelect;
+
+export type InsertJobSkill = z.infer<typeof insertJobSkillSchema>;
+export type JobSkill = typeof jobSkills.$inferSelect;
+
+export type InsertSkillActivity = z.infer<typeof insertSkillActivitySchema>;
+export type SkillActivity = typeof skillActivities.$inferSelect;
+
+export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
+export type Department = typeof departments.$inferSelect;

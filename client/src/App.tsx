@@ -24,6 +24,8 @@ import CandidatePipeline from "@/pages/candidate-pipeline";
 import AdminDashboard from "@/pages/admin-dashboard";
 import PersonaManagement from "@/pages/persona-management";
 import TenantRequests from "@/pages/tenant-requests";
+import WorkforceIntelligence from "@/pages/workforce-intelligence";
+import PlatformSettings from "@/pages/platform-settings";
 
 function Router() {
   return (
@@ -47,6 +49,8 @@ function Router() {
       <Route path="/candidates/:id" component={CandidateDetail} />
       <Route path="/shortlisted-candidates" component={ShortlistedCandidates} />
       <Route path="/candidate-pipeline" component={CandidatePipeline} />
+      <Route path="/workforce-intelligence" component={WorkforceIntelligence} />
+      <Route path="/platform-settings" component={PlatformSettings} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1548,6 +1548,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== Workforce Intelligence Routes =====
+  
+  // Skills
+  app.get("/api/skills", async (req, res) => {
+    try {
+      const skills = await storage.getAllSkills(req.tenant.id);
+      res.json(skills);
+    } catch (error) {
+      console.error("Error fetching skills:", error);
+      res.json([]); // Return empty array if not implemented
+    }
+  });
+
+  app.post("/api/skills", async (req, res) => {
+    try {
+      const skill = await storage.createSkill(req.tenant.id, req.body);
+      res.status(201).json(skill);
+    } catch (error) {
+      console.error("Error creating skill:", error);
+      res.status(500).json({ message: "Failed to create skill" });
+    }
+  });
+
+  // Employees
+  app.get("/api/employees", async (req, res) => {
+    try {
+      const employees = await storage.getAllEmployees(req.tenant.id);
+      res.json(employees);
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      res.json([]); // Return empty array if not implemented
+    }
+  });
+
+  app.post("/api/employees", async (req, res) => {
+    try {
+      const employee = await storage.createEmployee(req.tenant.id, req.body);
+      res.status(201).json(employee);
+    } catch (error) {
+      console.error("Error creating employee:", error);
+      res.status(500).json({ message: "Failed to create employee" });
+    }
+  });
+
+  app.get("/api/employees/:id", async (req, res) => {
+    try {
+      const employee = await storage.getEmployee(req.tenant.id, req.params.id);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      res.json(employee);
+    } catch (error) {
+      console.error("Error fetching employee:", error);
+      res.status(500).json({ message: "Failed to fetch employee" });
+    }
+  });
+
+  // Departments
+  app.get("/api/departments", async (req, res) => {
+    try {
+      const departments = await storage.getAllDepartments(req.tenant.id);
+      res.json(departments);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      res.json([]); // Return empty array if not implemented
+    }
+  });
+
+  app.post("/api/departments", async (req, res) => {
+    try {
+      const department = await storage.createDepartment(req.tenant.id, req.body);
+      res.status(201).json(department);
+    } catch (error) {
+      console.error("Error creating department:", error);
+      res.status(500).json({ message: "Failed to create department" });
+    }
+  });
+
+  // Skill Activities (Learning Path)
+  app.get("/api/skill-activities", async (req, res) => {
+    try {
+      const activities = await storage.getSkillActivities(req.tenant.id);
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching skill activities:", error);
+      res.json([]); // Return empty array if not implemented
+    }
+  });
+
+  // Platform Status (for API key configuration check)
+  app.get("/api/platform-status", async (req, res) => {
+    try {
+      res.json({
+        linkedin: !!process.env.LINKEDIN_API_KEY,
+        pnet: !!process.env.PNET_API_KEY,
+        indeed: !!process.env.INDEED_API_KEY,
+      });
+    } catch (error) {
+      console.error("Error checking platform status:", error);
+      res.json({ linkedin: false, pnet: false, indeed: false });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
