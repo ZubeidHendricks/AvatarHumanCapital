@@ -33,6 +33,12 @@ import {
   type InsertEmployeeSkill,
   type JobSkill,
   type InsertJobSkill,
+  type EmployeeAmbition,
+  type InsertEmployeeAmbition,
+  type Mentorship,
+  type InsertMentorship,
+  type GrowthArea,
+  type InsertGrowthArea,
   users,
   jobs,
   candidates,
@@ -49,7 +55,10 @@ import {
   departments,
   skillActivities,
   employeeSkills,
-  jobSkills
+  jobSkills,
+  employeeAmbitions,
+  mentorships,
+  growthAreas
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte } from "drizzle-orm";
@@ -158,6 +167,33 @@ export interface IStorage {
   
   // Workforce Intelligence - Skill Gap Analysis
   getDepartmentSkillGaps(tenantId: string): Promise<{ department: string; headCount: number; skillGaps: string[]; gapScore: number }[]>;
+  
+  // Workforce Intelligence - Employee Ambitions
+  getEmployeeAmbitions(tenantId: string): Promise<EmployeeAmbition[]>;
+  getEmployeeAmbition(tenantId: string, id: string): Promise<EmployeeAmbition | undefined>;
+  getAmbitionsByEmployeeId(tenantId: string, employeeId: string): Promise<EmployeeAmbition[]>;
+  createEmployeeAmbition(tenantId: string, ambition: InsertEmployeeAmbition): Promise<EmployeeAmbition>;
+  updateEmployeeAmbition(tenantId: string, id: string, updates: Partial<InsertEmployeeAmbition>): Promise<EmployeeAmbition | undefined>;
+  deleteEmployeeAmbition(tenantId: string, id: string): Promise<boolean>;
+  
+  // Workforce Intelligence - Mentorships
+  getMentorships(tenantId: string): Promise<(Mentorship & { mentor: Employee; mentee: Employee; skill?: Skill })[]>;
+  getMentorship(tenantId: string, id: string): Promise<Mentorship | undefined>;
+  getMentorshipsByMentorId(tenantId: string, mentorId: string): Promise<Mentorship[]>;
+  getMentorshipsByMenteeId(tenantId: string, menteeId: string): Promise<Mentorship[]>;
+  createMentorship(tenantId: string, mentorship: InsertMentorship): Promise<Mentorship>;
+  updateMentorship(tenantId: string, id: string, updates: Partial<InsertMentorship>): Promise<Mentorship | undefined>;
+  deleteMentorship(tenantId: string, id: string): Promise<boolean>;
+  findPotentialMentors(tenantId: string, skillId: string, minProficiency: number): Promise<(Employee & { proficiency: number })[]>;
+  
+  // Workforce Intelligence - Growth Areas
+  getGrowthAreas(tenantId: string): Promise<GrowthArea[]>;
+  getGrowthArea(tenantId: string, id: string): Promise<GrowthArea | undefined>;
+  getGrowthAreasByEmployeeId(tenantId: string, employeeId: string): Promise<GrowthArea[]>;
+  createGrowthArea(tenantId: string, growthArea: InsertGrowthArea): Promise<GrowthArea>;
+  updateGrowthArea(tenantId: string, id: string, updates: Partial<InsertGrowthArea>): Promise<GrowthArea | undefined>;
+  deleteGrowthArea(tenantId: string, id: string): Promise<boolean>;
+  generateGrowthAreasForEmployee(tenantId: string, employeeId: string): Promise<GrowthArea[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -853,6 +889,190 @@ export class DatabaseStorage implements IStorage {
         gapScore: data.gapScore
       }))
       .sort((a, b) => b.gapScore - a.gapScore);
+  }
+
+  // Workforce Intelligence - Employee Ambitions
+  async getEmployeeAmbitions(tenantId: string): Promise<EmployeeAmbition[]> {
+    return await db.select().from(employeeAmbitions).where(eq(employeeAmbitions.tenantId, tenantId)).orderBy(desc(employeeAmbitions.createdAt));
+  }
+
+  async getEmployeeAmbition(tenantId: string, id: string): Promise<EmployeeAmbition | undefined> {
+    const [ambition] = await db.select().from(employeeAmbitions).where(and(eq(employeeAmbitions.id, id), eq(employeeAmbitions.tenantId, tenantId)));
+    return ambition || undefined;
+  }
+
+  async getAmbitionsByEmployeeId(tenantId: string, employeeId: string): Promise<EmployeeAmbition[]> {
+    return await db.select().from(employeeAmbitions).where(and(eq(employeeAmbitions.employeeId, employeeId), eq(employeeAmbitions.tenantId, tenantId))).orderBy(desc(employeeAmbitions.createdAt));
+  }
+
+  async createEmployeeAmbition(tenantId: string, insertAmbition: InsertEmployeeAmbition): Promise<EmployeeAmbition> {
+    const [ambition] = await db.insert(employeeAmbitions).values({ ...insertAmbition, tenantId }).returning();
+    return ambition;
+  }
+
+  async updateEmployeeAmbition(tenantId: string, id: string, updates: Partial<InsertEmployeeAmbition>): Promise<EmployeeAmbition | undefined> {
+    const [ambition] = await db.update(employeeAmbitions).set({ ...updates, updatedAt: new Date() }).where(and(eq(employeeAmbitions.id, id), eq(employeeAmbitions.tenantId, tenantId))).returning();
+    return ambition || undefined;
+  }
+
+  async deleteEmployeeAmbition(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(employeeAmbitions).where(and(eq(employeeAmbitions.id, id), eq(employeeAmbitions.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Workforce Intelligence - Mentorships
+  async getMentorships(tenantId: string): Promise<(Mentorship & { mentor: Employee; mentee: Employee; skill?: Skill })[]> {
+    const allMentorships = await db.select().from(mentorships).where(eq(mentorships.tenantId, tenantId)).orderBy(desc(mentorships.createdAt));
+    const result: (Mentorship & { mentor: Employee; mentee: Employee; skill?: Skill })[] = [];
+    
+    for (const m of allMentorships) {
+      const [mentor] = await db.select().from(employees).where(eq(employees.id, m.mentorId));
+      const [mentee] = await db.select().from(employees).where(eq(employees.id, m.menteeId));
+      let skill: Skill | undefined;
+      if (m.skillId) {
+        const [s] = await db.select().from(skills).where(eq(skills.id, m.skillId));
+        skill = s;
+      }
+      if (mentor && mentee) {
+        result.push({ ...m, mentor, mentee, skill });
+      }
+    }
+    return result;
+  }
+
+  async getMentorship(tenantId: string, id: string): Promise<Mentorship | undefined> {
+    const [mentorship] = await db.select().from(mentorships).where(and(eq(mentorships.id, id), eq(mentorships.tenantId, tenantId)));
+    return mentorship || undefined;
+  }
+
+  async getMentorshipsByMentorId(tenantId: string, mentorId: string): Promise<Mentorship[]> {
+    return await db.select().from(mentorships).where(and(eq(mentorships.mentorId, mentorId), eq(mentorships.tenantId, tenantId)));
+  }
+
+  async getMentorshipsByMenteeId(tenantId: string, menteeId: string): Promise<Mentorship[]> {
+    return await db.select().from(mentorships).where(and(eq(mentorships.menteeId, menteeId), eq(mentorships.tenantId, tenantId)));
+  }
+
+  async createMentorship(tenantId: string, insertMentorship: InsertMentorship): Promise<Mentorship> {
+    const [mentorship] = await db.insert(mentorships).values({ ...insertMentorship, tenantId }).returning();
+    return mentorship;
+  }
+
+  async updateMentorship(tenantId: string, id: string, updates: Partial<InsertMentorship>): Promise<Mentorship | undefined> {
+    const [mentorship] = await db.update(mentorships).set({ ...updates, updatedAt: new Date() }).where(and(eq(mentorships.id, id), eq(mentorships.tenantId, tenantId))).returning();
+    return mentorship || undefined;
+  }
+
+  async deleteMentorship(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(mentorships).where(and(eq(mentorships.id, id), eq(mentorships.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async findPotentialMentors(tenantId: string, skillId: string, minProficiency: number = 6): Promise<(Employee & { proficiency: number })[]> {
+    const empSkillsWithHighProficiency = await db
+      .select()
+      .from(employeeSkills)
+      .innerJoin(employees, eq(employeeSkills.employeeId, employees.id))
+      .where(and(
+        eq(employeeSkills.tenantId, tenantId),
+        eq(employeeSkills.skillId, skillId)
+      ));
+    
+    return empSkillsWithHighProficiency
+      .filter(row => row.employee_skills.proficiencyLevel >= minProficiency)
+      .map(row => ({
+        ...row.employees,
+        proficiency: row.employee_skills.proficiencyLevel
+      }))
+      .sort((a, b) => b.proficiency - a.proficiency);
+  }
+
+  // Workforce Intelligence - Growth Areas
+  async getGrowthAreas(tenantId: string): Promise<GrowthArea[]> {
+    return await db.select().from(growthAreas).where(eq(growthAreas.tenantId, tenantId)).orderBy(desc(growthAreas.createdAt));
+  }
+
+  async getGrowthArea(tenantId: string, id: string): Promise<GrowthArea | undefined> {
+    const [area] = await db.select().from(growthAreas).where(and(eq(growthAreas.id, id), eq(growthAreas.tenantId, tenantId)));
+    return area || undefined;
+  }
+
+  async getGrowthAreasByEmployeeId(tenantId: string, employeeId: string): Promise<GrowthArea[]> {
+    return await db.select().from(growthAreas).where(and(eq(growthAreas.employeeId, employeeId), eq(growthAreas.tenantId, tenantId))).orderBy(desc(growthAreas.priority));
+  }
+
+  async createGrowthArea(tenantId: string, insertGrowthArea: InsertGrowthArea): Promise<GrowthArea> {
+    const [area] = await db.insert(growthAreas).values({ ...insertGrowthArea, tenantId }).returning();
+    return area;
+  }
+
+  async updateGrowthArea(tenantId: string, id: string, updates: Partial<InsertGrowthArea>): Promise<GrowthArea | undefined> {
+    const [area] = await db.update(growthAreas).set({ ...updates, updatedAt: new Date() }).where(and(eq(growthAreas.id, id), eq(growthAreas.tenantId, tenantId))).returning();
+    return area || undefined;
+  }
+
+  async deleteGrowthArea(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(growthAreas).where(and(eq(growthAreas.id, id), eq(growthAreas.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async generateGrowthAreasForEmployee(tenantId: string, employeeId: string): Promise<GrowthArea[]> {
+    const empSkills = await this.getEmployeeSkills(tenantId, employeeId);
+    const createdAreas: GrowthArea[] = [];
+    
+    // Group skills by category and identify those needing improvement
+    const categoryGaps = new Map<string, { skills: typeof empSkills, avgScore: number }>();
+    
+    for (const es of empSkills) {
+      const category = es.skill.category || 'General';
+      if (!categoryGaps.has(category)) {
+        categoryGaps.set(category, { skills: [], avgScore: 0 });
+      }
+      // Only include skills below proficiency level 5 (62.5% of max)
+      if (es.proficiencyLevel < 5) {
+        categoryGaps.get(category)!.skills.push(es);
+      }
+    }
+    
+    // Calculate average score and create growth areas for categories with gaps
+    for (const [category, data] of categoryGaps.entries()) {
+      if (data.skills.length === 0) continue;
+      
+      const avgProficiency = data.skills.reduce((sum, s) => sum + s.proficiencyLevel, 0) / data.skills.length;
+      const currentScore = Math.round((avgProficiency / 8) * 100);
+      const targetScore = 75; // Target at least 75% proficiency
+      
+      // Determine priority based on how far below target
+      let priority: 'critical' | 'high' | 'medium' | 'low' = 'medium';
+      if (currentScore < 25) priority = 'critical';
+      else if (currentScore < 40) priority = 'high';
+      else if (currentScore >= 50) priority = 'low';
+      
+      const suggestedActions = data.skills.slice(0, 3).map(s => ({
+        type: 'training',
+        description: `Improve ${s.skill.name} proficiency`,
+        skillId: s.skillId,
+        currentLevel: s.proficiencyLevel,
+        targetLevel: 6
+      }));
+      
+      const area = await this.createGrowthArea(tenantId, {
+        employeeId,
+        name: `${category} Development`,
+        description: `Improve skills in the ${category} category`,
+        priority,
+        skillIds: data.skills.map(s => s.skillId),
+        currentScore,
+        targetScore,
+        progress: 0,
+        suggestedActions,
+        status: 'active'
+      });
+      
+      createdAreas.push(area);
+    }
+    
+    return createdAreas;
   }
 }
 
