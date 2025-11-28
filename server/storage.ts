@@ -39,6 +39,11 @@ import {
   type InsertMentorship,
   type GrowthArea,
   type InsertGrowthArea,
+  type Document,
+  type InsertDocument,
+  type UpdateDocument,
+  type DocumentBatch,
+  type InsertDocumentBatch,
   users,
   jobs,
   candidates,
@@ -58,7 +63,9 @@ import {
   jobSkills,
   employeeAmbitions,
   mentorships,
-  growthAreas
+  growthAreas,
+  documents,
+  documentBatches
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte } from "drizzle-orm";
@@ -194,6 +201,21 @@ export interface IStorage {
   updateGrowthArea(tenantId: string, id: string, updates: Partial<InsertGrowthArea>): Promise<GrowthArea | undefined>;
   deleteGrowthArea(tenantId: string, id: string): Promise<boolean>;
   generateGrowthAreasForEmployee(tenantId: string, employeeId: string): Promise<GrowthArea[]>;
+  
+  // Document Automation
+  getAllDocuments(tenantId: string): Promise<Document[]>;
+  getDocumentsByType(tenantId: string, type: string): Promise<Document[]>;
+  getDocumentsByBatchId(tenantId: string, batchId: string): Promise<Document[]>;
+  getDocument(tenantId: string, id: string): Promise<Document | undefined>;
+  createDocument(tenantId: string, document: InsertDocument): Promise<Document>;
+  updateDocument(tenantId: string, id: string, updates: UpdateDocument): Promise<Document | undefined>;
+  deleteDocument(tenantId: string, id: string): Promise<boolean>;
+  
+  // Document Batches
+  getAllDocumentBatches(tenantId: string): Promise<DocumentBatch[]>;
+  getDocumentBatch(tenantId: string, id: string): Promise<DocumentBatch | undefined>;
+  createDocumentBatch(tenantId: string, batch: InsertDocumentBatch): Promise<DocumentBatch>;
+  updateDocumentBatch(tenantId: string, id: string, updates: Partial<InsertDocumentBatch>): Promise<DocumentBatch | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1073,6 +1095,67 @@ export class DatabaseStorage implements IStorage {
     }
     
     return createdAreas;
+  }
+
+  // Document Automation Implementation
+  async getAllDocuments(tenantId: string): Promise<Document[]> {
+    return await db.select().from(documents).where(eq(documents.tenantId, tenantId)).orderBy(desc(documents.createdAt));
+  }
+
+  async getDocumentsByType(tenantId: string, type: string): Promise<Document[]> {
+    return await db.select().from(documents).where(and(eq(documents.tenantId, tenantId), eq(documents.type, type))).orderBy(desc(documents.createdAt));
+  }
+
+  async getDocumentsByBatchId(tenantId: string, batchId: string): Promise<Document[]> {
+    return await db.select().from(documents).where(and(eq(documents.tenantId, tenantId), eq(documents.batchId, batchId))).orderBy(desc(documents.createdAt));
+  }
+
+  async getDocument(tenantId: string, id: string): Promise<Document | undefined> {
+    const [doc] = await db.select().from(documents).where(and(eq(documents.id, id), eq(documents.tenantId, tenantId)));
+    return doc || undefined;
+  }
+
+  async createDocument(tenantId: string, insertDocument: InsertDocument): Promise<Document> {
+    const [doc] = await db.insert(documents).values({ ...insertDocument, tenantId }).returning();
+    return doc;
+  }
+
+  async updateDocument(tenantId: string, id: string, updates: UpdateDocument): Promise<Document | undefined> {
+    const updateData: Record<string, unknown> = { ...updates, updatedAt: new Date() };
+    if (updates.status === 'processed') {
+      updateData.processedAt = new Date();
+    }
+    const [doc] = await db.update(documents).set(updateData).where(and(eq(documents.id, id), eq(documents.tenantId, tenantId))).returning();
+    return doc || undefined;
+  }
+
+  async deleteDocument(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(documents).where(and(eq(documents.id, id), eq(documents.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Document Batches Implementation
+  async getAllDocumentBatches(tenantId: string): Promise<DocumentBatch[]> {
+    return await db.select().from(documentBatches).where(eq(documentBatches.tenantId, tenantId)).orderBy(desc(documentBatches.createdAt));
+  }
+
+  async getDocumentBatch(tenantId: string, id: string): Promise<DocumentBatch | undefined> {
+    const [batch] = await db.select().from(documentBatches).where(and(eq(documentBatches.id, id), eq(documentBatches.tenantId, tenantId)));
+    return batch || undefined;
+  }
+
+  async createDocumentBatch(tenantId: string, insertBatch: InsertDocumentBatch): Promise<DocumentBatch> {
+    const [batch] = await db.insert(documentBatches).values({ ...insertBatch, tenantId }).returning();
+    return batch;
+  }
+
+  async updateDocumentBatch(tenantId: string, id: string, updates: Partial<InsertDocumentBatch>): Promise<DocumentBatch | undefined> {
+    const updateData: Record<string, unknown> = { ...updates };
+    if (updates.status === 'completed' || updates.status === 'failed') {
+      updateData.completedAt = new Date();
+    }
+    const [batch] = await db.update(documentBatches).set(updateData).where(and(eq(documentBatches.id, id), eq(documentBatches.tenantId, tenantId))).returning();
+    return batch || undefined;
   }
 }
 

@@ -681,3 +681,83 @@ export const insertGrowthAreaSchema = createInsertSchema(growthAreas, {
 
 export type InsertGrowthArea = z.infer<typeof insertGrowthAreaSchema>;
 export type GrowthArea = typeof growthAreas.$inferSelect;
+
+// ==================== DOCUMENT AUTOMATION ====================
+
+// Document Batches - Groups of documents uploaded together
+export const documentBatches = pgTable("document_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  name: text("name"),
+  type: text("type").notNull(), // 'job_specs', 'cvs'
+  status: text("status").notNull().default("processing"), // 'processing', 'completed', 'partially_completed', 'failed'
+  totalDocuments: integer("total_documents").notNull().default(0),
+  processedDocuments: integer("processed_documents").notNull().default(0),
+  failedDocuments: integer("failed_documents").notNull().default(0),
+  uploadedBy: varchar("uploaded_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => ({
+  tenantIdIdx: index("document_batches_tenant_id_idx").on(table.tenantId),
+  typeIdx: index("document_batches_type_idx").on(table.type),
+}));
+
+// Documents - Individual uploaded files
+export const documents = pgTable("documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  batchId: varchar("batch_id").references(() => documentBatches.id),
+  filename: text("filename").notNull(),
+  originalFilename: text("original_filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  filePath: text("file_path").notNull(), // Local storage path
+  type: text("type").notNull(), // 'job_spec', 'cv'
+  status: text("status").notNull().default("uploaded"), // 'uploaded', 'processing', 'processed', 'failed'
+  errorMessage: text("error_message"),
+  rawText: text("raw_text"), // Extracted text from PDF
+  extractedData: jsonb("extracted_data"), // Structured data from AI
+  linkedJobId: varchar("linked_job_id").references(() => jobs.id), // If this doc created a job
+  linkedCandidateId: varchar("linked_candidate_id").references(() => candidates.id), // If this doc created a candidate
+  processedAt: timestamp("processed_at"),
+  uploadedBy: varchar("uploaded_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("documents_tenant_id_idx").on(table.tenantId),
+  batchIdIdx: index("documents_batch_id_idx").on(table.batchId),
+  typeIdx: index("documents_type_idx").on(table.type),
+  statusIdx: index("documents_status_idx").on(table.status),
+}));
+
+// Insert schemas for documents
+export const insertDocumentBatchSchema = createInsertSchema(documentBatches).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  completedAt: true,
+});
+
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+  processedAt: true,
+});
+
+export const updateDocumentSchema = z.object({
+  status: z.enum(["uploaded", "processing", "processed", "failed"]).optional(),
+  rawText: z.string().optional(),
+  extractedData: z.any().optional(),
+  errorMessage: z.string().nullable().optional(),
+  linkedJobId: z.string().nullable().optional(),
+  linkedCandidateId: z.string().nullable().optional(),
+});
+
+export type InsertDocumentBatch = z.infer<typeof insertDocumentBatchSchema>;
+export type DocumentBatch = typeof documentBatches.$inferSelect;
+
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type UpdateDocument = z.infer<typeof updateDocumentSchema>;
+export type Document = typeof documents.$inferSelect;
