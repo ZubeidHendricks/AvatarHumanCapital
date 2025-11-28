@@ -1826,6 +1826,390 @@ Format your response as JSON:
     }
   });
 
+  // ===== Workforce Intelligence - Enhanced Data Endpoints =====
+
+  // Get all employees with their skills (for People Profiles)
+  app.get("/api/workforce/employees", async (req, res) => {
+    try {
+      const employeesWithSkills = await storage.getEmployeesWithSkills(req.tenant.id);
+      res.json(employeesWithSkills);
+    } catch (error) {
+      console.error("Error fetching employees with skills:", error);
+      res.json([]);
+    }
+  });
+
+  // Get single employee with skills (People Profile detail)
+  app.get("/api/workforce/employees/:id", async (req, res) => {
+    try {
+      const employee = await storage.getEmployeeWithSkills(req.tenant.id, req.params.id);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      res.json(employee);
+    } catch (error) {
+      console.error("Error fetching employee with skills:", error);
+      res.status(500).json({ message: "Failed to fetch employee" });
+    }
+  });
+
+  // Get employee's skills
+  app.get("/api/workforce/employees/:id/skills", async (req, res) => {
+    try {
+      const skills = await storage.getEmployeeSkills(req.tenant.id, req.params.id);
+      res.json(skills);
+    } catch (error) {
+      console.error("Error fetching employee skills:", error);
+      res.json([]);
+    }
+  });
+
+  // Create employee skill assessment
+  app.post("/api/workforce/employee-skills", async (req, res) => {
+    try {
+      const skill = await storage.createEmployeeSkill(req.tenant.id, req.body);
+      res.status(201).json(skill);
+    } catch (error) {
+      console.error("Error creating employee skill:", error);
+      res.status(500).json({ message: "Failed to create employee skill" });
+    }
+  });
+
+  // Update employee skill assessment
+  app.patch("/api/workforce/employee-skills/:id", async (req, res) => {
+    try {
+      const skill = await storage.updateEmployeeSkill(req.tenant.id, req.params.id, req.body);
+      if (!skill) {
+        return res.status(404).json({ message: "Employee skill not found" });
+      }
+      res.json(skill);
+    } catch (error) {
+      console.error("Error updating employee skill:", error);
+      res.status(500).json({ message: "Failed to update employee skill" });
+    }
+  });
+
+  // Get all employee skills (for skill matrix view)
+  app.get("/api/workforce/all-employee-skills", async (req, res) => {
+    try {
+      const allSkills = await storage.getAllEmployeeSkills(req.tenant.id);
+      res.json(allSkills);
+    } catch (error) {
+      console.error("Error fetching all employee skills:", error);
+      res.json([]);
+    }
+  });
+
+  // Get department skill gaps
+  app.get("/api/workforce/department-gaps", async (req, res) => {
+    try {
+      const gaps = await storage.getDepartmentSkillGaps(req.tenant.id);
+      res.json(gaps);
+    } catch (error) {
+      console.error("Error fetching department skill gaps:", error);
+      res.json([]);
+    }
+  });
+
+  // Get skill assessments overview (grouped by category)
+  app.get("/api/workforce/skill-assessments", async (req, res) => {
+    try {
+      const [skills, allEmployeeSkills] = await Promise.all([
+        storage.getAllSkills(req.tenant.id),
+        storage.getAllEmployeeSkills(req.tenant.id),
+      ]);
+
+      // Group skills by category with proficiency stats
+      const categoryMap = new Map<string, {
+        name: string;
+        skills: { id: string; name: string; avgProficiency: number; assessedCount: number; gapCount: number }[];
+        avgProficiency: number;
+        totalAssessed: number;
+      }>();
+
+      for (const skill of skills) {
+        const category = skill.category || "Uncategorized";
+        if (!categoryMap.has(category)) {
+          categoryMap.set(category, {
+            name: category,
+            skills: [],
+            avgProficiency: 0,
+            totalAssessed: 0,
+          });
+        }
+
+        const employeeAssessments = allEmployeeSkills.filter(es => es.skillId === skill.id);
+        const avgProf = employeeAssessments.length > 0
+          ? employeeAssessments.reduce((sum, es) => sum + es.proficiencyLevel, 0) / employeeAssessments.length
+          : 0;
+        const gapCount = employeeAssessments.filter(es => 
+          es.status === 'critical_gap' || es.status === 'training_needed'
+        ).length;
+
+        categoryMap.get(category)!.skills.push({
+          id: skill.id,
+          name: skill.name,
+          avgProficiency: Math.round(avgProf * 10) / 10,
+          assessedCount: employeeAssessments.length,
+          gapCount,
+        });
+      }
+
+      // Calculate category averages
+      for (const [_, data] of categoryMap) {
+        if (data.skills.length > 0) {
+          const total = data.skills.reduce((sum, s) => sum + s.avgProficiency, 0);
+          data.avgProficiency = Math.round((total / data.skills.length) * 10) / 10;
+          data.totalAssessed = data.skills.reduce((sum, s) => sum + s.assessedCount, 0);
+        }
+      }
+
+      res.json(Array.from(categoryMap.values()));
+    } catch (error) {
+      console.error("Error fetching skill assessments:", error);
+      res.json([]);
+    }
+  });
+
+  // Skill matching - match employees to a job's required skills
+  app.get("/api/workforce/skill-match/:jobId", async (req, res) => {
+    try {
+      const jobSkills = await storage.getJobSkills(req.tenant.id, req.params.jobId);
+      const employeesWithSkills = await storage.getEmployeesWithSkills(req.tenant.id);
+
+      if (jobSkills.length === 0) {
+        return res.json({ 
+          matches: employeesWithSkills.map(e => ({
+            employee: e,
+            matchScore: 0,
+            matchedSkills: [],
+            missingSkills: [],
+          })),
+          message: "No skill requirements defined for this job"
+        });
+      }
+
+      // Calculate match scores for each employee
+      const matches = employeesWithSkills.map(employee => {
+        const matchedSkills: { skill: string; required: number; actual: number; gap: number }[] = [];
+        const missingSkills: { skill: string; required: number }[] = [];
+        let totalScore = 0;
+        let maxScore = 0;
+
+        for (const jobSkill of jobSkills) {
+          const empSkill = employee.skills.find(es => es.skillId === jobSkill.skillId);
+          const importance = jobSkill.importance === 'essential' ? 3 : 
+                            jobSkill.importance === 'required' ? 2 : 1;
+          maxScore += jobSkill.requiredLevel * importance;
+
+          if (empSkill) {
+            const actual = empSkill.proficiencyLevel;
+            const required = jobSkill.requiredLevel;
+            const gap = Math.max(0, required - actual);
+            const score = Math.min(actual, required) * importance;
+            totalScore += score;
+            matchedSkills.push({
+              skill: jobSkill.skill.name,
+              required,
+              actual,
+              gap,
+            });
+          } else {
+            missingSkills.push({
+              skill: jobSkill.skill.name,
+              required: jobSkill.requiredLevel,
+            });
+          }
+        }
+
+        const matchScore = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+
+        return {
+          employee: {
+            id: employee.id,
+            fullName: employee.fullName,
+            jobTitle: employee.jobTitle,
+            department: employee.department,
+            avatarUrl: employee.avatarUrl,
+          },
+          matchScore,
+          matchedSkills,
+          missingSkills,
+        };
+      });
+
+      // Sort by match score descending
+      matches.sort((a, b) => b.matchScore - a.matchScore);
+
+      res.json({ matches });
+    } catch (error) {
+      console.error("Error calculating skill matches:", error);
+      res.status(500).json({ message: "Failed to calculate skill matches" });
+    }
+  });
+
+  // Match employees to skills (for internal mobility)
+  app.post("/api/workforce/find-matches", async (req, res) => {
+    try {
+      const { skillIds, minProficiency = 3 } = req.body;
+      
+      if (!skillIds || !Array.isArray(skillIds) || skillIds.length === 0) {
+        return res.status(400).json({ message: "skillIds array is required" });
+      }
+
+      const employeesWithSkills = await storage.getEmployeesWithSkills(req.tenant.id);
+
+      const matches = employeesWithSkills
+        .map(employee => {
+          const matchedSkills = employee.skills.filter(es => 
+            skillIds.includes(es.skillId) && es.proficiencyLevel >= minProficiency
+          );
+
+          const matchScore = skillIds.length > 0
+            ? Math.round((matchedSkills.length / skillIds.length) * 100)
+            : 0;
+
+          return {
+            employee: {
+              id: employee.id,
+              fullName: employee.fullName,
+              jobTitle: employee.jobTitle,
+              department: employee.department,
+              avatarUrl: employee.avatarUrl,
+            },
+            matchScore,
+            matchedSkills: matchedSkills.map(ms => ({
+              skillName: ms.skill.name,
+              proficiency: ms.proficiencyLevel,
+            })),
+          };
+        })
+        .filter(m => m.matchScore > 0)
+        .sort((a, b) => b.matchScore - a.matchScore);
+
+      res.json({ matches });
+    } catch (error) {
+      console.error("Error finding skill matches:", error);
+      res.status(500).json({ message: "Failed to find matches" });
+    }
+  });
+
+  // Create job skill requirement
+  app.post("/api/workforce/job-skills", async (req, res) => {
+    try {
+      const jobSkill = await storage.createJobSkill(req.tenant.id, req.body);
+      res.status(201).json(jobSkill);
+    } catch (error) {
+      console.error("Error creating job skill:", error);
+      res.status(500).json({ message: "Failed to create job skill" });
+    }
+  });
+
+  // Get job skill requirements
+  app.get("/api/workforce/jobs/:jobId/skills", async (req, res) => {
+    try {
+      const jobSkills = await storage.getJobSkills(req.tenant.id, req.params.jobId);
+      res.json(jobSkills);
+    } catch (error) {
+      console.error("Error fetching job skills:", error);
+      res.json([]);
+    }
+  });
+
+  // Seed sample workforce data (for demo purposes)
+  app.post("/api/workforce/seed-demo-data", async (req, res) => {
+    try {
+      // Create sample skills
+      const skillsData = [
+        { name: "JavaScript", category: "Technical" },
+        { name: "Python", category: "Technical" },
+        { name: "React", category: "Technical" },
+        { name: "Node.js", category: "Technical" },
+        { name: "SQL", category: "Technical" },
+        { name: "Leadership", category: "Soft Skills" },
+        { name: "Communication", category: "Soft Skills" },
+        { name: "Problem Solving", category: "Soft Skills" },
+        { name: "Project Management", category: "Leadership" },
+        { name: "Strategic Thinking", category: "Leadership" },
+        { name: "Sales Techniques", category: "Domain" },
+        { name: "Customer Service", category: "Domain" },
+      ];
+
+      const createdSkills: any[] = [];
+      for (const skill of skillsData) {
+        try {
+          const created = await storage.createSkill(req.tenant.id, skill);
+          createdSkills.push(created);
+        } catch (e) {
+          // Skill might already exist
+        }
+      }
+
+      // Create sample employees
+      const employeesData = [
+        { fullName: "Thabo Mokoena", email: "thabo@company.co.za", department: "Engineering", team: "Frontend", jobTitle: "Senior Developer", location: "Johannesburg" },
+        { fullName: "Naledi Ndaba", email: "naledi@company.co.za", department: "Engineering", team: "Backend", jobTitle: "Lead Engineer", location: "Cape Town" },
+        { fullName: "Sipho Dlamini", email: "sipho@company.co.za", department: "Sales", team: "Enterprise", jobTitle: "Sales Manager", location: "Durban" },
+        { fullName: "Lerato Maseko", email: "lerato@company.co.za", department: "HR", team: "Talent", jobTitle: "HR Specialist", location: "Johannesburg" },
+        { fullName: "Bongani Zulu", email: "bongani@company.co.za", department: "Engineering", team: "DevOps", jobTitle: "DevOps Engineer", location: "Pretoria" },
+      ];
+
+      const createdEmployees: any[] = [];
+      for (const emp of employeesData) {
+        try {
+          const created = await storage.createEmployee(req.tenant.id, emp);
+          createdEmployees.push(created);
+        } catch (e) {
+          // Employee might already exist
+        }
+      }
+
+      // Create employee skill assessments
+      const assessments = [
+        { employeeIdx: 0, skillIdx: 0, proficiency: 7, status: "good_match" },  // Thabo - JavaScript
+        { employeeIdx: 0, skillIdx: 2, proficiency: 8, status: "beyond_expectations" },  // Thabo - React
+        { employeeIdx: 0, skillIdx: 6, proficiency: 5, status: "training_needed" },  // Thabo - Communication
+        { employeeIdx: 1, skillIdx: 1, proficiency: 8, status: "beyond_expectations" },  // Naledi - Python
+        { employeeIdx: 1, skillIdx: 3, proficiency: 7, status: "good_match" },  // Naledi - Node.js
+        { employeeIdx: 1, skillIdx: 5, proficiency: 6, status: "good_match" },  // Naledi - Leadership
+        { employeeIdx: 2, skillIdx: 10, proficiency: 4, status: "critical_gap" },  // Sipho - Sales Techniques
+        { employeeIdx: 2, skillIdx: 11, proficiency: 7, status: "good_match" },  // Sipho - Customer Service
+        { employeeIdx: 3, skillIdx: 6, proficiency: 8, status: "beyond_expectations" },  // Lerato - Communication
+        { employeeIdx: 3, skillIdx: 8, proficiency: 5, status: "training_needed" },  // Lerato - Project Management
+        { employeeIdx: 4, skillIdx: 4, proficiency: 6, status: "good_match" },  // Bongani - SQL
+        { employeeIdx: 4, skillIdx: 3, proficiency: 7, status: "good_match" },  // Bongani - Node.js
+      ];
+
+      for (const assessment of assessments) {
+        if (createdEmployees[assessment.employeeIdx] && createdSkills[assessment.skillIdx]) {
+          try {
+            await storage.createEmployeeSkill(req.tenant.id, {
+              employeeId: createdEmployees[assessment.employeeIdx].id,
+              skillId: createdSkills[assessment.skillIdx].id,
+              proficiencyLevel: assessment.proficiency,
+              status: assessment.status,
+              source: "assessment",
+            });
+          } catch (e) {
+            // Assessment might already exist
+          }
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Demo data seeded successfully",
+        created: {
+          skills: createdSkills.length,
+          employees: createdEmployees.length,
+        }
+      });
+    } catch (error) {
+      console.error("Error seeding demo data:", error);
+      res.status(500).json({ message: "Failed to seed demo data" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

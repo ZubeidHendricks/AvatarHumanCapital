@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Navbar } from "@/components/layout/navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,19 +16,27 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Search, Filter, Users, TrendingUp, CheckCircle,
   ChevronRight, Plus, X, MapPin, Brain, Send, Loader2,
-  Sparkles, AlertTriangle, ArrowRight, Bell, Flame
+  Sparkles, AlertTriangle, ArrowRight, Bell, Flame, Database
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Employee, Skill, Job, EmployeeSkill, SkillActivity, Department } from "@shared/schema";
 
-interface DepartmentWithSkills extends Department {
-  employees?: Employee[];
-  skillGaps?: string[];
+interface DepartmentGap {
+  department: string;
+  headCount: number;
+  skillGaps: string[];
+  gapScore: number;
 }
 
 interface EmployeeWithSkills extends Employee {
-  skills?: (EmployeeSkill & { skill?: Skill })[];
-  matchScore?: number;
+  skills: (EmployeeSkill & { skill: Skill })[];
+}
+
+interface SkillAssessmentCategory {
+  name: string;
+  skills: { id: string; name: string; avgProficiency: number; assessedCount: number; gapCount: number }[];
+  avgProficiency: number;
+  totalAssessed: number;
 }
 
 interface AIResponse {
@@ -66,17 +74,22 @@ export default function WorkforceIntelligence() {
   const [aiQuestion, setAiQuestion] = useState("");
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const queryClient = useQueryClient();
   
-  const employeesKey = useTenantQueryKey(["employees"]);
+  const employeesKey = useTenantQueryKey(["workforce-employees"]);
   const skillsKey = useTenantQueryKey(["skills"]);
-  const departmentsKey = useTenantQueryKey(["departments"]);
+  const departmentGapsKey = useTenantQueryKey(["department-gaps"]);
   const jobsKey = useTenantQueryKey(["jobs"]);
   const alertsKey = useTenantQueryKey(["workforce-alerts"]);
+  const skillAssessmentsKey = useTenantQueryKey(["skill-assessments"]);
+  const skillActivitiesKey = useTenantQueryKey(["skill-activities"]);
+  const allEmployeeSkillsKey = useTenantQueryKey(["all-employee-skills"]);
 
-  const { data: employees = [] } = useQuery<EmployeeWithSkills[]>({
+  // Fetch employees with their skills (for People Profiles and Matching)
+  const { data: employeesWithSkills = [], isLoading: employeesLoading } = useQuery<EmployeeWithSkills[]>({
     queryKey: employeesKey,
     queryFn: async () => {
-      const response = await api.get("/employees");
+      const response = await api.get("/workforce/employees");
       return response.data;
     },
   });
@@ -89,10 +102,11 @@ export default function WorkforceIntelligence() {
     },
   });
 
-  const { data: departments = [] } = useQuery<DepartmentWithSkills[]>({
-    queryKey: departmentsKey,
+  // Fetch department skill gaps (for Skill Analysis section)
+  const { data: departmentGaps = [], isLoading: departmentGapsLoading } = useQuery<DepartmentGap[]>({
+    queryKey: departmentGapsKey,
     queryFn: async () => {
-      const response = await api.get("/departments");
+      const response = await api.get("/workforce/department-gaps");
       return response.data;
     },
   });
@@ -110,6 +124,48 @@ export default function WorkforceIntelligence() {
     queryFn: async () => {
       const response = await api.get("/workforce-ai/alerts");
       return response.data;
+    },
+  });
+
+  // Fetch skill assessments grouped by category
+  const { data: skillAssessments = [], isLoading: skillAssessmentsLoading } = useQuery<SkillAssessmentCategory[]>({
+    queryKey: skillAssessmentsKey,
+    queryFn: async () => {
+      const response = await api.get("/workforce/skill-assessments");
+      return response.data;
+    },
+  });
+
+  // Fetch skill activities for Learning Path
+  const { data: skillActivities = [] } = useQuery<SkillActivity[]>({
+    queryKey: skillActivitiesKey,
+    queryFn: async () => {
+      const response = await api.get("/skill-activities");
+      return response.data;
+    },
+  });
+
+  // Fetch all employee skills for matching matrix
+  const { data: allEmployeeSkills = [] } = useQuery<(EmployeeSkill & { skill: Skill; employee: Employee })[]>({
+    queryKey: allEmployeeSkillsKey,
+    queryFn: async () => {
+      const response = await api.get("/workforce/all-employee-skills");
+      return response.data;
+    },
+  });
+
+  // Seed demo data mutation
+  const seedDemoMutation = useMutation({
+    mutationFn: async () => {
+      const response = await api.post("/workforce/seed-demo-data");
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: employeesKey });
+      queryClient.invalidateQueries({ queryKey: skillsKey });
+      queryClient.invalidateQueries({ queryKey: departmentGapsKey });
+      queryClient.invalidateQueries({ queryKey: skillAssessmentsKey });
+      queryClient.invalidateQueries({ queryKey: allEmployeeSkillsKey });
     },
   });
 
@@ -138,49 +194,49 @@ export default function WorkforceIntelligence() {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
-  const mockDepartments: DepartmentWithSkills[] = [
-    { id: "1", tenantId: "1", name: "Operations", headCount: 12, skillGapScore: 12, skillGaps: ["Data Analysis", "Inventory Management", "Teamwork", "Attention to Detail"], metadata: null, createdAt: new Date(), updatedAt: new Date() },
-    { id: "2", tenantId: "1", name: "Legal", headCount: 8, skillGapScore: 11, skillGaps: ["Intellectual Property (IP) Law", "Analytical Thinking"], metadata: null, createdAt: new Date(), updatedAt: new Date() },
-    { id: "3", tenantId: "1", name: "Finance", headCount: 10, skillGapScore: 10, skillGaps: ["Risk Management", "Ethical Judgment"], metadata: null, createdAt: new Date(), updatedAt: new Date() },
-    { id: "4", tenantId: "1", name: "Marketing", headCount: 15, skillGapScore: 9, skillGaps: ["Data Analysis", "SEO", "Leadership", "Communication"], metadata: null, createdAt: new Date(), updatedAt: new Date() },
-  ];
-
-  const mockJobs = [
-    { id: "1", title: "Senior Product Designer", department: "Design", salaryMin: 6000, salaryMax: 8000, location: "Remote", applicants: 32, internalMatches: 6, skills: ["Data Analysis", "Analytical Thinking"] },
-    { id: "2", title: "Financial Analyst", department: "Finance", salaryMin: 5000, salaryMax: 7000, location: "Johannesburg", applicants: 28, internalMatches: 4, skills: ["Data Analysis", "Analytical Thinking"] },
-  ];
-
-  const mockActivities = [
-    { id: "1", employeeName: "Mark", skillName: "Public Presentation", type: "skill_added", time: "23 minutes ago", teamName: null },
-    { id: "2", employeeName: "Julia", skillName: "Communication", type: "gap_closed", time: "2 hours ago", teamName: null },
-    { id: "3", employeeName: null, skillName: "Hubspot", type: "skill_added", time: "2 hours ago", teamName: "Marketing team" },
-    { id: "4", employeeName: null, skillName: null, type: "no_update", time: "Yesterday", teamName: "Sales team", message: "hasn't made any skill status updates or improvements in the last week" },
-  ];
-
-  const mockSkillAssessments = [
-    { name: "Communication", description: "Exchanging information effectively through verbal, non-verbal, and written means to convey ideas...", skills: ["Active listening", "Written communication"], status: "good_match", mentors: ["avatar1", "avatar2"] },
-    { name: "Planning and organising", description: "Setting objectives, prioritising tasks, and managing resources effectively to achieve goals...", skills: ["Time management"], status: "training_needed", mentors: ["avatar3"] },
-    { name: "Supporting others", description: "Providing help, guidance, and encouragement to individuals or teams to enhance performance...", skills: ["Coaching", "Mentoring"], status: "good_match", mentors: ["avatar4", "avatar5"] },
-    { name: "Recruiting and hiring", description: "Identifying, attracting, and selecting suitable candidates by assessing skills, experience...", skills: ["Interviewing", "Assessing"], status: "critical_gap", mentors: ["avatar6"] },
-    { name: "Supervising people", description: "Overseeing and guiding individuals or teams by setting expectations, providing support...", skills: ["Delegating", "Leadership"], status: "good_match", mentors: ["avatar7"] },
-    { name: "Making decisions", description: "Evaluating information, weighing options, and choosing the best course of action...", skills: ["Critical thinking", "Risk assessing"], status: "training_needed", mentors: ["avatar8"] },
-    { name: "Assessing data", description: "Collecting, analyzing, and interpreting information to identify patterns and support decision-making...", skills: ["Trend identification", "Report interpretation"], status: "good_match", mentors: ["avatar9"] },
-    { name: "Marketing", description: "Promoting products, services, or brands by understanding customer needs, crafting messages...", skills: ["Market research", "Branding", "Digital marketing"], status: "beyond_expectations", mentors: ["avatar10"] },
-  ];
-
-  const mockMatchingData = {
-    skills: ["Javascript", "Project Management", "HTML5", "Solution Architecture", "Lean methodologies"],
-    people: [
-      { name: "Dylan George", avatar: "", scores: { "Javascript": 90, "Project Management": 80, "HTML5": 85, "Solution Architecture": 75, "Lean methodologies": 70 }, overallMatch: 90 },
-      { name: "Helly Riggs", avatar: "", scores: { "Javascript": 85, "Project Management": 75, "HTML5": 80, "Solution Architecture": 65, "Lean methodologies": 60 }, overallMatch: 80 },
-      { name: "Kier Eagan", avatar: "", scores: { "Javascript": 70, "Project Management": 80, "HTML5": 65, "Solution Architecture": null, "Lean methodologies": 55 }, overallMatch: 70 },
-      { name: "Burt Goodman", avatar: "", scores: { "Javascript": null, "Project Management": 60, "HTML5": null, "Solution Architecture": 50, "Lean methodologies": null }, overallMatch: null },
-      { name: "Mark Scout", avatar: "", scores: { "Javascript": 60, "Project Management": 55, "HTML5": 50, "Solution Architecture": 45, "Lean methodologies": 40 }, overallMatch: 50 },
-    ],
+  // Build matching data from real employee skills
+  const uniqueSkillNames = Array.from(new Set(allEmployeeSkills.map(es => es.skill.name))).slice(0, 5);
+  const matchingData = {
+    skills: uniqueSkillNames,
+    people: employeesWithSkills.slice(0, 5).map(emp => {
+      const scores: Record<string, number | null> = {};
+      uniqueSkillNames.forEach(skillName => {
+        const empSkill = emp.skills?.find(es => es.skill?.name === skillName);
+        scores[skillName] = empSkill ? Math.round((empSkill.proficiencyLevel / 8) * 100) : null;
+      });
+      const validScores = Object.values(scores).filter((s): s is number => s !== null);
+      return {
+        name: emp.fullName,
+        avatar: emp.avatarUrl || "",
+        scores,
+        overallMatch: validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : null,
+      };
+    }),
   };
 
-  const displayDepartments = departments.length > 0 ? departments : mockDepartments;
   const alerts = alertsData?.alerts || [];
+
+  // Helper to format time ago
+  const formatTimeAgo = (date: Date | string) => {
+    const now = new Date();
+    const then = new Date(date);
+    const diffMs = now.getTime() - then.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    return `${Math.floor(diffHours / 24)} days ago`;
+  };
+
+  // Get skill status counts from real data
+  const skillStatusCounts = {
+    critical_gap: allEmployeeSkills.filter(es => es.status === 'critical_gap').length,
+    training_needed: allEmployeeSkills.filter(es => es.status === 'training_needed').length,
+    good_match: allEmployeeSkills.filter(es => es.status === 'good_match').length,
+    beyond_expectations: allEmployeeSkills.filter(es => es.status === 'beyond_expectations').length,
+  };
+
+  const totalSkillAssessments = Object.values(skillStatusCounts).reduce((a, b) => a + b, 0);
 
   const sampleQuestions = [
     "Who's the best candidate to lead the product expansion in Cape Town?",
@@ -404,57 +460,88 @@ export default function WorkforceIntelligence() {
                           <CardTitle className="text-lg text-white">Skill analysis</CardTitle>
                           <CardDescription className="text-zinc-400">Area's to focus on</CardDescription>
                         </div>
-                        <Button variant="outline" size="sm" className="border-zinc-700 bg-zinc-800 hover:bg-zinc-700">
-                          <Filter className="h-4 w-4 mr-2" />
-                          Filter
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {departmentGaps.length === 0 && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400"
+                              onClick={() => seedDemoMutation.mutate()}
+                              disabled={seedDemoMutation.isPending}
+                            >
+                              <Database className="h-4 w-4 mr-2" />
+                              {seedDemoMutation.isPending ? "Loading..." : "Load Demo Data"}
+                            </Button>
+                          )}
+                          <Button variant="outline" size="sm" className="border-zinc-700 bg-zinc-800 hover:bg-zinc-700">
+                            <Filter className="h-4 w-4 mr-2" />
+                            Filter
+                          </Button>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {displayDepartments.map((dept, idx) => (
-                          <Card 
-                            key={dept.id} 
-                            className="bg-zinc-800/50 border-zinc-700 hover:border-amber-500/50 transition-colors cursor-pointer"
-                            data-testid={`card-department-${dept.name.toLowerCase()}`}
-                          >
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between mb-3">
-                                <Badge variant="outline" className="text-xs text-zinc-400 border-zinc-600">
-                                  #{12 - idx}
-                                </Badge>
-                                <span className="font-semibold text-white">{dept.name}</span>
-                              </div>
-                              <div className="flex items-center gap-1 mb-3">
-                                {[...Array(Math.min(dept.headCount || 4, 5))].map((_, i) => (
-                                  <Avatar key={i} className="h-6 w-6 -ml-1 first:ml-0 border-2 border-zinc-800">
-                                    <AvatarFallback className="text-[10px] bg-zinc-700 text-zinc-300">
-                                      {String.fromCharCode(65 + i)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                ))}
-                                {(dept.headCount || 0) > 5 && (
-                                  <span className="text-xs text-zinc-500 ml-1">+{(dept.headCount || 0) - 5}</span>
-                                )}
-                              </div>
-                              <div className="space-y-2">
-                                <p className="text-xs text-zinc-500">Skill to address:</p>
-                                <div className="flex flex-wrap gap-1">
-                                  {(dept.skillGaps || []).slice(0, 3).map((skill, i) => (
-                                    <Badge 
-                                      key={i}
-                                      variant="secondary" 
-                                      className="text-[10px] bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border-0"
-                                    >
-                                      {skill}
-                                    </Badge>
-                                  ))}
+                      {departmentGapsLoading ? (
+                        <div className="text-center py-8">
+                          <Loader2 className="h-8 w-8 animate-spin text-amber-400 mx-auto" />
+                          <p className="text-zinc-500 mt-2">Loading skill analysis...</p>
+                        </div>
+                      ) : departmentGaps.length === 0 ? (
+                        <div className="text-center py-8">
+                          <Users className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
+                          <p className="text-zinc-400">No department skill data yet</p>
+                          <p className="text-zinc-500 text-sm">Add employees and assess their skills to see analysis</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          {departmentGaps.map((dept, idx) => (
+                            <Card 
+                              key={dept.department} 
+                              className="bg-zinc-800/50 border-zinc-700 hover:border-amber-500/50 transition-colors cursor-pointer"
+                              data-testid={`card-department-${dept.department.toLowerCase().replace(/\s+/g, '-')}`}
+                            >
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <Badge variant="outline" className="text-xs text-zinc-400 border-zinc-600">
+                                    Gap: {dept.gapScore}
+                                  </Badge>
+                                  <span className="font-semibold text-white">{dept.department}</span>
                                 </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
+                                <div className="flex items-center gap-1 mb-3">
+                                  {[...Array(Math.min(dept.headCount || 1, 5))].map((_, i) => (
+                                    <Avatar key={i} className="h-6 w-6 -ml-1 first:ml-0 border-2 border-zinc-800">
+                                      <AvatarFallback className="text-[10px] bg-zinc-700 text-zinc-300">
+                                        {String.fromCharCode(65 + i)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  ))}
+                                  {(dept.headCount || 0) > 5 && (
+                                    <span className="text-xs text-zinc-500 ml-1">+{(dept.headCount || 0) - 5}</span>
+                                  )}
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-xs text-zinc-500">Skill to address:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {dept.skillGaps.length > 0 ? (
+                                      dept.skillGaps.slice(0, 3).map((skill, i) => (
+                                        <Badge 
+                                          key={i}
+                                          variant="secondary" 
+                                          className="text-[10px] bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border-0"
+                                        >
+                                          {skill}
+                                        </Badge>
+                                      ))
+                                    ) : (
+                                      <span className="text-xs text-green-400">No gaps identified</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
@@ -463,59 +550,63 @@ export default function WorkforceIntelligence() {
                       <CardTitle className="text-lg text-white">Internal Mobility</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {mockJobs.map((job) => (
-                        <Card 
-                          key={job.id} 
-                          className="bg-zinc-800/50 border-zinc-700 hover:border-amber-500/50 transition-colors"
-                          data-testid={`card-job-${job.id}`}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-2">
-                                <h3 className="font-semibold text-lg text-white">{job.title}</h3>
-                                <div className="flex flex-wrap gap-1">
-                                  {job.skills.map((skill, i) => (
-                                    <Badge 
-                                      key={i}
-                                      className="text-xs bg-blue-500/20 text-blue-400 border-0"
-                                    >
-                                      {skill}
+                      {jobs.filter(j => j.status === "open").length === 0 ? (
+                        <div className="text-center py-8">
+                          <Users className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
+                          <p className="text-zinc-400">No open positions yet</p>
+                          <p className="text-zinc-500 text-sm">Create job postings to find internal mobility opportunities</p>
+                        </div>
+                      ) : (
+                        jobs.filter(j => j.status === "open").slice(0, 3).map((job) => {
+                          const internalMatches = employeesWithSkills.filter(e => 
+                            e.department === job.department
+                          ).length;
+                          return (
+                            <Card 
+                              key={job.id} 
+                              className="bg-zinc-800/50 border-zinc-700 hover:border-amber-500/50 transition-colors"
+                              data-testid={`card-job-${job.id}`}
+                            >
+                              <CardContent className="p-4">
+                                <div className="flex items-start justify-between">
+                                  <div className="space-y-2">
+                                    <h3 className="font-semibold text-lg text-white">{job.title}</h3>
+                                    <Badge className="text-xs bg-blue-500/20 text-blue-400 border-0">
+                                      {job.department}
                                     </Badge>
-                                  ))}
+                                    <p className="text-sm text-zinc-400 line-clamp-2">
+                                      {job.description || `As a ${job.title}, you will play a key role in the team...`}
+                                    </p>
+                                    <div className="flex items-center gap-4 text-sm text-zinc-500">
+                                      {job.salaryMin && job.salaryMax && (
+                                        <span className="flex items-center gap-1">
+                                          <span className="font-medium text-white">R{job.salaryMin?.toLocaleString()} - R{job.salaryMax?.toLocaleString()}</span>/month
+                                        </span>
+                                      )}
+                                      <span className="flex items-center gap-1">
+                                        <MapPin className="h-4 w-4" />
+                                        {job.location || "Remote"}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-amber-400 font-medium">
+                                      Internal matches: {internalMatches}
+                                    </p>
+                                  </div>
+                                  <div className="flex -space-x-2">
+                                    {[...Array(Math.min(internalMatches, 4))].map((_, i) => (
+                                      <Avatar key={i} className="h-8 w-8 border-2 border-zinc-800">
+                                        <AvatarFallback className="text-xs bg-amber-500/20 text-amber-400">
+                                          {String.fromCharCode(65 + i)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    ))}
+                                  </div>
                                 </div>
-                                <p className="text-sm text-zinc-400 line-clamp-2">
-                                  As a {job.title}, you will play a key role in the product development lifecycle...
-                                </p>
-                                <div className="flex items-center gap-4 text-sm text-zinc-500">
-                                  <span className="flex items-center gap-1">
-                                    <span className="font-medium text-white">R{job.salaryMin?.toLocaleString()} - R{job.salaryMax?.toLocaleString()}</span>/month
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Users className="h-4 w-4" />
-                                    {job.applicants} applicants
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <MapPin className="h-4 w-4" />
-                                    {job.location}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-amber-400 font-medium">
-                                  Internal matches: {job.internalMatches}
-                                </p>
-                              </div>
-                              <div className="flex -space-x-2">
-                                {[...Array(Math.min(job.internalMatches, 4))].map((_, i) => (
-                                  <Avatar key={i} className="h-8 w-8 border-2 border-zinc-800">
-                                    <AvatarFallback className="text-xs bg-amber-500/20 text-amber-400">
-                                      {String.fromCharCode(65 + i)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                ))}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                              </CardContent>
+                            </Card>
+                          );
+                        })
+                      )}
                     </CardContent>
                   </Card>
                 </div>
@@ -532,41 +623,33 @@ export default function WorkforceIntelligence() {
                       <div className="relative">
                         <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-zinc-700" />
                         <div className="space-y-4">
-                          {mockActivities.map((activity) => (
-                            <div key={activity.id} className="relative pl-8">
-                              <div className={`absolute left-1.5 w-3 h-3 rounded-full border-2 border-zinc-900 ${
-                                activity.type === "skill_added" ? "bg-green-500" :
-                                activity.type === "gap_closed" ? "bg-blue-500" :
-                                activity.type === "no_update" ? "bg-red-500" :
-                                "bg-amber-500"
-                              }`} />
-                              <div className="space-y-1">
-                                <p className="text-xs text-zinc-500">{activity.time}</p>
-                                <p className="text-sm text-zinc-300">
-                                  {activity.employeeName ? (
-                                    <>
-                                      <span className="font-medium text-white">{activity.employeeName}</span>
-                                      {activity.type === "skill_added" ? " has added a new skill:" : " has closed her skill gap in:"}
-                                    </>
-                                  ) : activity.teamName ? (
-                                    <>
-                                      <span className="font-medium text-white">{activity.teamName}</span>
-                                      {activity.message ? ` ${activity.message}` : " has added a new skill:"}
-                                    </>
-                                  ) : null}
-                                </p>
-                                {activity.skillName && (
-                                  <Badge className={`text-xs border-0 ${
-                                    activity.type === "skill_added" ? "bg-green-500/20 text-green-400" :
-                                    activity.type === "gap_closed" ? "bg-blue-500/20 text-blue-400" :
-                                    "bg-amber-500/20 text-amber-400"
-                                  }`}>
-                                    {activity.skillName}
-                                  </Badge>
-                                )}
-                              </div>
+                          {skillActivities.length === 0 ? (
+                            <div className="text-center py-4 pl-8">
+                              <p className="text-zinc-500 text-sm">No recent skill activities</p>
                             </div>
-                          ))}
+                          ) : (
+                            skillActivities.slice(0, 5).map((activity) => (
+                              <div key={activity.id} className="relative pl-8">
+                                <div className={`absolute left-1.5 w-3 h-3 rounded-full border-2 border-zinc-900 ${
+                                  activity.activityType === "skill_added" ? "bg-green-500" :
+                                  activity.activityType === "gap_closed" ? "bg-blue-500" :
+                                  activity.activityType === "skill_improved" ? "bg-amber-500" :
+                                  "bg-purple-500"
+                                }`} />
+                                <div className="space-y-1">
+                                  <p className="text-xs text-zinc-500">{formatTimeAgo(activity.createdAt)}</p>
+                                  <p className="text-sm text-zinc-300">
+                                    {activity.description || `${activity.activityType.replace(/_/g, " ")}`}
+                                  </p>
+                                  {activity.newLevel && activity.previousLevel && (
+                                    <Badge className="text-xs bg-green-500/20 text-green-400 border-0">
+                                      Level {activity.previousLevel} → {activity.newLevel}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -583,7 +666,7 @@ export default function WorkforceIntelligence() {
                       <CardTitle className="text-lg text-white">Skill assessment</CardTitle>
                       <div className="flex items-center gap-2">
                         <Switch checked={true} />
-                        <Label className="text-sm text-zinc-400">Group similar skills</Label>
+                        <Label className="text-sm text-zinc-400">Group by category</Label>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -592,66 +675,102 @@ export default function WorkforceIntelligence() {
                     </div>
                   </div>
                   <div className="flex items-center gap-4 mt-4">
-                    <Badge variant="outline" className="bg-zinc-800 border-zinc-700 text-zinc-300">All 21</Badge>
+                    <Badge variant="outline" className="bg-zinc-800 border-zinc-700 text-zinc-300">All {totalSkillAssessments}</Badge>
                     <Badge className="bg-red-500/20 text-red-400 border-0">
                       <span className="w-2 h-2 rounded-full bg-red-500 mr-1" />
-                      Critical gap 1
+                      Critical gap {skillStatusCounts.critical_gap}
                     </Badge>
                     <Badge className="bg-yellow-500/20 text-yellow-400 border-0">
                       <span className="w-2 h-2 rounded-full bg-yellow-500 mr-1" />
-                      Training needed 5
+                      Training needed {skillStatusCounts.training_needed}
                     </Badge>
                     <Badge className="bg-green-500/20 text-green-400 border-0">
                       <span className="w-2 h-2 rounded-full bg-green-500 mr-1" />
-                      Good skill match 13
+                      Good skill match {skillStatusCounts.good_match}
                     </Badge>
                     <Badge className="bg-purple-500/20 text-purple-400 border-0">
                       <span className="w-2 h-2 rounded-full bg-purple-500 mr-1" />
-                      Beyond expectations 2
+                      Beyond expectations {skillStatusCounts.beyond_expectations}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {mockSkillAssessments.map((skill, idx) => {
-                      const colors = SKILL_STATUS_COLORS[skill.status as keyof typeof SKILL_STATUS_COLORS] || SKILL_STATUS_COLORS.good_match;
-                      return (
-                        <Card 
-                          key={idx}
-                          className={`border ${colors.border} ${colors.bg} hover:shadow-md transition-shadow cursor-pointer`}
-                          data-testid={`card-skill-${skill.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  {skillAssessmentsLoading ? (
+                    <div className="text-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-amber-400 mx-auto" />
+                      <p className="text-zinc-500 mt-2">Loading skill assessments...</p>
+                    </div>
+                  ) : skillAssessments.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Brain className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
+                      <p className="text-zinc-400">No skill assessments yet</p>
+                      <p className="text-zinc-500 text-sm mb-4">Add skills and assess employee proficiency to see data</p>
+                      {employeesWithSkills.length === 0 && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400"
+                          onClick={() => seedDemoMutation.mutate()}
+                          disabled={seedDemoMutation.isPending}
                         >
-                          <CardContent className="p-4 space-y-3">
-                            <div className="flex items-start justify-between">
-                              <h3 className="font-semibold text-white">{skill.name}</h3>
-                              <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
-                            </div>
-                            <p className="text-xs text-zinc-400 line-clamp-3">{skill.description}</p>
-                            <div>
-                              <p className="text-xs text-zinc-500 mb-1">Skills</p>
-                              <div className="flex flex-wrap gap-1">
-                                {skill.skills.map((s, i) => (
-                                  <Badge key={i} variant="outline" className="text-[10px] border-zinc-600 text-zinc-300">{s}</Badge>
-                                ))}
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-xs text-zinc-500 mb-1">Recommended mentors</p>
-                              <div className="flex -space-x-1">
-                                {[...Array(2)].map((_, i) => (
-                                  <Avatar key={i} className="h-6 w-6 border-2 border-zinc-900">
-                                    <AvatarFallback className="text-[10px] bg-zinc-700 text-zinc-300">
-                                      {String.fromCharCode(65 + i + idx)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                ))}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
+                          <Database className="h-4 w-4 mr-2" />
+                          {seedDemoMutation.isPending ? "Loading..." : "Load Demo Data"}
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {skillAssessments.map((category) => (
+                        <div key={category.name}>
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold text-white">{category.name}</h3>
+                            <Badge variant="outline" className="text-xs border-zinc-600 text-zinc-400">
+                              Avg: {category.avgProficiency}/8 | {category.totalAssessed} assessed
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {category.skills.map((skill) => {
+                              const hasGap = skill.gapCount > 0;
+                              const colors = hasGap 
+                                ? (skill.avgProficiency < 3 ? SKILL_STATUS_COLORS.critical_gap : SKILL_STATUS_COLORS.training_needed)
+                                : (skill.avgProficiency >= 6 ? SKILL_STATUS_COLORS.beyond_expectations : SKILL_STATUS_COLORS.good_match);
+                              return (
+                                <Card 
+                                  key={skill.id}
+                                  className={`border ${colors.border} ${colors.bg} hover:shadow-md transition-shadow cursor-pointer`}
+                                  data-testid={`card-skill-${skill.name.toLowerCase().replace(/\s+/g, '-')}`}
+                                >
+                                  <CardContent className="p-4 space-y-3">
+                                    <div className="flex items-start justify-between">
+                                      <h3 className="font-semibold text-white">{skill.name}</h3>
+                                      <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex-1 h-2 bg-zinc-700 rounded-full overflow-hidden">
+                                        <div 
+                                          className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full"
+                                          style={{ width: `${(skill.avgProficiency / 8) * 100}%` }}
+                                        />
+                                      </div>
+                                      <span className="text-xs text-zinc-400">{skill.avgProficiency}/8</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs text-zinc-500">
+                                      <span>{skill.assessedCount} assessed</span>
+                                      {skill.gapCount > 0 && (
+                                        <Badge className="text-[10px] bg-red-500/20 text-red-400 border-0">
+                                          {skill.gapCount} gap{skill.gapCount > 1 ? 's' : ''}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -669,111 +788,133 @@ export default function WorkforceIntelligence() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm" className="border-zinc-700 bg-zinc-800">Quick select</Button>
-                      <Button variant="outline" size="sm" className="border-zinc-700 bg-zinc-800">Select Tag or</Button>
+                      <Button variant="outline" size="sm" className="border-zinc-700 bg-zinc-800">Select Tag</Button>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr>
-                          <th className="text-left p-3 border-b border-zinc-700 w-48"></th>
-                          {mockMatchingData.people.map((person, idx) => (
-                            <th key={idx} className="p-3 border-b border-zinc-700 text-center min-w-[120px]">
-                              <div className="flex flex-col items-center gap-2">
-                                <Avatar className="h-10 w-10">
-                                  <AvatarFallback className="bg-amber-500/20 text-amber-400">
-                                    {getInitials(person.name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm font-medium text-white">{person.name}</span>
-                                <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-zinc-500 hover:text-zinc-300">
-                                  <X className="h-3 w-3" />
+                  {matchingData.people.length === 0 || matchingData.skills.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Users className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
+                      <p className="text-zinc-400">No matching data available</p>
+                      <p className="text-zinc-500 text-sm mb-4">Add employees with skill assessments to see matching matrix</p>
+                      {employeesWithSkills.length === 0 && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400"
+                          onClick={() => seedDemoMutation.mutate()}
+                          disabled={seedDemoMutation.isPending}
+                        >
+                          <Database className="h-4 w-4 mr-2" />
+                          {seedDemoMutation.isPending ? "Loading..." : "Load Demo Data"}
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr>
+                              <th className="text-left p-3 border-b border-zinc-700 w-48"></th>
+                              {matchingData.people.map((person, idx) => (
+                                <th key={idx} className="p-3 border-b border-zinc-700 text-center min-w-[120px]">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarFallback className="bg-amber-500/20 text-amber-400">
+                                        {getInitials(person.name)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-sm font-medium text-white">{person.name}</span>
+                                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-zinc-500 hover:text-zinc-300">
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </th>
+                              ))}
+                              <th className="p-3 border-b border-zinc-700 w-12">
+                                <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-zinc-700 bg-zinc-800">
+                                  <Plus className="h-4 w-4" />
                                 </Button>
-                              </div>
-                            </th>
-                          ))}
-                          <th className="p-3 border-b border-zinc-700 w-12">
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-zinc-700 bg-zinc-800">
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {mockMatchingData.skills.map((skill, skillIdx) => (
-                          <tr key={skillIdx} className="hover:bg-zinc-800/50">
-                            <td className="p-3 border-b border-zinc-800">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-white">{skill}</span>
-                                <div className="flex items-center gap-1 text-zinc-500">
-                                  <span className="text-xs">↕</span>
-                                  <X className="h-3 w-3 cursor-pointer hover:text-zinc-300" />
-                                </div>
-                              </div>
-                            </td>
-                            {mockMatchingData.people.map((person, personIdx) => {
-                              const score = person.scores[skill as keyof typeof person.scores];
-                              const getScoreColor = (s: number | null) => {
-                                if (s === null) return "bg-zinc-800";
-                                if (s >= 80) return "bg-green-500/20";
-                                if (s >= 60) return "bg-yellow-500/20";
-                                if (s >= 40) return "bg-orange-500/20";
-                                return "bg-red-500/20";
-                              };
-                              const getScoreIcon = (s: number | null) => {
-                                if (s === null) return null;
-                                if (s >= 80) return <CheckCircle className="h-4 w-4 text-green-400" />;
-                                if (s >= 60) return <div className="h-3 w-3 rounded-full bg-yellow-500" />;
-                                return <div className="h-3 w-3 rounded-full bg-red-500" />;
-                              };
-                              return (
-                                <td 
-                                  key={personIdx} 
-                                  className={`p-3 border-b border-zinc-800 text-center ${getScoreColor(score)}`}
-                                >
-                                  <div className="flex justify-center">
-                                    {score !== null ? getScoreIcon(score) : (
-                                      <span className="text-xs text-zinc-500">No data</span>
-                                    )}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {matchingData.skills.map((skill, skillIdx) => (
+                              <tr key={skillIdx} className="hover:bg-zinc-800/50">
+                                <td className="p-3 border-b border-zinc-800">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-white">{skill}</span>
+                                    <div className="flex items-center gap-1 text-zinc-500">
+                                      <span className="text-xs">↕</span>
+                                      <X className="h-3 w-3 cursor-pointer hover:text-zinc-300" />
+                                    </div>
                                   </div>
                                 </td>
-                              );
-                            })}
-                            <td className="p-3 border-b border-zinc-800"></td>
-                          </tr>
-                        ))}
-                        <tr>
-                          <td className="p-3">
-                            <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-zinc-300">
-                              <Plus className="h-4 w-4 mr-2" />
-                              Add skill
-                            </Button>
-                          </td>
-                          <td colSpan={mockMatchingData.people.length + 1}></td>
-                        </tr>
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t-2 border-zinc-700">
-                          <td className="p-3 font-medium text-white">Match Score</td>
-                          {mockMatchingData.people.map((person, idx) => (
-                            <td key={idx} className="p-3 text-center font-semibold text-white">
-                              {person.overallMatch !== null ? `${person.overallMatch}% match` : (
-                                <span className="text-zinc-500 text-sm">Insufficient data</span>
-                              )}
-                            </td>
-                          ))}
-                          <td></td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                  <div className="flex justify-center mt-4">
-                    <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-zinc-300">
-                      Clear all
-                    </Button>
-                  </div>
+                                {matchingData.people.map((person, personIdx) => {
+                                  const score = person.scores[skill as keyof typeof person.scores];
+                                  const getScoreColor = (s: number | null) => {
+                                    if (s === null) return "bg-zinc-800";
+                                    if (s >= 80) return "bg-green-500/20";
+                                    if (s >= 60) return "bg-yellow-500/20";
+                                    if (s >= 40) return "bg-orange-500/20";
+                                    return "bg-red-500/20";
+                                  };
+                                  const getScoreIcon = (s: number | null) => {
+                                    if (s === null) return null;
+                                    if (s >= 80) return <CheckCircle className="h-4 w-4 text-green-400" />;
+                                    if (s >= 60) return <div className="h-3 w-3 rounded-full bg-yellow-500" />;
+                                    return <div className="h-3 w-3 rounded-full bg-red-500" />;
+                                  };
+                                  return (
+                                    <td 
+                                      key={personIdx} 
+                                      className={`p-3 border-b border-zinc-800 text-center ${getScoreColor(score)}`}
+                                    >
+                                      <div className="flex justify-center">
+                                        {score !== null ? getScoreIcon(score) : (
+                                          <span className="text-xs text-zinc-500">No data</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                  );
+                                })}
+                                <td className="p-3 border-b border-zinc-800"></td>
+                              </tr>
+                            ))}
+                            <tr>
+                              <td className="p-3">
+                                <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-zinc-300">
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Add skill
+                                </Button>
+                              </td>
+                              <td colSpan={matchingData.people.length + 1}></td>
+                            </tr>
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t-2 border-zinc-700">
+                              <td className="p-3 font-medium text-white">Match Score</td>
+                              {matchingData.people.map((person, idx) => (
+                                <td key={idx} className="p-3 text-center font-semibold text-white">
+                                  {person.overallMatch !== null ? `${person.overallMatch}% match` : (
+                                    <span className="text-zinc-500 text-sm">Insufficient data</span>
+                                  )}
+                                </td>
+                              ))}
+                              <td></td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                      <div className="flex justify-center mt-4">
+                        <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-zinc-300">
+                          Clear all
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -783,14 +924,33 @@ export default function WorkforceIntelligence() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg text-white">People Profiles</CardTitle>
-                    <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Person
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {employeesWithSkills.length === 0 && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400"
+                          onClick={() => seedDemoMutation.mutate()}
+                          disabled={seedDemoMutation.isPending}
+                        >
+                          <Database className="h-4 w-4 mr-2" />
+                          {seedDemoMutation.isPending ? "Loading..." : "Load Demo Data"}
+                        </Button>
+                      )}
+                      <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Person
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {employees.length === 0 ? (
+                  {employeesLoading ? (
+                    <div className="text-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-amber-400 mx-auto" />
+                      <p className="text-zinc-500 mt-2">Loading people profiles...</p>
+                    </div>
+                  ) : employeesWithSkills.length === 0 ? (
                     <div className="text-center py-12">
                       <Users className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-zinc-300 mb-2">No people profiles yet</h3>
@@ -804,7 +964,7 @@ export default function WorkforceIntelligence() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {employees.map((employee) => (
+                      {employeesWithSkills.map((employee) => (
                         <Card 
                           key={employee.id}
                           className="border-zinc-700 bg-zinc-800/50 hover:border-amber-500/50 transition-colors cursor-pointer"
@@ -821,16 +981,28 @@ export default function WorkforceIntelligence() {
                               </Avatar>
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-semibold truncate text-white">{employee.fullName}</h3>
-                                <p className="text-sm text-zinc-400 truncate">{employee.jobTitle}</p>
-                                <p className="text-xs text-zinc-500">{employee.department}</p>
+                                <p className="text-sm text-zinc-400 truncate">{employee.jobTitle || "No title"}</p>
+                                <p className="text-xs text-zinc-500">{employee.department || "No department"}</p>
                               </div>
                             </div>
-                            {employee.tags && employee.tags.length > 0 && (
+                            {employee.skills && employee.skills.length > 0 ? (
                               <div className="flex flex-wrap gap-1 mt-3">
-                                {employee.tags.slice(0, 3).map((tag, i) => (
-                                  <Badge key={i} variant="outline" className="text-[10px] border-zinc-600 text-zinc-400">{tag}</Badge>
-                                ))}
+                                {employee.skills.slice(0, 3).map((es, i) => {
+                                  const colors = SKILL_STATUS_COLORS[es.status as keyof typeof SKILL_STATUS_COLORS] || SKILL_STATUS_COLORS.good_match;
+                                  return (
+                                    <Badge key={i} className={`text-[10px] ${colors.bg} ${colors.text} border-0`}>
+                                      {es.skill?.name || "Unknown"} ({es.proficiencyLevel}/8)
+                                    </Badge>
+                                  );
+                                })}
+                                {employee.skills.length > 3 && (
+                                  <Badge variant="outline" className="text-[10px] border-zinc-600 text-zinc-400">
+                                    +{employee.skills.length - 3} more
+                                  </Badge>
+                                )}
                               </div>
+                            ) : (
+                              <p className="text-xs text-zinc-500 mt-3">No skills assessed</p>
                             )}
                           </CardContent>
                         </Card>

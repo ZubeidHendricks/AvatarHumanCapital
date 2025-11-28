@@ -29,6 +29,10 @@ import {
   type InsertDepartment,
   type SkillActivity,
   type InsertSkillActivity,
+  type EmployeeSkill,
+  type InsertEmployeeSkill,
+  type JobSkill,
+  type InsertJobSkill,
   users,
   jobs,
   candidates,
@@ -43,7 +47,9 @@ import {
   skills,
   employees,
   departments,
-  skillActivities
+  skillActivities,
+  employeeSkills,
+  jobSkills
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte } from "drizzle-orm";
@@ -137,6 +143,21 @@ export interface IStorage {
   // Workforce Intelligence - Skill Activities
   getSkillActivities(tenantId: string): Promise<SkillActivity[]>;
   createSkillActivity(tenantId: string, activity: InsertSkillActivity): Promise<SkillActivity>;
+  
+  // Workforce Intelligence - Employee Skills (Join queries)
+  getEmployeesWithSkills(tenantId: string): Promise<(Employee & { skills: (EmployeeSkill & { skill: Skill })[] })[]>;
+  getEmployeeWithSkills(tenantId: string, employeeId: string): Promise<(Employee & { skills: (EmployeeSkill & { skill: Skill })[] }) | undefined>;
+  getEmployeeSkills(tenantId: string, employeeId: string): Promise<(EmployeeSkill & { skill: Skill })[]>;
+  getAllEmployeeSkills(tenantId: string): Promise<(EmployeeSkill & { skill: Skill, employee: Employee })[]>;
+  createEmployeeSkill(tenantId: string, employeeSkill: InsertEmployeeSkill): Promise<EmployeeSkill>;
+  updateEmployeeSkill(tenantId: string, id: string, updates: Partial<InsertEmployeeSkill>): Promise<EmployeeSkill | undefined>;
+  
+  // Workforce Intelligence - Job Skills
+  getJobSkills(tenantId: string, jobId: string): Promise<(JobSkill & { skill: Skill })[]>;
+  createJobSkill(tenantId: string, jobSkill: InsertJobSkill): Promise<JobSkill>;
+  
+  // Workforce Intelligence - Skill Gap Analysis
+  getDepartmentSkillGaps(tenantId: string): Promise<{ department: string; headCount: number; skillGaps: string[]; gapScore: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -684,6 +705,154 @@ export class DatabaseStorage implements IStorage {
       .values({ ...insertActivity, tenantId })
       .returning();
     return activity;
+  }
+
+  // Workforce Intelligence - Employee Skills (Join queries)
+  async getEmployeesWithSkills(tenantId: string): Promise<(Employee & { skills: (EmployeeSkill & { skill: Skill })[] })[]> {
+    const allEmployees = await db.select().from(employees).where(eq(employees.tenantId, tenantId)).orderBy(desc(employees.createdAt));
+    
+    const result: (Employee & { skills: (EmployeeSkill & { skill: Skill })[] })[] = [];
+    
+    for (const employee of allEmployees) {
+      const empSkills = await db
+        .select()
+        .from(employeeSkills)
+        .innerJoin(skills, eq(employeeSkills.skillId, skills.id))
+        .where(and(eq(employeeSkills.employeeId, employee.id), eq(employeeSkills.tenantId, tenantId)));
+      
+      result.push({
+        ...employee,
+        skills: empSkills.map(row => ({
+          ...row.employee_skills,
+          skill: row.skills
+        }))
+      });
+    }
+    
+    return result;
+  }
+
+  async getEmployeeWithSkills(tenantId: string, employeeId: string): Promise<(Employee & { skills: (EmployeeSkill & { skill: Skill })[] }) | undefined> {
+    const [employee] = await db.select().from(employees).where(and(eq(employees.id, employeeId), eq(employees.tenantId, tenantId)));
+    if (!employee) return undefined;
+
+    const empSkills = await db
+      .select()
+      .from(employeeSkills)
+      .innerJoin(skills, eq(employeeSkills.skillId, skills.id))
+      .where(and(eq(employeeSkills.employeeId, employeeId), eq(employeeSkills.tenantId, tenantId)));
+
+    return {
+      ...employee,
+      skills: empSkills.map(row => ({
+        ...row.employee_skills,
+        skill: row.skills
+      }))
+    };
+  }
+
+  async getEmployeeSkills(tenantId: string, employeeId: string): Promise<(EmployeeSkill & { skill: Skill })[]> {
+    const empSkills = await db
+      .select()
+      .from(employeeSkills)
+      .innerJoin(skills, eq(employeeSkills.skillId, skills.id))
+      .where(and(eq(employeeSkills.employeeId, employeeId), eq(employeeSkills.tenantId, tenantId)));
+
+    return empSkills.map(row => ({
+      ...row.employee_skills,
+      skill: row.skills
+    }));
+  }
+
+  async getAllEmployeeSkills(tenantId: string): Promise<(EmployeeSkill & { skill: Skill, employee: Employee })[]> {
+    const allSkills = await db
+      .select()
+      .from(employeeSkills)
+      .innerJoin(skills, eq(employeeSkills.skillId, skills.id))
+      .innerJoin(employees, eq(employeeSkills.employeeId, employees.id))
+      .where(eq(employeeSkills.tenantId, tenantId));
+
+    return allSkills.map(row => ({
+      ...row.employee_skills,
+      skill: row.skills,
+      employee: row.employees
+    }));
+  }
+
+  async createEmployeeSkill(tenantId: string, insertEmployeeSkill: InsertEmployeeSkill): Promise<EmployeeSkill> {
+    const [employeeSkill] = await db
+      .insert(employeeSkills)
+      .values({ ...insertEmployeeSkill, tenantId })
+      .returning();
+    return employeeSkill;
+  }
+
+  async updateEmployeeSkill(tenantId: string, id: string, updates: Partial<InsertEmployeeSkill>): Promise<EmployeeSkill | undefined> {
+    const [employeeSkill] = await db
+      .update(employeeSkills)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(employeeSkills.id, id), eq(employeeSkills.tenantId, tenantId)))
+      .returning();
+    return employeeSkill || undefined;
+  }
+
+  // Workforce Intelligence - Job Skills
+  async getJobSkills(tenantId: string, jobId: string): Promise<(JobSkill & { skill: Skill })[]> {
+    const jSkills = await db
+      .select()
+      .from(jobSkills)
+      .innerJoin(skills, eq(jobSkills.skillId, skills.id))
+      .where(and(eq(jobSkills.jobId, jobId), eq(jobSkills.tenantId, tenantId)));
+
+    return jSkills.map(row => ({
+      ...row.job_skills,
+      skill: row.skills
+    }));
+  }
+
+  async createJobSkill(tenantId: string, insertJobSkill: InsertJobSkill): Promise<JobSkill> {
+    const [jobSkill] = await db
+      .insert(jobSkills)
+      .values({ ...insertJobSkill, tenantId })
+      .returning();
+    return jobSkill;
+  }
+
+  // Workforce Intelligence - Skill Gap Analysis
+  async getDepartmentSkillGaps(tenantId: string): Promise<{ department: string; headCount: number; skillGaps: string[]; gapScore: number }[]> {
+    const allEmployees = await db.select().from(employees).where(eq(employees.tenantId, tenantId));
+    const allSkills = await this.getAllEmployeeSkills(tenantId);
+    
+    // Group employees by department
+    const deptMap = new Map<string, { employees: Employee[], skillGaps: Set<string>, gapScore: number }>();
+    
+    for (const emp of allEmployees) {
+      const dept = emp.department || "Unassigned";
+      if (!deptMap.has(dept)) {
+        deptMap.set(dept, { employees: [], skillGaps: new Set(), gapScore: 0 });
+      }
+      deptMap.get(dept)!.employees.push(emp);
+    }
+    
+    // Find skill gaps per department (skills with status 'critical_gap' or 'training_needed')
+    for (const empSkill of allSkills) {
+      const dept = empSkill.employee.department || "Unassigned";
+      if (deptMap.has(dept)) {
+        if (empSkill.status === 'critical_gap' || empSkill.status === 'training_needed') {
+          deptMap.get(dept)!.skillGaps.add(empSkill.skill.name);
+          deptMap.get(dept)!.gapScore += empSkill.status === 'critical_gap' ? 3 : 1;
+        }
+      }
+    }
+    
+    return Array.from(deptMap.entries())
+      .map(([department, data]) => ({
+        department,
+        headCount: data.employees.length,
+        skillGaps: Array.from(data.skillGaps),
+        gapScore: data.gapScore
+      }))
+      .sort((a, b) => b.gapScore - a.gapScore);
   }
 }
 
