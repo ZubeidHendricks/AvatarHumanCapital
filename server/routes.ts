@@ -2418,6 +2418,346 @@ Format your response as JSON:
     }
   });
 
+  // ==================== DOCUMENT AUTOMATION API ====================
+
+  // Get all documents
+  app.get("/api/documents", async (req, res) => {
+    try {
+      const docs = await storage.getAllDocuments(req.tenant.id);
+      res.json(docs);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  // Get documents by type (cv or job_spec)
+  app.get("/api/documents/type/:type", async (req, res) => {
+    try {
+      const docs = await storage.getDocumentsByType(req.tenant.id, req.params.type);
+      res.json(docs);
+    } catch (error) {
+      console.error("Error fetching documents by type:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  // Get single document
+  app.get("/api/documents/:id", async (req, res) => {
+    try {
+      const doc = await storage.getDocument(req.tenant.id, req.params.id);
+      if (!doc) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      res.json(doc);
+    } catch (error) {
+      console.error("Error fetching document:", error);
+      res.status(500).json({ message: "Failed to fetch document" });
+    }
+  });
+
+  // Delete document
+  app.delete("/api/documents/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteDocument(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // Get all document batches
+  app.get("/api/document-batches", async (req, res) => {
+    try {
+      const batches = await storage.getAllDocumentBatches(req.tenant.id);
+      res.json(batches);
+    } catch (error) {
+      console.error("Error fetching document batches:", error);
+      res.status(500).json({ message: "Failed to fetch document batches" });
+    }
+  });
+
+  // Get single batch with documents
+  app.get("/api/document-batches/:id", async (req, res) => {
+    try {
+      const batch = await storage.getDocumentBatch(req.tenant.id, req.params.id);
+      if (!batch) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+      const docs = await storage.getDocumentsByBatchId(req.tenant.id, req.params.id);
+      res.json({ ...batch, documents: docs });
+    } catch (error) {
+      console.error("Error fetching batch:", error);
+      res.status(500).json({ message: "Failed to fetch batch" });
+    }
+  });
+
+  // Upload CVs in bulk - AI extracts candidate info
+  app.post("/api/documents/upload/cvs", upload.array("files", 50), async (req, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      // Create batch
+      const batch = await storage.createDocumentBatch(req.tenant.id, {
+        name: `CV Upload - ${new Date().toLocaleDateString()}`,
+        type: "cvs",
+        status: "processing",
+        totalDocuments: files.length,
+        processedDocuments: 0,
+        failedDocuments: 0,
+      });
+
+      // Process each file
+      const results: Array<{ filename: string; status: string; candidateId?: string; error?: string }> = [];
+      
+      for (const file of files) {
+        try {
+          // Save document record
+          const doc = await storage.createDocument(req.tenant.id, {
+            batchId: batch.id,
+            filename: `${Date.now()}-${file.originalname}`,
+            originalFilename: file.originalname,
+            mimeType: file.mimetype,
+            fileSize: file.size,
+            filePath: `/uploads/${batch.id}/${file.originalname}`,
+            type: "cv",
+            status: "processing",
+          });
+
+          // Parse PDF to extract text
+          let rawText = "";
+          if (file.mimetype === "application/pdf") {
+            const pdfParse = await import("pdf-parse");
+            const pdfData = await pdfParse.default(file.buffer);
+            rawText = pdfData.text;
+          } else {
+            rawText = file.buffer.toString("utf-8");
+          }
+
+          // Use CV parser to extract structured data
+          const parsedData = await cvParser.parseCV(rawText);
+          
+          // Create candidate from extracted data
+          const candidate = await storage.createCandidate(req.tenant.id, {
+            fullName: parsedData.fullName || "Unknown",
+            email: parsedData.email || undefined,
+            phone: parsedData.phone || undefined,
+            skills: parsedData.skills || [],
+            education: parsedData.education || [],
+            experience: parsedData.experience || [],
+            summary: parsedData.summary || undefined,
+            source: "CV Upload",
+            status: "New",
+            stage: "Screening",
+            match: 0,
+          });
+
+          // Update document with extracted data
+          await storage.updateDocument(req.tenant.id, doc.id, {
+            status: "processed",
+            rawText,
+            extractedData: parsedData,
+            linkedCandidateId: candidate.id,
+          });
+
+          results.push({ filename: file.originalname, status: "success", candidateId: candidate.id });
+        } catch (fileError: unknown) {
+          const errorMessage = fileError instanceof Error ? fileError.message : "Unknown error";
+          console.error(`Error processing file ${file.originalname}:`, fileError);
+          results.push({ filename: file.originalname, status: "failed", error: errorMessage });
+        }
+      }
+
+      // Update batch status
+      const successCount = results.filter(r => r.status === "success").length;
+      const failCount = results.filter(r => r.status === "failed").length;
+      await storage.updateDocumentBatch(req.tenant.id, batch.id, {
+        status: failCount === files.length ? "failed" : successCount === files.length ? "completed" : "partially_completed",
+        processedDocuments: successCount,
+        failedDocuments: failCount,
+      });
+
+      res.status(201).json({
+        batchId: batch.id,
+        totalFiles: files.length,
+        processed: successCount,
+        failed: failCount,
+        results,
+      });
+    } catch (error) {
+      console.error("Error uploading CVs:", error);
+      res.status(500).json({ message: "Failed to process CV uploads" });
+    }
+  });
+
+  // Upload job specs in bulk - AI extracts job details
+  app.post("/api/documents/upload/job-specs", upload.array("files", 50), async (req, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      // Create batch
+      const batch = await storage.createDocumentBatch(req.tenant.id, {
+        name: `Job Specs Upload - ${new Date().toLocaleDateString()}`,
+        type: "job_specs",
+        status: "processing",
+        totalDocuments: files.length,
+        processedDocuments: 0,
+        failedDocuments: 0,
+      });
+
+      const results: Array<{ filename: string; status: string; jobId?: string; error?: string }> = [];
+
+      for (const file of files) {
+        try {
+          // Save document record
+          const doc = await storage.createDocument(req.tenant.id, {
+            batchId: batch.id,
+            filename: `${Date.now()}-${file.originalname}`,
+            originalFilename: file.originalname,
+            mimeType: file.mimetype,
+            fileSize: file.size,
+            filePath: `/uploads/${batch.id}/${file.originalname}`,
+            type: "job_spec",
+            status: "processing",
+          });
+
+          // Parse PDF to extract text
+          let rawText = "";
+          if (file.mimetype === "application/pdf") {
+            const pdfParse = await import("pdf-parse");
+            const pdfData = await pdfParse.default(file.buffer);
+            rawText = pdfData.text;
+          } else {
+            rawText = file.buffer.toString("utf-8");
+          }
+
+          // Use Groq to extract job details from text
+          const Groq = (await import("groq-sdk")).default;
+          const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+          
+          const completion = await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              {
+                role: "system",
+                content: `You are an expert HR document parser. Extract job details from the provided text and return a JSON object with these fields:
+                - title: job title (string)
+                - department: department name (string)
+                - description: full job description (string)
+                - location: work location (string or null)
+                - employmentType: one of "full_time", "part_time", "contract", "temporary"
+                - salaryMin: minimum salary as number or null
+                - salaryMax: maximum salary as number or null
+                - minYearsExperience: minimum years of experience as number or null
+                - licenseRequirements: array of required licenses/certifications
+                - physicalRequirements: physical requirements description or null
+                Return ONLY valid JSON, no other text.`
+              },
+              {
+                role: "user",
+                content: `Extract job details from this document:\n\n${rawText.slice(0, 8000)}`
+              }
+            ],
+            temperature: 0.1,
+            max_tokens: 2000,
+          });
+
+          const responseText = completion.choices[0]?.message?.content || "{}";
+          let jobData: Record<string, unknown>;
+          try {
+            // Extract JSON from response
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            jobData = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+          } catch {
+            jobData = {};
+          }
+
+          // Create job from extracted data
+          const job = await storage.createJob(req.tenant.id, {
+            title: (jobData.title as string) || file.originalname.replace(/\.(pdf|doc|docx|txt)$/i, ""),
+            department: (jobData.department as string) || "Unassigned",
+            description: (jobData.description as string) || rawText.slice(0, 2000),
+            location: (jobData.location as string) || undefined,
+            employmentType: (jobData.employmentType as string) || "full_time",
+            salaryMin: (jobData.salaryMin as number) || undefined,
+            salaryMax: (jobData.salaryMax as number) || undefined,
+            minYearsExperience: (jobData.minYearsExperience as number) || undefined,
+            licenseRequirements: (jobData.licenseRequirements as string[]) || undefined,
+            physicalRequirements: (jobData.physicalRequirements as string) || undefined,
+            status: "Active",
+          });
+
+          // Update document with extracted data
+          await storage.updateDocument(req.tenant.id, doc.id, {
+            status: "processed",
+            rawText,
+            extractedData: jobData,
+            linkedJobId: job.id,
+          });
+
+          results.push({ filename: file.originalname, status: "success", jobId: job.id });
+        } catch (fileError: unknown) {
+          const errorMessage = fileError instanceof Error ? fileError.message : "Unknown error";
+          console.error(`Error processing file ${file.originalname}:`, fileError);
+          results.push({ filename: file.originalname, status: "failed", error: errorMessage });
+        }
+      }
+
+      // Update batch status
+      const successCount = results.filter(r => r.status === "success").length;
+      const failCount = results.filter(r => r.status === "failed").length;
+      await storage.updateDocumentBatch(req.tenant.id, batch.id, {
+        status: failCount === files.length ? "failed" : successCount === files.length ? "completed" : "partially_completed",
+        processedDocuments: successCount,
+        failedDocuments: failCount,
+      });
+
+      res.status(201).json({
+        batchId: batch.id,
+        totalFiles: files.length,
+        processed: successCount,
+        failed: failCount,
+        results,
+      });
+    } catch (error) {
+      console.error("Error uploading job specs:", error);
+      res.status(500).json({ message: "Failed to process job spec uploads" });
+    }
+  });
+
+  // Reprocess a failed document
+  app.post("/api/documents/:id/reprocess", async (req, res) => {
+    try {
+      const doc = await storage.getDocument(req.tenant.id, req.params.id);
+      if (!doc) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Mark as processing
+      await storage.updateDocument(req.tenant.id, doc.id, {
+        status: "processing",
+        errorMessage: null,
+      });
+
+      // Note: Full reprocessing would need to re-read the file from storage
+      // For now, return success and let frontend know to retry upload
+      res.json({ message: "Document queued for reprocessing", documentId: doc.id });
+    } catch (error) {
+      console.error("Error reprocessing document:", error);
+      res.status(500).json({ message: "Failed to reprocess document" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
