@@ -100,7 +100,7 @@ export default function HRDashboard() {
   const queryClient = useQueryClient();
   const candidatesKey = useTenantQueryKey(['candidates']);
   const jobsKey = useTenantQueryKey(['jobs']);
-  const jobSpecsKey = useTenantQueryKey(['documents', 'job-spec']);
+  const jobSpecsKey = useTenantQueryKey(['documents', 'job_spec']);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [jobSpecViewMode, setJobSpecViewMode] = useState<"grid" | "list">("grid");
@@ -403,7 +403,7 @@ BENEFITS:
   } = useQuery<JobSpecDocument[]>({
     queryKey: jobSpecsKey,
     queryFn: async () => {
-      const res = await fetch("/api/documents/type/job-spec");
+      const res = await fetch("/api/documents/type/job_spec");
       if (!res.ok) throw new Error("Failed to fetch job specs");
       return res.json();
     },
