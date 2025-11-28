@@ -48,7 +48,14 @@ import {
   Target,
   Clock,
   Award,
-  BarChart3
+  BarChart3,
+  MapPin,
+  Building2,
+  Calendar,
+  Grid3X3,
+  List,
+  FileArchive,
+  ExternalLink
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { motion } from "framer-motion";
@@ -93,8 +100,10 @@ export default function HRDashboard() {
   const queryClient = useQueryClient();
   const candidatesKey = useTenantQueryKey(['candidates']);
   const jobsKey = useTenantQueryKey(['jobs']);
+  const jobSpecsKey = useTenantQueryKey(['documents', 'job-spec']);
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [jobSpecViewMode, setJobSpecViewMode] = useState<"grid" | "list">("grid");
   const [jobTitle, setJobTitle] = useState("");
   const [department, setDepartment] = useState("");
   const [jobDescription, setJobDescription] = useState("");
@@ -369,6 +378,38 @@ BENEFITS:
     retry: 1,
   });
 
+  interface JobSpecDocument {
+    id: string;
+    originalFilename: string;
+    status: string;
+    createdAt: string;
+    extractedData?: {
+      title?: string;
+      company?: string;
+      department?: string;
+      location?: string;
+      employmentType?: string;
+      salaryRange?: string;
+      experienceRequired?: string;
+      requiredSkills?: string[];
+      qualifications?: string[];
+    };
+    linkedJobId?: string;
+  }
+
+  const { 
+    data: jobSpecDocuments = [], 
+    isLoading: loadingJobSpecs 
+  } = useQuery<JobSpecDocument[]>({
+    queryKey: jobSpecsKey,
+    queryFn: async () => {
+      const res = await fetch("/api/documents/type/job-spec");
+      if (!res.ok) throw new Error("Failed to fetch job specs");
+      return res.json();
+    },
+    retry: 1,
+  });
+
   const displayCandidates = candidatesError ? MOCK_CANDIDATES : (Array.isArray(candidates) ? candidates : []);
   const displayJobs = jobsError ? [] : (Array.isArray(jobs) ? jobs : []);
   const jobCount = displayJobs.length || 12;
@@ -421,8 +462,9 @@ BENEFITS:
 
         <Tabs defaultValue="recruitment" className="space-y-6" onValueChange={setActiveTab}>
           <div className="flex items-center gap-3 flex-wrap">
-            <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:w-[600px] bg-card/50 border border-white/5">
+            <TabsList className="grid grid-cols-2 md:grid-cols-5 lg:w-[700px] bg-card/50 border border-white/5">
               <TabsTrigger value="recruitment">Recruitment</TabsTrigger>
+              <TabsTrigger value="jobs">Jobs</TabsTrigger>
               <TabsTrigger value="integrity">Integrity</TabsTrigger>
               <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
               <TabsTrigger value="performance">Performance</TabsTrigger>
@@ -917,6 +959,225 @@ BENEFITS:
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* JOBS TAB */}
+          <TabsContent value="jobs" className="space-y-6">
+            
+            {/* Job Specs Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-primary" />
+                  Job Specifications Library
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {jobSpecDocuments.length} job specifications uploaded and parsed
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 bg-card/50 border border-white/10 rounded-lg p-1">
+                  <Button 
+                    variant={jobSpecViewMode === "grid" ? "default" : "ghost"} 
+                    size="sm"
+                    onClick={() => setJobSpecViewMode("grid")}
+                    className="h-8 px-3"
+                    data-testid="button-jobs-grid-view"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant={jobSpecViewMode === "list" ? "default" : "ghost"} 
+                    size="sm"
+                    onClick={() => setJobSpecViewMode("list")}
+                    className="h-8 px-3"
+                    data-testid="button-jobs-list-view"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Link href="/document-automation">
+                  <Button variant="outline" className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-blue-500/30 hover:border-blue-500/50">
+                    <FileArchive className="h-4 w-4 mr-2" />
+                    Upload More
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {loadingJobSpecs ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : jobSpecDocuments.length === 0 ? (
+              <Card className="border-white/10 bg-card/20">
+                <CardContent className="py-12 text-center">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">No Job Specifications</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Upload job specification PDFs to extract requirements and match candidates
+                  </p>
+                  <Link href="/document-automation">
+                    <Button>
+                      <UploadCloud className="h-4 w-4 mr-2" />
+                      Upload Job Specs
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ) : jobSpecViewMode === "grid" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {jobSpecDocuments.map((doc) => (
+                  <Card 
+                    key={doc.id} 
+                    className="border-white/10 bg-card/20 hover:border-primary/30 transition-colors"
+                    data-testid={`card-job-spec-${doc.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                          <Briefcase className="h-5 w-5 text-blue-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-white truncate" title={doc.extractedData?.title || doc.originalFilename}>
+                            {doc.extractedData?.title || doc.originalFilename.replace('.pdf', '')}
+                          </h3>
+                          {doc.extractedData?.company && (
+                            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                              <Building2 className="h-3 w-3" />
+                              {doc.extractedData.company}
+                            </p>
+                          )}
+                        </div>
+                        <Badge 
+                          variant={doc.status === "processed" ? "default" : "secondary"}
+                          className={doc.status === "processed" ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}
+                        >
+                          {doc.status}
+                        </Badge>
+                      </div>
+                      
+                      <div className="mt-4 space-y-2">
+                        {doc.extractedData?.location && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <MapPin className="h-3 w-3" />
+                            <span className="truncate">{doc.extractedData.location}</span>
+                          </div>
+                        )}
+                        {doc.extractedData?.department && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Users className="h-3 w-3" />
+                            <span className="truncate">{doc.extractedData.department}</span>
+                          </div>
+                        )}
+                        {doc.extractedData?.employmentType && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>{doc.extractedData.employmentType}</span>
+                          </div>
+                        )}
+                        {doc.extractedData?.salaryRange && (
+                          <div className="flex items-center gap-2 text-sm text-green-400">
+                            <Target className="h-3 w-3" />
+                            <span>{doc.extractedData.salaryRange}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {doc.extractedData?.requiredSkills && doc.extractedData.requiredSkills.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1">
+                          {doc.extractedData.requiredSkills.slice(0, 4).map((skill, i) => (
+                            <Badge key={i} variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary-foreground">
+                              {skill}
+                            </Badge>
+                          ))}
+                          {doc.extractedData.requiredSkills.length > 4 && (
+                            <Badge variant="outline" className="text-xs bg-white/5 border-white/10">
+                              +{doc.extractedData.requiredSkills.length - 4}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(doc.createdAt).toLocaleDateString()}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm" className="h-7 px-2" data-testid={`button-view-job-${doc.id}`}>
+                            <Eye className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="border-white/10 bg-card/20">
+                <CardContent className="p-0">
+                  <table className="w-full">
+                    <thead className="border-b border-white/10">
+                      <tr>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Title</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Company</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Location</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Skills</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Uploaded</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {jobSpecDocuments.map((doc) => (
+                        <tr key={doc.id} className="hover:bg-white/5 transition-colors" data-testid={`row-job-spec-${doc.id}`}>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <Briefcase className="h-4 w-4 text-blue-400" />
+                              <span className="font-medium text-white">
+                                {doc.extractedData?.title || doc.originalFilename.replace('.pdf', '')}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-muted-foreground">
+                            {doc.extractedData?.company || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-muted-foreground">
+                            {doc.extractedData?.location || '-'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex flex-wrap gap-1">
+                              {doc.extractedData?.requiredSkills?.slice(0, 3).map((skill, i) => (
+                                <Badge key={i} variant="outline" className="text-xs bg-primary/10 border-primary/30">
+                                  {skill}
+                                </Badge>
+                              )) || '-'}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge 
+                              variant={doc.status === "processed" ? "default" : "secondary"}
+                              className={doc.status === "processed" ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}
+                            >
+                              {doc.status}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-muted-foreground">
+                            {new Date(doc.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Button variant="ghost" size="sm" className="h-7 px-2">
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* INTEGRITY TAB */}
