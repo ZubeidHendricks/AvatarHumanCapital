@@ -13,6 +13,8 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Search, Filter, Users, TrendingUp, CheckCircle,
   ChevronRight, Plus, X, MapPin, Brain, Send, Loader2,
@@ -23,6 +25,20 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import type { Employee, Skill, Job, EmployeeSkill, SkillActivity, Department, EmployeeAmbition, Mentorship, GrowthArea } from "@shared/schema";
+
+import bonganiPhoto from "@assets/stock_images/professional_african_b995effb.jpg";
+import siphoPhoto from "@assets/stock_images/professional_african_b6a570be.jpg";
+import thaboPhoto from "@assets/stock_images/professional_african_ca8f923f.jpg";
+import leratoPhoto from "@assets/stock_images/professional_african_ae997007.jpg";
+import nalediPhoto from "@assets/stock_images/professional_african_47a0afe5.jpg";
+
+const EMPLOYEE_PHOTOS: Record<string, string> = {
+  "Bongani Zulu": bonganiPhoto,
+  "Lerato Maseko": leratoPhoto,
+  "Sipho Dlamini": siphoPhoto,
+  "Naledi Ndaba": nalediPhoto,
+  "Thabo Mokoena": thaboPhoto,
+};
 
 interface DepartmentGap {
   department: string;
@@ -83,6 +99,13 @@ export default function WorkforceIntelligence() {
   const [newAmbitionEmployee, setNewAmbitionEmployee] = useState<string>("");
   const [newAmbitionTitle, setNewAmbitionTitle] = useState("");
   const [showAmbitionForm, setShowAmbitionForm] = useState(false);
+  
+  const [selectedMatchingEmployees, setSelectedMatchingEmployees] = useState<string[]>([]);
+  const [selectedMatchingSkills, setSelectedMatchingSkills] = useState<string[]>([]);
+  
+  const getEmployeePhoto = (name: string): string | undefined => {
+    return EMPLOYEE_PHOTOS[name];
+  };
   
   const employeesKey = useTenantQueryKey(["workforce-employees"]);
   const skillsKey = useTenantQueryKey(["skills"]);
@@ -273,24 +296,50 @@ export default function WorkforceIntelligence() {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
-  // Build matching data from real employee skills
-  const uniqueSkillNames = Array.from(new Set(allEmployeeSkills.map(es => es.skill.name))).slice(0, 5);
+  // Build matching data from real employee skills - use selected or show all
+  const uniqueSkillNames = Array.from(new Set(allEmployeeSkills.map(es => es.skill.name)));
+  const activeSkillNames = selectedMatchingSkills.length > 0 ? selectedMatchingSkills : uniqueSkillNames.slice(0, 5);
+  const activeEmployees = selectedMatchingEmployees.length > 0 
+    ? employeesWithSkills.filter(emp => selectedMatchingEmployees.includes(emp.id))
+    : employeesWithSkills.slice(0, 5);
+  
   const matchingData = {
-    skills: uniqueSkillNames,
-    people: employeesWithSkills.slice(0, 5).map(emp => {
+    skills: activeSkillNames,
+    people: activeEmployees.map(emp => {
       const scores: Record<string, number | null> = {};
-      uniqueSkillNames.forEach(skillName => {
+      activeSkillNames.forEach(skillName => {
         const empSkill = emp.skills?.find(es => es.skill?.name === skillName);
         scores[skillName] = empSkill ? Math.round((empSkill.proficiencyLevel / 8) * 100) : null;
       });
       const validScores = Object.values(scores).filter((s): s is number => s !== null);
       return {
+        id: emp.id,
         name: emp.fullName,
-        avatar: emp.avatarUrl || "",
+        avatar: getEmployeePhoto(emp.fullName) || emp.avatarUrl || "",
         scores,
         overallMatch: validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : null,
       };
     }),
+  };
+  
+  const toggleEmployeeSelection = (empId: string) => {
+    setSelectedMatchingEmployees(prev => 
+      prev.includes(empId) ? prev.filter(id => id !== empId) : [...prev, empId]
+    );
+  };
+  
+  const toggleSkillSelection = (skillName: string) => {
+    setSelectedMatchingSkills(prev => 
+      prev.includes(skillName) ? prev.filter(s => s !== skillName) : [...prev, skillName]
+    );
+  };
+  
+  const selectAllEmployees = () => {
+    setSelectedMatchingEmployees(employeesWithSkills.map(emp => emp.id));
+  };
+  
+  const clearEmployeeSelection = () => {
+    setSelectedMatchingEmployees([]);
   };
 
   const alerts = alertsData?.alerts || [];
@@ -1417,29 +1466,130 @@ export default function WorkforceIntelligence() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="border-zinc-700 bg-zinc-800">Quick select</Button>
-                      <Button variant="outline" size="sm" className="border-zinc-700 bg-zinc-800">Select Tag</Button>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="border-zinc-700 bg-zinc-800" data-testid="button-quick-select">
+                            <Users className="h-4 w-4 mr-2" />
+                            Quick select
+                            {selectedMatchingEmployees.length > 0 && (
+                              <Badge className="ml-2 bg-amber-500/20 text-amber-400 border-0">
+                                {selectedMatchingEmployees.length}
+                              </Badge>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 bg-zinc-900 border-zinc-700 p-4" align="end">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium text-white">Select Employees</h4>
+                              <div className="flex gap-2">
+                                <Button variant="ghost" size="sm" className="text-xs text-amber-400 hover:text-amber-300" onClick={selectAllEmployees}>
+                                  All
+                                </Button>
+                                <Button variant="ghost" size="sm" className="text-xs text-zinc-400 hover:text-zinc-300" onClick={clearEmployeeSelection}>
+                                  Clear
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                              {employeesWithSkills.map(emp => (
+                                <div key={emp.id} className="flex items-center gap-3 p-2 rounded hover:bg-zinc-800 cursor-pointer" onClick={() => toggleEmployeeSelection(emp.id)}>
+                                  <Checkbox 
+                                    checked={selectedMatchingEmployees.includes(emp.id)}
+                                    onCheckedChange={() => toggleEmployeeSelection(emp.id)}
+                                    className="border-zinc-600"
+                                  />
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage src={getEmployeePhoto(emp.fullName)} alt={emp.fullName} />
+                                    <AvatarFallback className="bg-amber-500/20 text-amber-400 text-xs">
+                                      {getInitials(emp.fullName)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-white truncate">{emp.fullName}</p>
+                                    <p className="text-xs text-zinc-500 truncate">{emp.jobTitle}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="border-zinc-700 bg-zinc-800" data-testid="button-select-skills">
+                            <Award className="h-4 w-4 mr-2" />
+                            Select Skills
+                            {selectedMatchingSkills.length > 0 && (
+                              <Badge className="ml-2 bg-purple-500/20 text-purple-400 border-0">
+                                {selectedMatchingSkills.length}
+                              </Badge>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 bg-zinc-900 border-zinc-700 p-4" align="end">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium text-white">Select Skills</h4>
+                              <Button variant="ghost" size="sm" className="text-xs text-zinc-400 hover:text-zinc-300" onClick={() => setSelectedMatchingSkills([])}>
+                                Clear
+                              </Button>
+                            </div>
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                              {uniqueSkillNames.map(skillName => (
+                                <div key={skillName} className="flex items-center gap-3 p-2 rounded hover:bg-zinc-800 cursor-pointer" onClick={() => toggleSkillSelection(skillName)}>
+                                  <Checkbox 
+                                    checked={selectedMatchingSkills.includes(skillName)}
+                                    onCheckedChange={() => toggleSkillSelection(skillName)}
+                                    className="border-zinc-600"
+                                  />
+                                  <span className="text-sm text-white">{skillName}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {matchingData.people.length === 0 || matchingData.skills.length === 0 ? (
+                  {employeesWithSkills.length === 0 ? (
                     <div className="text-center py-12">
                       <Users className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
-                      <p className="text-zinc-400">No matching data available</p>
+                      <p className="text-zinc-400">No employees available</p>
                       <p className="text-zinc-500 text-sm mb-4">Add employees with skill assessments to see matching matrix</p>
-                      {employeesWithSkills.length === 0 && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400"
-                          onClick={() => seedDemoMutation.mutate()}
-                          disabled={seedDemoMutation.isPending}
-                        >
-                          <Database className="h-4 w-4 mr-2" />
-                          {seedDemoMutation.isPending ? "Loading..." : "Load Demo Data"}
-                        </Button>
-                      )}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400"
+                        onClick={() => seedDemoMutation.mutate()}
+                        disabled={seedDemoMutation.isPending}
+                      >
+                        <Database className="h-4 w-4 mr-2" />
+                        {seedDemoMutation.isPending ? "Loading..." : "Load Demo Data"}
+                      </Button>
+                    </div>
+                  ) : matchingData.people.length === 0 || matchingData.skills.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Users className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
+                      <p className="text-zinc-400">
+                        {matchingData.people.length === 0 ? "No employees selected" : "No skills selected"}
+                      </p>
+                      <p className="text-zinc-500 text-sm mb-4">Use the Quick Select or Select Skills buttons above to add items</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400"
+                        onClick={() => {
+                          clearEmployeeSelection();
+                          setSelectedMatchingSkills([]);
+                        }}
+                      >
+                        <ArrowRight className="h-4 w-4 mr-2" />
+                        Show Default View
+                      </Button>
                     </div>
                   ) : (
                     <>
@@ -1451,22 +1601,55 @@ export default function WorkforceIntelligence() {
                               {matchingData.people.map((person, idx) => (
                                 <th key={idx} className="p-3 border-b border-zinc-700 text-center min-w-[120px]">
                                   <div className="flex flex-col items-center gap-2">
-                                    <Avatar className="h-10 w-10">
+                                    <Avatar className="h-12 w-12 ring-2 ring-amber-500/30">
+                                      <AvatarImage src={person.avatar} alt={person.name} className="object-cover" />
                                       <AvatarFallback className="bg-amber-500/20 text-amber-400">
                                         {getInitials(person.name)}
                                       </AvatarFallback>
                                     </Avatar>
                                     <span className="text-sm font-medium text-white">{person.name}</span>
-                                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-zinc-500 hover:text-zinc-300">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-5 w-5 p-0 text-zinc-500 hover:text-red-400"
+                                      onClick={() => toggleEmployeeSelection(person.id)}
+                                      data-testid={`button-remove-employee-${idx}`}
+                                    >
                                       <X className="h-3 w-3" />
                                     </Button>
                                   </div>
                                 </th>
                               ))}
                               <th className="p-3 border-b border-zinc-700 w-12">
-                                <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-zinc-700 bg-zinc-800">
-                                  <Plus className="h-4 w-4" />
-                                </Button>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-zinc-700 bg-zinc-800 hover:bg-zinc-700">
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-64 bg-zinc-900 border-zinc-700 p-2" align="end">
+                                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                                      {employeesWithSkills.filter(emp => !selectedMatchingEmployees.includes(emp.id) && !matchingData.people.some(p => p.id === emp.id)).map(emp => (
+                                        <div 
+                                          key={emp.id} 
+                                          className="flex items-center gap-2 p-2 rounded hover:bg-zinc-800 cursor-pointer"
+                                          onClick={() => toggleEmployeeSelection(emp.id)}
+                                        >
+                                          <Avatar className="h-6 w-6">
+                                            <AvatarImage src={getEmployeePhoto(emp.fullName)} alt={emp.fullName} />
+                                            <AvatarFallback className="bg-amber-500/20 text-amber-400 text-xs">
+                                              {getInitials(emp.fullName)}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <span className="text-sm text-white">{emp.fullName}</span>
+                                        </div>
+                                      ))}
+                                      {employeesWithSkills.filter(emp => !selectedMatchingEmployees.includes(emp.id) && !matchingData.people.some(p => p.id === emp.id)).length === 0 && (
+                                        <p className="text-xs text-zinc-500 p-2">All employees selected</p>
+                                      )}
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
                               </th>
                             </tr>
                           </thead>
@@ -1477,8 +1660,10 @@ export default function WorkforceIntelligence() {
                                   <div className="flex items-center gap-2">
                                     <span className="text-sm font-medium text-white">{skill}</span>
                                     <div className="flex items-center gap-1 text-zinc-500">
-                                      <span className="text-xs">↕</span>
-                                      <X className="h-3 w-3 cursor-pointer hover:text-zinc-300" />
+                                      <X 
+                                        className="h-3 w-3 cursor-pointer hover:text-red-400" 
+                                        onClick={() => toggleSkillSelection(skill)}
+                                      />
                                     </div>
                                   </div>
                                 </td>
@@ -1515,10 +1700,30 @@ export default function WorkforceIntelligence() {
                             ))}
                             <tr>
                               <td className="p-3">
-                                <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-zinc-300">
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Add skill
-                                </Button>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-zinc-300">
+                                      <Plus className="h-4 w-4 mr-2" />
+                                      Add skill
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-64 bg-zinc-900 border-zinc-700 p-2" align="start">
+                                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                                      {uniqueSkillNames.filter(s => !selectedMatchingSkills.includes(s) && !matchingData.skills.includes(s)).map(skillName => (
+                                        <div 
+                                          key={skillName} 
+                                          className="flex items-center gap-2 p-2 rounded hover:bg-zinc-800 cursor-pointer"
+                                          onClick={() => toggleSkillSelection(skillName)}
+                                        >
+                                          <span className="text-sm text-white">{skillName}</span>
+                                        </div>
+                                      ))}
+                                      {uniqueSkillNames.filter(s => !selectedMatchingSkills.includes(s) && !matchingData.skills.includes(s)).length === 0 && (
+                                        <p className="text-xs text-zinc-500 p-2">All skills selected</p>
+                                      )}
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
                               </td>
                               <td colSpan={matchingData.people.length + 1}></td>
                             </tr>
@@ -1539,8 +1744,16 @@ export default function WorkforceIntelligence() {
                         </table>
                       </div>
                       <div className="flex justify-center mt-4">
-                        <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-zinc-300">
-                          Clear all
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-zinc-500 hover:text-zinc-300"
+                          onClick={() => {
+                            clearEmployeeSelection();
+                            setSelectedMatchingSkills([]);
+                          }}
+                        >
+                          Clear all selections
                         </Button>
                       </div>
                     </>
@@ -1603,8 +1816,8 @@ export default function WorkforceIntelligence() {
                         >
                           <CardContent className="p-4">
                             <div className="flex items-start gap-3">
-                              <Avatar className="h-12 w-12">
-                                <AvatarImage src={employee.avatarUrl || undefined} />
+                              <Avatar className="h-12 w-12 ring-2 ring-amber-500/30">
+                                <AvatarImage src={getEmployeePhoto(employee.fullName) || employee.avatarUrl || undefined} className="object-cover" />
                                 <AvatarFallback className="bg-amber-500/20 text-amber-400">
                                   {getInitials(employee.fullName)}
                                 </AvatarFallback>
@@ -1650,7 +1863,8 @@ export default function WorkforceIntelligence() {
         <DialogContent className="max-w-2xl bg-zinc-900 border-zinc-700">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-white">
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-12 w-12 ring-2 ring-amber-500/30">
+                <AvatarImage src={selectedEmployee ? getEmployeePhoto(selectedEmployee.fullName) : undefined} className="object-cover" />
                 <AvatarFallback className="bg-amber-500/20 text-amber-400">
                   {selectedEmployee ? getInitials(selectedEmployee.fullName) : ""}
                 </AvatarFallback>
