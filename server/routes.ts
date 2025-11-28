@@ -2542,6 +2542,9 @@ Format your response as JSON:
           } else {
             rawText = file.buffer.toString("utf-8");
           }
+          
+          // Sanitize text for PostgreSQL - remove null bytes and invalid UTF-8 chars
+          rawText = rawText.replace(/\x00/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 
           // Use CV parser to extract structured data
           const parsedData = await cvParser.parseCV(rawText);
@@ -2643,6 +2646,9 @@ Format your response as JSON:
           } else {
             rawText = file.buffer.toString("utf-8");
           }
+          
+          // Sanitize text for PostgreSQL - remove null bytes and invalid UTF-8 chars
+          rawText = rawText.replace(/\x00/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 
           // Use Groq to extract job details from text
           const Groq = (await import("groq-sdk")).default;
