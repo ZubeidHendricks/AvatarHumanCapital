@@ -104,11 +104,11 @@ export default function DocumentAutomation() {
     },
   });
 
-  const jobSpecsKey = useTenantQueryKey(["documents", "job-spec"]);
+  const jobSpecsKey = useTenantQueryKey(["documents", "job_spec"]);
   const { data: jobSpecDocuments = [] } = useQuery<Document[]>({
     queryKey: jobSpecsKey,
     queryFn: async () => {
-      const res = await fetch("/api/documents/type/job-spec");
+      const res = await fetch("/api/documents/type/job_spec");
       if (!res.ok) throw new Error("Failed to fetch job spec documents");
       return res.json();
     },
