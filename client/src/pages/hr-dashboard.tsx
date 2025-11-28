@@ -1028,8 +1028,8 @@ BENEFITS:
                     </Link>
                   </div>
                 ) : jobSpecViewMode === "grid" ? (
-                  <ScrollArea className="h-[500px]">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <ScrollArea className="h-[600px] pr-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
                       {jobSpecDocuments.map((doc) => {
                         const extracted = doc.extractedData as any;
                         return (
@@ -1113,8 +1113,8 @@ BENEFITS:
                     </div>
                   </ScrollArea>
                 ) : (
-                  <ScrollArea className="h-[500px]">
-                    <div className="overflow-x-auto">
+                  <ScrollArea className="h-[600px]">
+                    <div className="overflow-x-auto pb-4">
                       <table className="w-full min-w-[800px]">
                         <thead>
                           <tr className="border-b border-zinc-800">
