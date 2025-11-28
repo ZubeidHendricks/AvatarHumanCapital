@@ -3134,6 +3134,449 @@ Format your response as JSON:
     }
   });
 
+  // ==================== WHATSAPP API ROUTES ====================
+  
+  // Import WhatsApp service
+  const { whatsappService } = await import("./whatsapp-service");
+
+  // Get all WhatsApp conversations
+  app.get("/api/whatsapp/conversations", async (req, res) => {
+    try {
+      const { type, status } = req.query;
+      let conversations = await storage.getAllWhatsappConversations(req.tenant.id);
+      
+      if (type && typeof type === "string") {
+        conversations = conversations.filter(c => c.type === type);
+      }
+      if (status && typeof status === "string") {
+        conversations = conversations.filter(c => c.status === status);
+      }
+      
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching WhatsApp conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
+  // Get single conversation with messages
+  app.get("/api/whatsapp/conversations/:id", async (req, res) => {
+    try {
+      const conversation = await storage.getWhatsappConversation(req.tenant.id, req.params.id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      const messages = await storage.getWhatsappMessages(req.tenant.id, req.params.id);
+      const documentRequests = await storage.getWhatsappDocumentRequests(req.tenant.id, req.params.id);
+      const appointments = await storage.getWhatsappAppointments(req.tenant.id, req.params.id);
+      
+      // Get linked candidate if any
+      let candidate = null;
+      if (conversation.candidateId) {
+        candidate = await storage.getCandidate(req.tenant.id, conversation.candidateId);
+      }
+      
+      res.json({
+        conversation,
+        messages,
+        documentRequests,
+        appointments,
+        candidate,
+      });
+    } catch (error) {
+      console.error("Error fetching WhatsApp conversation:", error);
+      res.status(500).json({ message: "Failed to fetch conversation" });
+    }
+  });
+
+  // Create new conversation
+  app.post("/api/whatsapp/conversations", async (req, res) => {
+    try {
+      const { phone, candidateId, type, subject } = req.body;
+      
+      if (!phone) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+      
+      // Format phone for WhatsApp (remove non-digits, ensure country code)
+      const waId = phone.replace(/\D/g, "");
+      
+      // Check if conversation already exists
+      let conversation = await storage.getWhatsappConversationByWaId(req.tenant.id, waId);
+      
+      if (!conversation) {
+        conversation = await storage.createWhatsappConversation(req.tenant.id, {
+          waId,
+          phone,
+          candidateId,
+          type: type || "general",
+          subject,
+          status: "active",
+        });
+      }
+      
+      res.status(201).json(conversation);
+    } catch (error) {
+      console.error("Error creating WhatsApp conversation:", error);
+      res.status(500).json({ message: "Failed to create conversation" });
+    }
+  });
+
+  // Update conversation (assign, change status, etc.)
+  app.patch("/api/whatsapp/conversations/:id", async (req, res) => {
+    try {
+      const { status, assignedTo, priority, type } = req.body;
+      
+      const updates: Record<string, unknown> = {};
+      if (status) updates.status = status;
+      if (assignedTo !== undefined) updates.assignedTo = assignedTo;
+      if (priority) updates.priority = priority;
+      if (type) updates.type = type;
+      
+      const conversation = await storage.updateWhatsappConversation(req.tenant.id, req.params.id, updates);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      res.json(conversation);
+    } catch (error) {
+      console.error("Error updating WhatsApp conversation:", error);
+      res.status(500).json({ message: "Failed to update conversation" });
+    }
+  });
+
+  // Send message
+  app.post("/api/whatsapp/conversations/:id/messages", async (req, res) => {
+    try {
+      const { body, senderType } = req.body;
+      
+      if (!body) {
+        return res.status(400).json({ message: "Message body is required" });
+      }
+      
+      const conversation = await storage.getWhatsappConversation(req.tenant.id, req.params.id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      const message = await whatsappService.sendTextMessage(
+        req.tenant.id,
+        req.params.id,
+        conversation.phone,
+        body,
+        senderType || "human"
+      );
+      
+      if (!message) {
+        return res.status(503).json({ message: "WhatsApp API not configured" });
+      }
+      
+      res.status(201).json(message);
+    } catch (error) {
+      console.error("Error sending WhatsApp message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // Mark conversation as read
+  app.post("/api/whatsapp/conversations/:id/mark-read", async (req, res) => {
+    try {
+      const conversation = await storage.updateWhatsappConversation(req.tenant.id, req.params.id, {
+        unreadCount: 0,
+      });
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking conversation as read:", error);
+      res.status(500).json({ message: "Failed to mark as read" });
+    }
+  });
+
+  // Request document via WhatsApp
+  app.post("/api/whatsapp/conversations/:id/document-request", async (req, res) => {
+    try {
+      const { documentType, documentName, description, dueDate } = req.body;
+      
+      if (!documentType || !documentName) {
+        return res.status(400).json({ message: "Document type and name are required" });
+      }
+      
+      const conversation = await storage.getWhatsappConversation(req.tenant.id, req.params.id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      const result = await whatsappService.sendDocumentRequest(
+        req.tenant.id,
+        req.params.id,
+        conversation.phone,
+        documentType,
+        documentName,
+        description,
+        dueDate ? new Date(dueDate) : undefined
+      );
+      
+      // Update conversation type if needed
+      if (conversation.type === "general") {
+        await storage.updateWhatsappConversation(req.tenant.id, req.params.id, {
+          type: "document_request",
+        });
+      }
+      
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error sending document request:", error);
+      res.status(500).json({ message: "Failed to send document request" });
+    }
+  });
+
+  // Schedule appointment via WhatsApp
+  app.post("/api/whatsapp/conversations/:id/appointment", async (req, res) => {
+    try {
+      const { appointmentType, title, scheduledAt, duration, location, description } = req.body;
+      
+      if (!appointmentType || !title || !scheduledAt) {
+        return res.status(400).json({ message: "Appointment type, title, and scheduled time are required" });
+      }
+      
+      const conversation = await storage.getWhatsappConversation(req.tenant.id, req.params.id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      const result = await whatsappService.sendAppointmentRequest(
+        req.tenant.id,
+        req.params.id,
+        conversation.phone,
+        appointmentType,
+        title,
+        new Date(scheduledAt),
+        duration || 60,
+        location,
+        description
+      );
+      
+      // Update conversation type if needed
+      if (conversation.type === "general") {
+        await storage.updateWhatsappConversation(req.tenant.id, req.params.id, {
+          type: "appointment",
+        });
+      }
+      
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error scheduling appointment:", error);
+      res.status(500).json({ message: "Failed to schedule appointment" });
+    }
+  });
+
+  // Update document request status
+  app.patch("/api/whatsapp/document-requests/:id", async (req, res) => {
+    try {
+      const { status, notes } = req.body;
+      
+      const request = await storage.updateWhatsappDocumentRequest(req.tenant.id, req.params.id, {
+        status,
+        notes,
+        ...(status === "received" ? { receivedAt: new Date() } : {}),
+      });
+      
+      if (!request) {
+        return res.status(404).json({ message: "Document request not found" });
+      }
+      
+      res.json(request);
+    } catch (error) {
+      console.error("Error updating document request:", error);
+      res.status(500).json({ message: "Failed to update document request" });
+    }
+  });
+
+  // Update appointment status
+  app.patch("/api/whatsapp/appointments/:id", async (req, res) => {
+    try {
+      const { status, candidateResponse, notes, scheduledAt } = req.body;
+      
+      const updates: Record<string, unknown> = {};
+      if (status) updates.status = status;
+      if (candidateResponse) updates.candidateResponse = candidateResponse;
+      if (notes) updates.notes = notes;
+      if (scheduledAt) updates.scheduledAt = new Date(scheduledAt);
+      if (status === "confirmed") updates.confirmedAt = new Date();
+      
+      const appointment = await storage.updateWhatsappAppointment(req.tenant.id, req.params.id, updates);
+      
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+      
+      res.json(appointment);
+    } catch (error) {
+      console.error("Error updating appointment:", error);
+      res.status(500).json({ message: "Failed to update appointment" });
+    }
+  });
+
+  // Get call link for WhatsApp
+  app.get("/api/whatsapp/conversations/:id/call-link", async (req, res) => {
+    try {
+      const conversation = await storage.getWhatsappConversation(req.tenant.id, req.params.id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      const callLink = whatsappService.generateCallLink(conversation.phone);
+      
+      res.json({ callLink, phone: conversation.phone });
+    } catch (error) {
+      console.error("Error generating call link:", error);
+      res.status(500).json({ message: "Failed to generate call link" });
+    }
+  });
+
+  // WhatsApp status check
+  app.get("/api/whatsapp/status", async (_req, res) => {
+    try {
+      res.json({
+        configured: whatsappService.isConfigured(),
+        features: {
+          messaging: whatsappService.isConfigured(),
+          documentRequests: whatsappService.isConfigured(),
+          appointments: whatsappService.isConfigured(),
+          calling: true, // Always available via wa.me links
+        },
+      });
+    } catch (error) {
+      console.error("Error checking WhatsApp status:", error);
+      res.status(500).json({ message: "Failed to check WhatsApp status" });
+    }
+  });
+
+  // WhatsApp webhook for incoming messages (will need verification from Meta)
+  app.get("/api/webhooks/whatsapp", (req, res) => {
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+    
+    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
+    
+    if (mode === "subscribe" && token === verifyToken) {
+      console.log("WhatsApp webhook verified");
+      res.status(200).send(challenge);
+    } else {
+      res.status(403).send("Forbidden");
+    }
+  });
+
+  app.post("/api/webhooks/whatsapp", async (req, res) => {
+    try {
+      const body = req.body;
+      
+      if (body.object !== "whatsapp_business_account") {
+        return res.sendStatus(404);
+      }
+      
+      // Get default tenant for webhook processing (in production, map by phone number)
+      const tenants = await storage.getAllTenantConfigs();
+      const tenantId = tenants[0]?.id || "default";
+      
+      for (const entry of body.entry || []) {
+        for (const change of entry.changes || []) {
+          if (change.field !== "messages") continue;
+          
+          const value = change.value;
+          
+          // Process incoming messages
+          for (const message of value.messages || []) {
+            const contact = value.contacts?.find((c: any) => c.wa_id === message.from);
+            
+            await whatsappService.processIncomingMessage(
+              tenantId,
+              message.from,
+              message.from,
+              contact?.profile?.name,
+              message
+            );
+          }
+          
+          // Process status updates
+          for (const status of value.statuses || []) {
+            await whatsappService.updateMessageStatus(
+              tenantId,
+              status.id,
+              status.status,
+              status.timestamp ? new Date(parseInt(status.timestamp) * 1000) : undefined
+            );
+          }
+        }
+      }
+      
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error processing WhatsApp webhook:", error);
+      res.sendStatus(500);
+    }
+  });
+
+  // Get all document requests (dashboard view)
+  app.get("/api/whatsapp/document-requests", async (req, res) => {
+    try {
+      const requests = await storage.getWhatsappDocumentRequests(req.tenant.id);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching document requests:", error);
+      res.status(500).json({ message: "Failed to fetch document requests" });
+    }
+  });
+
+  // Get all appointments (dashboard view)
+  app.get("/api/whatsapp/appointments", async (req, res) => {
+    try {
+      const appointments = await storage.getWhatsappAppointments(req.tenant.id);
+      res.json(appointments);
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+      res.status(500).json({ message: "Failed to fetch appointments" });
+    }
+  });
+
+  // Link conversation to candidate
+  app.post("/api/whatsapp/conversations/:id/link-candidate", async (req, res) => {
+    try {
+      const { candidateId } = req.body;
+      
+      if (!candidateId) {
+        return res.status(400).json({ message: "Candidate ID is required" });
+      }
+      
+      const candidate = await storage.getCandidate(req.tenant.id, candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+      
+      // First get existing conversation to preserve profile name
+      const existingConversation = await storage.getWhatsappConversation(req.tenant.id, req.params.id);
+      if (!existingConversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      const conversation = await storage.updateWhatsappConversation(req.tenant.id, req.params.id, {
+        candidateId,
+        profileName: existingConversation.profileName || candidate.fullName,
+      });
+      
+      res.json(conversation);
+    } catch (error) {
+      console.error("Error linking conversation to candidate:", error);
+      res.status(500).json({ message: "Failed to link conversation" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
