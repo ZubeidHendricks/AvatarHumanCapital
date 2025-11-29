@@ -260,8 +260,9 @@ export default function WhatsAppMonitor() {
       
       const messageBody = `🎤 *Voice Interview Invitation*\n\nHello ${interviewInvitePreview.candidateName}!\n\nYou have been invited to complete a voice interview for the ${interviewInvitePreview.jobTitle}.\n\nPlease click the link below to start your interview:\n${interviewUrl}\n\n⏰ This link expires in 7 days.\n📱 Make sure you have a quiet environment and allow microphone access.\n\nGood luck!`;
       
-      await api.post(`/whatsapp/conversations/${selectedConversationId}/send`, {
-        message: messageBody
+      await api.post(`/whatsapp/conversations/${selectedConversationId}/messages`, {
+        body: messageBody,
+        senderType: 'human'
       });
       
       toast.success("Interview invite sent successfully!");
