@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import crypto from "crypto";
 import { storage } from "./storage";
 import { insertCandidateSchema, insertJobSchema, insertIntegrityCheckSchema, insertRecruitmentSessionSchema, insertInterviewSchema, updateInterviewSchema, insertTenantRequestSchema, updateTenantRequestSchema, type InsertCandidate } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
@@ -819,7 +820,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Generate a cryptographically secure token
-      const crypto = require('crypto');
       const token = crypto.randomBytes(16).toString('hex').toUpperCase();
       
       // Set expiration to 7 days from now
