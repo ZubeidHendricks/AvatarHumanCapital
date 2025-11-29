@@ -55,7 +55,8 @@ import {
   Grid3X3,
   List,
   FileArchive,
-  ExternalLink
+  ExternalLink,
+  MessageCircle
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { motion } from "framer-motion";
@@ -487,6 +488,12 @@ BENEFITS:
               <Button variant="outline" className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/20 text-blue-400">
                 <FileText className="h-4 w-4 mr-2" />
                 Document Automation
+              </Button>
+            </Link>
+            <Link href="/whatsapp-monitor">
+              <Button variant="outline" className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30 hover:border-green-500/50 hover:bg-green-500/20 text-green-400">
+                <MessageCircle className="h-4 w-4 mr-2" />
+                WhatsApp
               </Button>
             </Link>
           </div>

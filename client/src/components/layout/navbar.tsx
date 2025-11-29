@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown, UserSearch, Shield, Settings, Users, Briefcase, TrendingUp, FileText } from "lucide-react";
+import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown, UserSearch, Shield, Settings, Users, Briefcase, TrendingUp, FileText, MessageCircle } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -138,6 +138,12 @@ export function Navbar() {
                   <span>Candidate Pipeline</span>
                 </DropdownMenuItem>
               </Link>
+              <Link href="/whatsapp-monitor">
+                <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
+                  <MessageCircle className="w-4 h-4 mr-2 text-green-400" />
+                  <span>WhatsApp Monitor</span>
+                </DropdownMenuItem>
+              </Link>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -259,6 +265,11 @@ export function Navbar() {
               <Link href="/candidate-pipeline">
                 <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
                   <Briefcase className="w-4 h-4" /> Candidate Pipeline
+                </Button>
+              </Link>
+              <Link href="/whatsapp-monitor">
+                <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
+                  <MessageCircle className="w-4 h-4" /> WhatsApp Monitor
                 </Button>
               </Link>
 
