@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BackButton } from "@/components/ui/back-button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Mail, Phone, MapPin, Briefcase, Calendar, Award, Languages, FileText, Upload, ShieldCheck, Mic, ChevronDown, Clock, MessageCircle, User, Bot } from "lucide-react";
+import { Mail, Phone, MapPin, Briefcase, Calendar, Award, Languages, FileText, ShieldCheck, Mic, ChevronDown, Clock, MessageCircle, User, Bot, ArrowLeft } from "lucide-react";
 import type { Candidate, InterviewSession } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -18,7 +17,6 @@ export default function CandidateDetail() {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [interviewSessions, setInterviewSessions] = useState<InterviewSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [expandedInterview, setExpandedInterview] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -59,51 +57,6 @@ export default function CandidateDetail() {
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !candidate) return;
-
-    if (file.type !== "application/pdf") {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload a PDF file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setUploading(true);
-    const formData = new FormData();
-    formData.append("cv", file);
-
-    try {
-      const response = await fetch(`/api/candidates/${candidate.id}/upload-cv`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Upload failed");
-      }
-
-      const data = await response.json();
-      setCandidate(data.candidate);
-      
-      toast({
-        title: "CV Uploaded Successfully",
-        description: "The CV has been parsed and candidate profile updated",
-      });
-    } catch (error) {
-      toast({
-        title: "Upload Failed",
-        description: error instanceof Error ? error.message : "Failed to upload CV",
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="container mx-auto py-8 px-4">
@@ -123,41 +76,19 @@ export default function CandidateDetail() {
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
       <div className="mb-6 flex items-center justify-between">
-        <BackButton fallbackPath="/candidates-list" label="Back to Candidates" />
+        <Link href="/candidates-list">
+          <Button variant="ghost" size="sm" className="gap-2" data-testid="button-back-candidates">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Candidates
+          </Button>
+        </Link>
         
-        <div className="flex items-center gap-2">
-          <Link href={`/integrity-agent?candidateId=${candidate.id}`}>
-            <Button variant="default" size="sm" data-testid="button-integrity-check">
-              <ShieldCheck className="h-4 w-4 mr-2" />
-              Run Integrity Check
-            </Button>
-          </Link>
-          
-          <div className="relative">
-            <input
-              type="file"
-              accept="application/pdf"
-              onChange={handleFileUpload}
-              className="hidden"
-              id="cv-upload"
-              data-testid="input-cv-file"
-            />
-            <label htmlFor="cv-upload">
-              <Button 
-                variant="outline" 
-                size="sm"
-                disabled={uploading}
-                data-testid="button-upload-cv"
-                asChild
-              >
-                <span>
-                  <Upload className="h-4 w-4 mr-2" />
-                  {uploading ? "Uploading..." : "Upload CV"}
-                </span>
-              </Button>
-            </label>
-          </div>
-        </div>
+        <Link href={`/integrity-agent?candidateId=${candidate.id}`}>
+          <Button variant="default" size="sm" data-testid="button-integrity-check">
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            Run Integrity Check
+          </Button>
+        </Link>
       </div>
 
       <div className="space-y-6">
