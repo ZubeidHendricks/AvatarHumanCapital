@@ -29,6 +29,7 @@ import PlatformSettings from "@/pages/platform-settings";
 import DocumentAutomation from "@/pages/document-automation";
 import WhatsAppMonitor from "@/pages/whatsapp-monitor";
 import InterviewInvite from "@/pages/interview-invite";
+import OnboardingDashboard from "@/pages/onboarding-dashboard";
 
 function Router() {
   return (
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/platform-settings" component={PlatformSettings} />
       <Route path="/document-automation" component={DocumentAutomation} />
       <Route path="/whatsapp-monitor" component={WhatsAppMonitor} />
+      <Route path="/onboarding-dashboard" component={OnboardingDashboard} />
       <Route component={NotFound} />
     </Switch>
   );
