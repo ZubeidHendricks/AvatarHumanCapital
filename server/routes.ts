@@ -1561,6 +1561,158 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== Onboarding Agent Routes =====
+  
+  app.get("/api/onboarding/agent-logs/:workflowId", async (req, res) => {
+    try {
+      const logs = await storage.getOnboardingAgentLogs(req.tenant.id, req.params.workflowId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching agent logs:", error);
+      res.status(500).json({ message: "Failed to fetch agent logs" });
+    }
+  });
+
+  app.get("/api/onboarding/human-intervention-queue", async (req, res) => {
+    try {
+      const logs = await storage.getOnboardingAgentLogsRequiringReview(req.tenant.id);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching intervention queue:", error);
+      res.status(500).json({ message: "Failed to fetch intervention queue" });
+    }
+  });
+
+  app.post("/api/onboarding/resolve-intervention/:logId", async (req, res) => {
+    try {
+      const { notes } = req.body;
+      const updated = await storage.updateOnboardingAgentLog(req.tenant.id, req.params.logId, {
+        requiresHumanReview: 0,
+        reviewedAt: new Date(),
+        reviewNotes: notes,
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error resolving intervention:", error);
+      res.status(500).json({ message: "Failed to resolve intervention" });
+    }
+  });
+
+  app.get("/api/onboarding/document-requests/:workflowId", async (req, res) => {
+    try {
+      const requests = await storage.getOnboardingDocumentRequests(req.tenant.id, req.params.workflowId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching document requests:", error);
+      res.status(500).json({ message: "Failed to fetch document requests" });
+    }
+  });
+
+  app.post("/api/onboarding/document-requests/:workflowId/initialize", async (req, res) => {
+    try {
+      const { createOnboardingAgent } = await import("./onboarding-agent");
+      const agent = createOnboardingAgent(storage);
+      
+      const workflow = await storage.getOnboardingWorkflow(req.tenant.id, req.params.workflowId);
+      if (!workflow) {
+        return res.status(404).json({ message: "Workflow not found" });
+      }
+      
+      const requests = await agent.initializeDocumentRequests(
+        req.tenant.id,
+        req.params.workflowId,
+        workflow.candidateId
+      );
+      
+      res.status(201).json(requests);
+    } catch (error) {
+      console.error("Error initializing document requests:", error);
+      res.status(500).json({ message: "Failed to initialize document requests" });
+    }
+  });
+
+  app.post("/api/onboarding/document-requests/:requestId/received", async (req, res) => {
+    try {
+      const { createOnboardingAgent } = await import("./onboarding-agent");
+      const agent = createOnboardingAgent(storage);
+      
+      const { documentId } = req.body;
+      const updated = await agent.markDocumentReceived(req.tenant.id, req.params.requestId, documentId);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Document request not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error marking document received:", error);
+      res.status(500).json({ message: "Failed to mark document received" });
+    }
+  });
+
+  app.post("/api/onboarding/document-requests/:requestId/verified", async (req, res) => {
+    try {
+      const { createOnboardingAgent } = await import("./onboarding-agent");
+      const agent = createOnboardingAgent(storage);
+      
+      const updated = await agent.markDocumentVerified(req.tenant.id, req.params.requestId, "system");
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Document request not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error verifying document:", error);
+      res.status(500).json({ message: "Failed to verify document" });
+    }
+  });
+
+  app.post("/api/onboarding/document-requests/:requestId/remind", async (req, res) => {
+    try {
+      const { createOnboardingAgent } = await import("./onboarding-agent");
+      const agent = createOnboardingAgent(storage);
+      
+      const result = await agent.sendReminder(req.tenant.id, req.params.requestId, 'whatsapp');
+      res.json(result);
+    } catch (error) {
+      console.error("Error sending reminder:", error);
+      res.status(500).json({ message: "Failed to send reminder" });
+    }
+  });
+
+  app.post("/api/onboarding/process-reminders", async (req, res) => {
+    try {
+      const { createOnboardingAgent } = await import("./onboarding-agent");
+      const agent = createOnboardingAgent(storage);
+      
+      const remindersSent = await agent.processScheduledReminders(req.tenant.id);
+      const overdueResult = await agent.processOverdueDocuments(req.tenant.id);
+      
+      res.json({ 
+        remindersSent, 
+        overdueProcessed: overdueResult.processed,
+        escalated: overdueResult.escalated 
+      });
+    } catch (error) {
+      console.error("Error processing reminders:", error);
+      res.status(500).json({ message: "Failed to process reminders" });
+    }
+  });
+
+  app.get("/api/onboarding/activity-summary/:workflowId", async (req, res) => {
+    try {
+      const { createOnboardingAgent } = await import("./onboarding-agent");
+      const agent = createOnboardingAgent(storage);
+      
+      const summary = await agent.getAgentActivitySummary(req.tenant.id, req.params.workflowId);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching activity summary:", error);
+      res.status(500).json({ message: "Failed to fetch activity summary" });
+    }
+  });
+
   // ===== Tenant Request Routes (for new customer onboarding) =====
   // Note: Public POST route is registered in server/index.ts BEFORE tenant middleware
   

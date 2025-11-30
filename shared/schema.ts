@@ -956,3 +956,92 @@ export type WhatsappDocumentRequest = typeof whatsappDocumentRequests.$inferSele
 
 export type InsertWhatsappAppointment = z.infer<typeof insertWhatsappAppointmentSchema>;
 export type WhatsappAppointment = typeof whatsappAppointments.$inferSelect;
+
+// Onboarding Agent Step Logs - Records all actions taken by onboarding agents
+export const onboardingAgentLogs = pgTable("onboarding_agent_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  workflowId: varchar("workflow_id").notNull().references(() => onboardingWorkflows.id),
+  candidateId: varchar("candidate_id").references(() => candidates.id),
+  agentType: text("agent_type").notNull(), // 'document_collector', 'provisioning', 'welcome', 'orientation', 'reminder', 'escalation'
+  action: text("action").notNull(), // 'document_requested', 'document_received', 'reminder_sent', 'escalated', 'task_completed', etc.
+  stepName: text("step_name"), // Current workflow step
+  status: text("status").notNull().default("success"), // 'success', 'failed', 'pending', 'requires_intervention'
+  details: jsonb("details"), // Action-specific details
+  targetEntity: text("target_entity"), // 'candidate', 'hr_manager', 'it_admin', etc.
+  targetEntityId: varchar("target_entity_id"),
+  communicationChannel: text("communication_channel"), // 'whatsapp', 'email', 'system', 'manual'
+  messageContent: text("message_content"), // Content of message sent if applicable
+  responseReceived: text("response_received"), // Response from candidate/entity
+  errorMessage: text("error_message"),
+  requiresHumanReview: integer("requires_human_review").default(0), // 0 = no, 1 = yes
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("onboarding_agent_logs_tenant_id_idx").on(table.tenantId),
+  workflowIdIdx: index("onboarding_agent_logs_workflow_id_idx").on(table.workflowId),
+  candidateIdIdx: index("onboarding_agent_logs_candidate_id_idx").on(table.candidateId),
+  agentTypeIdx: index("onboarding_agent_logs_agent_type_idx").on(table.agentType),
+  statusIdx: index("onboarding_agent_logs_status_idx").on(table.status),
+  requiresHumanReviewIdx: index("onboarding_agent_logs_requires_human_review_idx").on(table.requiresHumanReview),
+}));
+
+// Onboarding Document Requests - Tracks required documents for onboarding
+export const onboardingDocumentRequests = pgTable("onboarding_document_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  workflowId: varchar("workflow_id").notNull().references(() => onboardingWorkflows.id),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  documentType: text("document_type").notNull(), // 'id_document', 'proof_of_address', 'tax_form', 'bank_details', 'qualification', 'contract', 'nda', etc.
+  documentName: text("document_name").notNull(), // Human-readable name
+  description: text("description"),
+  isRequired: integer("is_required").notNull().default(1), // 0 = optional, 1 = required
+  status: text("status").notNull().default("pending"), // 'pending', 'requested', 'received', 'verified', 'rejected', 'overdue'
+  priority: text("priority").default("normal"), // 'low', 'normal', 'high', 'urgent'
+  dueDate: timestamp("due_date"),
+  requestedAt: timestamp("requested_at"),
+  requestedVia: text("requested_via"), // 'whatsapp', 'email', 'manual'
+  reminderCount: integer("reminder_count").default(0),
+  maxReminders: integer("max_reminders").default(3),
+  lastReminderAt: timestamp("last_reminder_at"),
+  nextReminderAt: timestamp("next_reminder_at"),
+  receivedAt: timestamp("received_at"),
+  receivedDocumentId: varchar("received_document_id").references(() => documents.id),
+  verifiedAt: timestamp("verified_at"),
+  verifiedBy: varchar("verified_by").references(() => users.id),
+  rejectionReason: text("rejection_reason"),
+  escalatedAt: timestamp("escalated_at"),
+  escalatedTo: varchar("escalated_to").references(() => users.id),
+  escalationReason: text("escalation_reason"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("onboarding_doc_requests_tenant_id_idx").on(table.tenantId),
+  workflowIdIdx: index("onboarding_doc_requests_workflow_id_idx").on(table.workflowId),
+  candidateIdIdx: index("onboarding_doc_requests_candidate_id_idx").on(table.candidateId),
+  statusIdx: index("onboarding_doc_requests_status_idx").on(table.status),
+  dueDateIdx: index("onboarding_doc_requests_due_date_idx").on(table.dueDate),
+}));
+
+// Insert schemas for onboarding agent logs
+export const insertOnboardingAgentLogSchema = createInsertSchema(onboardingAgentLogs).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+});
+
+export const insertOnboardingDocumentRequestSchema = createInsertSchema(onboardingDocumentRequests).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOnboardingAgentLog = z.infer<typeof insertOnboardingAgentLogSchema>;
+export type OnboardingAgentLog = typeof onboardingAgentLogs.$inferSelect;
+
+export type InsertOnboardingDocumentRequest = z.infer<typeof insertOnboardingDocumentRequestSchema>;
+export type OnboardingDocumentRequest = typeof onboardingDocumentRequests.$inferSelect;

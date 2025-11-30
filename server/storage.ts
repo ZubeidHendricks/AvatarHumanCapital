@@ -54,6 +54,10 @@ import {
   type InsertWhatsappAppointment,
   type InterviewSession,
   type InsertInterviewSession,
+  type OnboardingAgentLog,
+  type InsertOnboardingAgentLog,
+  type OnboardingDocumentRequest,
+  type InsertOnboardingDocumentRequest,
   users,
   jobs,
   candidates,
@@ -80,7 +84,9 @@ import {
   whatsappMessages,
   whatsappDocumentRequests,
   whatsappAppointments,
-  interviewSessions
+  interviewSessions,
+  onboardingAgentLogs,
+  onboardingDocumentRequests
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte } from "drizzle-orm";
@@ -267,6 +273,22 @@ export interface IStorage {
   createInterviewSession(tenantId: string, session: InsertInterviewSession): Promise<InterviewSession>;
   updateInterviewSession(tenantId: string, id: string, updates: Partial<InsertInterviewSession>): Promise<InterviewSession | undefined>;
   updateInterviewSessionByToken(token: string, updates: Partial<InsertInterviewSession>): Promise<InterviewSession | undefined>;
+  
+  // Onboarding Agent Logs
+  getOnboardingAgentLogs(tenantId: string, workflowId?: string): Promise<OnboardingAgentLog[]>;
+  getOnboardingAgentLogsByCandidate(tenantId: string, candidateId: string): Promise<OnboardingAgentLog[]>;
+  getOnboardingAgentLogsRequiringReview(tenantId: string): Promise<OnboardingAgentLog[]>;
+  createOnboardingAgentLog(tenantId: string, log: InsertOnboardingAgentLog): Promise<OnboardingAgentLog>;
+  updateOnboardingAgentLog(tenantId: string, id: string, updates: Partial<InsertOnboardingAgentLog>): Promise<OnboardingAgentLog | undefined>;
+  
+  // Onboarding Document Requests
+  getOnboardingDocumentRequests(tenantId: string, workflowId?: string): Promise<OnboardingDocumentRequest[]>;
+  getOnboardingDocumentRequestsByCandidate(tenantId: string, candidateId: string): Promise<OnboardingDocumentRequest[]>;
+  getOnboardingDocumentRequest(tenantId: string, id: string): Promise<OnboardingDocumentRequest | undefined>;
+  getPendingDocumentRequests(tenantId: string): Promise<OnboardingDocumentRequest[]>;
+  getOverdueDocumentRequests(tenantId: string): Promise<OnboardingDocumentRequest[]>;
+  createOnboardingDocumentRequest(tenantId: string, request: InsertOnboardingDocumentRequest): Promise<OnboardingDocumentRequest>;
+  updateOnboardingDocumentRequest(tenantId: string, id: string, updates: Partial<InsertOnboardingDocumentRequest>): Promise<OnboardingDocumentRequest | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1385,6 +1407,100 @@ export class DatabaseStorage implements IStorage {
       .where(eq(interviewSessions.token, token))
       .returning();
     return session || undefined;
+  }
+
+  // Onboarding Agent Logs Implementation
+  async getOnboardingAgentLogs(tenantId: string, workflowId?: string): Promise<OnboardingAgentLog[]> {
+    if (workflowId) {
+      return await db.select().from(onboardingAgentLogs)
+        .where(and(eq(onboardingAgentLogs.tenantId, tenantId), eq(onboardingAgentLogs.workflowId, workflowId)))
+        .orderBy(desc(onboardingAgentLogs.createdAt));
+    }
+    return await db.select().from(onboardingAgentLogs)
+      .where(eq(onboardingAgentLogs.tenantId, tenantId))
+      .orderBy(desc(onboardingAgentLogs.createdAt));
+  }
+
+  async getOnboardingAgentLogsByCandidate(tenantId: string, candidateId: string): Promise<OnboardingAgentLog[]> {
+    return await db.select().from(onboardingAgentLogs)
+      .where(and(eq(onboardingAgentLogs.tenantId, tenantId), eq(onboardingAgentLogs.candidateId, candidateId)))
+      .orderBy(desc(onboardingAgentLogs.createdAt));
+  }
+
+  async getOnboardingAgentLogsRequiringReview(tenantId: string): Promise<OnboardingAgentLog[]> {
+    return await db.select().from(onboardingAgentLogs)
+      .where(and(eq(onboardingAgentLogs.tenantId, tenantId), eq(onboardingAgentLogs.requiresHumanReview, 1)))
+      .orderBy(desc(onboardingAgentLogs.createdAt));
+  }
+
+  async createOnboardingAgentLog(tenantId: string, log: InsertOnboardingAgentLog): Promise<OnboardingAgentLog> {
+    const [newLog] = await db.insert(onboardingAgentLogs).values({ ...log, tenantId }).returning();
+    return newLog;
+  }
+
+  async updateOnboardingAgentLog(tenantId: string, id: string, updates: Partial<InsertOnboardingAgentLog>): Promise<OnboardingAgentLog | undefined> {
+    const [log] = await db.update(onboardingAgentLogs)
+      .set(updates)
+      .where(and(eq(onboardingAgentLogs.id, id), eq(onboardingAgentLogs.tenantId, tenantId)))
+      .returning();
+    return log || undefined;
+  }
+
+  // Onboarding Document Requests Implementation
+  async getOnboardingDocumentRequests(tenantId: string, workflowId?: string): Promise<OnboardingDocumentRequest[]> {
+    if (workflowId) {
+      return await db.select().from(onboardingDocumentRequests)
+        .where(and(eq(onboardingDocumentRequests.tenantId, tenantId), eq(onboardingDocumentRequests.workflowId, workflowId)))
+        .orderBy(desc(onboardingDocumentRequests.createdAt));
+    }
+    return await db.select().from(onboardingDocumentRequests)
+      .where(eq(onboardingDocumentRequests.tenantId, tenantId))
+      .orderBy(desc(onboardingDocumentRequests.createdAt));
+  }
+
+  async getOnboardingDocumentRequestsByCandidate(tenantId: string, candidateId: string): Promise<OnboardingDocumentRequest[]> {
+    return await db.select().from(onboardingDocumentRequests)
+      .where(and(eq(onboardingDocumentRequests.tenantId, tenantId), eq(onboardingDocumentRequests.candidateId, candidateId)))
+      .orderBy(desc(onboardingDocumentRequests.createdAt));
+  }
+
+  async getOnboardingDocumentRequest(tenantId: string, id: string): Promise<OnboardingDocumentRequest | undefined> {
+    const [request] = await db.select().from(onboardingDocumentRequests)
+      .where(and(eq(onboardingDocumentRequests.id, id), eq(onboardingDocumentRequests.tenantId, tenantId)));
+    return request || undefined;
+  }
+
+  async getPendingDocumentRequests(tenantId: string): Promise<OnboardingDocumentRequest[]> {
+    return await db.select().from(onboardingDocumentRequests)
+      .where(and(
+        eq(onboardingDocumentRequests.tenantId, tenantId),
+        eq(onboardingDocumentRequests.status, 'pending')
+      ))
+      .orderBy(desc(onboardingDocumentRequests.createdAt));
+  }
+
+  async getOverdueDocumentRequests(tenantId: string): Promise<OnboardingDocumentRequest[]> {
+    const now = new Date();
+    return await db.select().from(onboardingDocumentRequests)
+      .where(and(
+        eq(onboardingDocumentRequests.tenantId, tenantId),
+        eq(onboardingDocumentRequests.status, 'pending'),
+        lte(onboardingDocumentRequests.dueDate, now)
+      ))
+      .orderBy(desc(onboardingDocumentRequests.dueDate));
+  }
+
+  async createOnboardingDocumentRequest(tenantId: string, request: InsertOnboardingDocumentRequest): Promise<OnboardingDocumentRequest> {
+    const [newRequest] = await db.insert(onboardingDocumentRequests).values({ ...request, tenantId }).returning();
+    return newRequest;
+  }
+
+  async updateOnboardingDocumentRequest(tenantId: string, id: string, updates: Partial<InsertOnboardingDocumentRequest>): Promise<OnboardingDocumentRequest | undefined> {
+    const [request] = await db.update(onboardingDocumentRequests)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(onboardingDocumentRequests.id, id), eq(onboardingDocumentRequests.tenantId, tenantId)))
+      .returning();
+    return request || undefined;
   }
 }
 
