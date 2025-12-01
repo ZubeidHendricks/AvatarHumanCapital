@@ -17,6 +17,35 @@ import AdmZip from "adm-zip";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Helper function to infer department from job title
+function inferDepartmentFromTitle(title: string): string {
+  const titleLower = title.toLowerCase();
+  
+  const departmentMappings: Record<string, string[]> = {
+    'Engineering': ['engineer', 'developer', 'software', 'devops', 'backend', 'frontend', 'fullstack', 'architect', 'programmer', 'coder'],
+    'Sales': ['sales', 'account executive', 'business development', 'bdr', 'sdr'],
+    'Marketing': ['marketing', 'brand', 'content', 'seo', 'social media', 'digital marketing', 'growth'],
+    'Human Resources': ['hr', 'human resources', 'recruiter', 'talent', 'people operations', 'people ops'],
+    'Finance': ['finance', 'accountant', 'accounting', 'bookkeeper', 'financial', 'cfo', 'controller'],
+    'Operations': ['operations', 'ops', 'logistics', 'supply chain', 'warehouse', 'driver', 'dispatcher'],
+    'Customer Support': ['support', 'customer service', 'customer success', 'help desk', 'technical support'],
+    'Design': ['designer', 'ui', 'ux', 'graphic', 'product design', 'creative'],
+    'Product': ['product manager', 'product owner', 'scrum master', 'agile'],
+    'Legal': ['legal', 'lawyer', 'attorney', 'counsel', 'compliance'],
+    'Administration': ['admin', 'assistant', 'receptionist', 'office manager', 'secretary'],
+    'IT': ['it ', 'information technology', 'system admin', 'network', 'security analyst', 'cybersecurity'],
+    'Management': ['manager', 'director', 'head of', 'chief', 'vp ', 'vice president', 'ceo', 'coo', 'cto'],
+  };
+  
+  for (const [department, keywords] of Object.entries(departmentMappings)) {
+    if (keywords.some(keyword => titleLower.includes(keyword))) {
+      return department;
+    }
+  }
+  
+  return 'General';
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/candidates", async (req, res) => {
     try {
@@ -370,15 +399,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const agent = getOrCreateConversation(sessionId);
       const jobSpec = agent.getJobSpec();
 
-      // Validate required fields (title and department required for active jobs, but drafts can be partial)
-      if (!isDraft && (!jobSpec.title || !jobSpec.department)) {
-        return res.status(400).json({ message: "Missing required job information (title and department required)" });
+      // Validate required fields (only title is strictly required for active jobs)
+      if (!isDraft && !jobSpec.title) {
+        return res.status(400).json({ message: "Missing required job information (title required)" });
       }
+      
+      // Infer department from title if not provided
+      const inferredDepartment = jobSpec.department || inferDepartmentFromTitle(jobSpec.title || "");
       
       // Create the job with collected data (use placeholders for missing required fields)
       const job = await storage.createJob(req.tenant.id, {
         title: jobSpec.title || "Untitled Job (Draft)",
-        department: jobSpec.department || "Unspecified",
+        department: inferredDepartment || "General",
         description: jobSpec.description,
         location: jobSpec.location,
         employmentType: jobSpec.employmentType,

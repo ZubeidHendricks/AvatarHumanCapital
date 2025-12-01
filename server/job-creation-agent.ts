@@ -296,8 +296,8 @@ ${fullSpecText}
 
 Extract all information into this JSON structure. Include as many fields as you can find in the text:
 {
-  "title": "string (job title)",
-  "department": "string",
+  "title": "string (job title - REQUIRED)",
+  "department": "string (department/team - REQUIRED, infer from job title if not explicitly stated. Examples: 'Software Engineer' = 'Engineering', 'Sales Manager' = 'Sales', 'HR Coordinator' = 'Human Resources', 'Driver' = 'Operations', 'Accountant' = 'Finance')",
   "description": "string (full job description including about the role)",
   "location": "string (city, province, country)",
   "employmentType": "full_time | part_time | contract | temporary",
@@ -317,6 +317,8 @@ Extract all information into this JSON structure. Include as many fields as you 
 }
 
 IMPORTANT:
+- ALWAYS provide both "title" and "department" fields - these are required
+- If department is not explicitly stated, infer it from the job title/role
 - Extract salary numbers without currency symbols (just the number)
 - If salary is given as a range like "R850,000 - R1,200,000", extract salaryMin as 850000 and salaryMax as 1200000
 - Convert all requirements, responsibilities, and benefits into clean arrays
