@@ -439,24 +439,6 @@ BENEFITS:
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1">
               <BrainCircuit className="w-3 h-3 mr-2" /> AI Agents Active
             </Badge>
-            
-            <Dialog open={isCreateJobOpen} onOpenChange={setIsCreateJobOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-create-job-dialog">
-                  Create New Requisition
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[700px] max-h-[90vh] bg-card border-white/10 p-0">
-                <JobCreationChat 
-                  onJobCreated={() => {
-                    setIsCreateJobOpen(false);
-                    queryClient.invalidateQueries({ queryKey: jobsKey });
-                    toast.success("Job created successfully! AI will start sourcing candidates.");
-                  }}
-                  onCancel={() => setIsCreateJobOpen(false)}
-                />
-              </DialogContent>
-            </Dialog>
           </div>
         </div>
 
@@ -1023,6 +1005,24 @@ BENEFITS:
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </Button>
                     </Link>
+                    <Dialog open={isCreateJobOpen} onOpenChange={setIsCreateJobOpen}>
+                      <DialogTrigger asChild>
+                        <Button data-testid="button-create-job-dialog" className="bg-primary hover:bg-primary/90">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create New Job
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[700px] max-h-[90vh] bg-card border-white/10 p-0">
+                        <JobCreationChat 
+                          onJobCreated={() => {
+                            setIsCreateJobOpen(false);
+                            queryClient.invalidateQueries({ queryKey: jobsKey });
+                            toast.success("Job created successfully! AI will start sourcing candidates.");
+                          }}
+                          onCancel={() => setIsCreateJobOpen(false)}
+                        />
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
               </CardHeader>
