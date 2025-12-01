@@ -340,6 +340,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Parse full job specification text using AI
+  app.post("/api/jobs/conversation/parse-spec", async (req, res) => {
+    try {
+      const { sessionId, fullSpec } = req.body;
+
+      if (!sessionId || !fullSpec) {
+        return res.status(400).json({ message: "Session ID and full spec text are required" });
+      }
+
+      const agent = getOrCreateConversation(sessionId);
+      const response = await agent.parseFullSpec(fullSpec);
+
+      res.json(response);
+    } catch (error) {
+      console.error("Error parsing job specification:", error);
+      res.status(500).json({ message: "Failed to parse job specification" });
+    }
+  });
+
   app.post("/api/jobs/conversation/create", async (req, res) => {
     try {
       const { sessionId, isDraft = false } = req.body;

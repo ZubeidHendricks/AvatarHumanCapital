@@ -281,6 +281,124 @@ Format as a concise bullet-point summary highlighting key requirements. Keep it 
     ];
     this.collectedData = {};
   }
+
+  /**
+   * Parse a full job specification text and extract structured data
+   */
+  async parseFullSpec(fullSpecText: string): Promise<{
+    jobSpec: JobSpecData;
+    isComplete: boolean;
+  }> {
+    const parsePrompt = `You are an expert HR assistant. Parse this job specification and extract all relevant details into a structured JSON format.
+
+JOB SPECIFICATION TEXT:
+${fullSpecText}
+
+Extract all information into this JSON structure. Include as many fields as you can find in the text:
+{
+  "title": "string (job title)",
+  "department": "string",
+  "description": "string (full job description including about the role)",
+  "location": "string (city, province, country)",
+  "employmentType": "full_time | part_time | contract | temporary",
+  "shiftStructure": "day | night | rotating | split",
+  "salaryMin": number (in ZAR, extract from salary range),
+  "salaryMax": number (in ZAR, extract from salary range),
+  "payRateUnit": "hourly | daily | monthly | annual",
+  "minYearsExperience": number,
+  "requirements": ["list of requirements/qualifications"],
+  "responsibilities": ["list of job responsibilities"],
+  "benefits": ["list of benefits offered"],
+  "licenseRequirements": ["Code 10", "Code 14", "Code EC", "PrDP", etc if mentioned],
+  "vehicleTypes": ["Rigid Truck", "Articulated Truck", "Forklift", etc if mentioned],
+  "certificationsRequired": ["First Aid", "Hazmat", "OHSA", etc if mentioned],
+  "physicalRequirements": "string if mentioned",
+  "skills": ["list of required skills"]
+}
+
+IMPORTANT:
+- Extract salary numbers without currency symbols (just the number)
+- If salary is given as a range like "R850,000 - R1,200,000", extract salaryMin as 850000 and salaryMax as 1200000
+- Convert all requirements, responsibilities, and benefits into clean arrays
+- Return ONLY valid JSON, no additional text`;
+
+    try {
+      const extraction = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "user",
+            content: parsePrompt,
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 2000,
+      });
+
+      const jsonText = extraction.choices[0]?.message?.content || "{}";
+      
+      // Try to parse JSON from the response
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const extractedData = JSON.parse(jsonMatch[0]);
+        
+        // Coerce and validate types
+        const sanitizedData: JobSpecData & { requirements?: string[]; responsibilities?: string[]; benefits?: string[]; skills?: string[] } = {
+          title: extractedData.title,
+          department: extractedData.department,
+          description: extractedData.description,
+          location: extractedData.location,
+          employmentType: extractedData.employmentType,
+          shiftStructure: extractedData.shiftStructure,
+          
+          // Coerce numeric fields
+          salaryMin: extractedData.salaryMin ? parseInt(String(extractedData.salaryMin).replace(/[^\d]/g, '')) : undefined,
+          salaryMax: extractedData.salaryMax ? parseInt(String(extractedData.salaryMax).replace(/[^\d]/g, '')) : undefined,
+          minYearsExperience: extractedData.minYearsExperience ? parseInt(String(extractedData.minYearsExperience)) : undefined,
+          
+          payRateUnit: extractedData.payRateUnit,
+          
+          // Ensure arrays
+          licenseRequirements: Array.isArray(extractedData.licenseRequirements) 
+            ? extractedData.licenseRequirements 
+            : (extractedData.licenseRequirements ? [extractedData.licenseRequirements] : undefined),
+          vehicleTypes: Array.isArray(extractedData.vehicleTypes) 
+            ? extractedData.vehicleTypes 
+            : (extractedData.vehicleTypes ? [extractedData.vehicleTypes] : undefined),
+          certificationsRequired: Array.isArray(extractedData.certificationsRequired) 
+            ? extractedData.certificationsRequired 
+            : (extractedData.certificationsRequired ? [extractedData.certificationsRequired] : undefined),
+          
+          physicalRequirements: extractedData.physicalRequirements,
+          equipmentExperience: extractedData.equipmentExperience,
+        };
+
+        // Add additional arrays for frontend display
+        const extendedData = {
+          ...sanitizedData,
+          requirements: Array.isArray(extractedData.requirements) ? extractedData.requirements : undefined,
+          responsibilities: Array.isArray(extractedData.responsibilities) ? extractedData.responsibilities : undefined,
+          benefits: Array.isArray(extractedData.benefits) ? extractedData.benefits : undefined,
+          skills: Array.isArray(extractedData.skills) ? extractedData.skills : undefined,
+        };
+        
+        this.collectedData = extendedData;
+
+        return {
+          jobSpec: extendedData,
+          isComplete: !!extendedData.title,
+        };
+      }
+
+      return {
+        jobSpec: {},
+        isComplete: false,
+      };
+    } catch (error) {
+      console.error("Error parsing full spec:", error);
+      throw new Error("Failed to parse job specification. Please try again.");
+    }
+  }
 }
 
 // Store active conversations (in production, use Redis or database)
