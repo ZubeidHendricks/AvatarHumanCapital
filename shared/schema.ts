@@ -1435,3 +1435,249 @@ export type CandidateRecommendation = typeof candidateRecommendations.$inferSele
 
 export type InsertModelTrainingEvent = z.infer<typeof insertModelTrainingEventSchema>;
 export type ModelTrainingEvent = typeof modelTrainingEvents.$inferSelect;
+
+// ============================================================================
+// KPI & PERFORMANCE REVIEW SYSTEM
+// ============================================================================
+
+// KPI Templates - Master list of KPIs available in the organization
+export const kpiTemplates = pgTable("kpi_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  name: text("name").notNull(), // e.g., "Customer Satisfaction Score"
+  description: text("description"),
+  category: text("category"), // 'performance', 'growth', 'teamwork', 'leadership', 'innovation'
+  measurementType: text("measurement_type").notNull().default("scale"), // 'scale', 'percentage', 'number', 'boolean'
+  targetValue: integer("target_value"), // Target to achieve
+  weight: integer("weight").default(1), // Weight in overall score calculation
+  department: text("department"), // Optional department filter
+  role: text("role"), // Optional role filter
+  isActive: integer("is_active").default(1),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("kpi_templates_tenant_id_idx").on(table.tenantId),
+  categoryIdx: index("kpi_templates_category_idx").on(table.category),
+  departmentIdx: index("kpi_templates_department_idx").on(table.department),
+}));
+
+// Review Cycles - Periods for performance reviews (quarterly, annual, etc.)
+export const reviewCycles = pgTable("review_cycles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  name: text("name").notNull(), // e.g., "Q4 2024 Performance Review"
+  description: text("description"),
+  cycleType: text("cycle_type").notNull().default("quarterly"), // 'monthly', 'quarterly', 'semi_annual', 'annual'
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  selfAssessmentDueDate: timestamp("self_assessment_due_date"),
+  managerReviewDueDate: timestamp("manager_review_due_date"),
+  status: text("status").notNull().default("draft"), // 'draft', 'active', 'self_assessment', 'manager_review', 'completed', 'archived'
+  is360Review: integer("is_360_review").default(0), // Enable 360 feedback
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("review_cycles_tenant_id_idx").on(table.tenantId),
+  statusIdx: index("review_cycles_status_idx").on(table.status),
+  cycleTypeIdx: index("review_cycles_cycle_type_idx").on(table.cycleType),
+}));
+
+// Employee KPI Assignments - Assign KPIs to specific employees for a review cycle
+export const kpiAssignments = pgTable("kpi_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  reviewCycleId: varchar("review_cycle_id").notNull().references(() => reviewCycles.id),
+  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  kpiTemplateId: varchar("kpi_template_id").notNull().references(() => kpiTemplates.id),
+  customTarget: integer("custom_target"), // Override template target
+  customWeight: integer("custom_weight"), // Override template weight
+  managerId: varchar("manager_id").references(() => users.id), // Direct manager for approval
+  status: text("status").notNull().default("pending"), // 'pending', 'self_scored', 'manager_reviewed', 'finalized'
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("kpi_assignments_tenant_id_idx").on(table.tenantId),
+  reviewCycleIdIdx: index("kpi_assignments_review_cycle_idx").on(table.reviewCycleId),
+  employeeIdIdx: index("kpi_assignments_employee_id_idx").on(table.employeeId),
+  managerIdIdx: index("kpi_assignments_manager_id_idx").on(table.managerId),
+  statusIdx: index("kpi_assignments_status_idx").on(table.status),
+}));
+
+// KPI Scores - Self-assessment and manager scores
+export const kpiScores = pgTable("kpi_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  assignmentId: varchar("assignment_id").notNull().references(() => kpiAssignments.id),
+  scorerType: text("scorer_type").notNull(), // 'self', 'manager', 'peer', 'direct_report'
+  scorerId: varchar("scorer_id").references(() => users.id),
+  score: integer("score").notNull(), // 1-5 scale
+  comments: text("comments"),
+  evidence: text("evidence"), // Supporting evidence/achievements
+  submittedAt: timestamp("submitted_at"),
+  submittedVia: text("submitted_via").default("platform"), // 'platform', 'whatsapp', 'teams'
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("kpi_scores_tenant_id_idx").on(table.tenantId),
+  assignmentIdIdx: index("kpi_scores_assignment_id_idx").on(table.assignmentId),
+  scorerTypeIdx: index("kpi_scores_scorer_type_idx").on(table.scorerType),
+  scorerIdIdx: index("kpi_scores_scorer_id_idx").on(table.scorerId),
+}));
+
+// 360 Feedback Requests - For gathering peer/team feedback
+export const feedback360Requests = pgTable("feedback_360_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  reviewCycleId: varchar("review_cycle_id").notNull().references(() => reviewCycles.id),
+  subjectId: varchar("subject_id").notNull().references(() => users.id), // Employee being reviewed
+  reviewerId: varchar("reviewer_id").notNull().references(() => users.id), // Person giving feedback
+  reviewerType: text("reviewer_type").notNull(), // 'peer', 'direct_report', 'cross_functional', 'external'
+  status: text("status").notNull().default("pending"), // 'pending', 'sent', 'completed', 'declined'
+  token: varchar("token").unique(), // Secure token for WhatsApp/email links
+  requestedAt: timestamp("requested_at"),
+  completedAt: timestamp("completed_at"),
+  sentVia: text("sent_via"), // 'whatsapp', 'email', 'teams'
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("feedback_360_requests_tenant_id_idx").on(table.tenantId),
+  reviewCycleIdIdx: index("feedback_360_requests_review_cycle_idx").on(table.reviewCycleId),
+  subjectIdIdx: index("feedback_360_requests_subject_id_idx").on(table.subjectId),
+  reviewerIdIdx: index("feedback_360_requests_reviewer_id_idx").on(table.reviewerId),
+  tokenIdx: index("feedback_360_requests_token_idx").on(table.token),
+  statusIdx: index("feedback_360_requests_status_idx").on(table.status),
+}));
+
+// 360 Feedback Responses - Actual feedback given
+export const feedback360Responses = pgTable("feedback_360_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  requestId: varchar("request_id").notNull().references(() => feedback360Requests.id),
+  overallScore: integer("overall_score"), // 1-5
+  strengths: text("strengths"),
+  areasForImprovement: text("areas_for_improvement"),
+  additionalComments: text("additional_comments"),
+  competencyScores: jsonb("competency_scores"), // { 'leadership': 4, 'communication': 5, ... }
+  isAnonymous: integer("is_anonymous").default(1),
+  submittedVia: text("submitted_via").default("platform"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("feedback_360_responses_tenant_id_idx").on(table.tenantId),
+  requestIdIdx: index("feedback_360_responses_request_id_idx").on(table.requestId),
+}));
+
+// Review Submissions - Final review submission tracking
+export const reviewSubmissions = pgTable("review_submissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  reviewCycleId: varchar("review_cycle_id").notNull().references(() => reviewCycles.id),
+  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  managerId: varchar("manager_id").references(() => users.id),
+  selfAssessmentStatus: text("self_assessment_status").notNull().default("pending"), // 'pending', 'in_progress', 'completed'
+  managerReviewStatus: text("manager_review_status").notNull().default("pending"),
+  overallSelfScore: integer("overall_self_score"), // Weighted average of self-scores
+  overallManagerScore: integer("overall_manager_score"), // Weighted average of manager scores
+  overall360Score: integer("overall_360_score"), // Average of 360 feedback
+  finalScore: integer("final_score"), // Final combined score
+  managerComments: text("manager_comments"),
+  employeeComments: text("employee_comments"),
+  developmentPlan: text("development_plan"),
+  selfSubmittedAt: timestamp("self_submitted_at"),
+  managerSubmittedAt: timestamp("manager_submitted_at"),
+  finalizedAt: timestamp("finalized_at"),
+  whatsappNotificationSent: integer("whatsapp_notification_sent").default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("review_submissions_tenant_id_idx").on(table.tenantId),
+  reviewCycleIdIdx: index("review_submissions_review_cycle_idx").on(table.reviewCycleId),
+  employeeIdIdx: index("review_submissions_employee_id_idx").on(table.employeeId),
+  managerIdIdx: index("review_submissions_manager_id_idx").on(table.managerId),
+}));
+
+// Insert schemas for KPI system
+export const insertKpiTemplateSchema = createInsertSchema(kpiTemplates).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateKpiTemplateSchema = insertKpiTemplateSchema.partial();
+
+export const insertReviewCycleSchema = createInsertSchema(reviewCycles).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateReviewCycleSchema = insertReviewCycleSchema.partial();
+
+export const insertKpiAssignmentSchema = createInsertSchema(kpiAssignments).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateKpiAssignmentSchema = insertKpiAssignmentSchema.partial();
+
+export const insertKpiScoreSchema = createInsertSchema(kpiScores).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateKpiScoreSchema = insertKpiScoreSchema.partial();
+
+export const insertFeedback360RequestSchema = createInsertSchema(feedback360Requests).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+});
+
+export const insertFeedback360ResponseSchema = createInsertSchema(feedback360Responses).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+});
+
+export const insertReviewSubmissionSchema = createInsertSchema(reviewSubmissions).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateReviewSubmissionSchema = insertReviewSubmissionSchema.partial();
+
+// Types for KPI system
+export type InsertKpiTemplate = z.infer<typeof insertKpiTemplateSchema>;
+export type UpdateKpiTemplate = z.infer<typeof updateKpiTemplateSchema>;
+export type KpiTemplate = typeof kpiTemplates.$inferSelect;
+
+export type InsertReviewCycle = z.infer<typeof insertReviewCycleSchema>;
+export type UpdateReviewCycle = z.infer<typeof updateReviewCycleSchema>;
+export type ReviewCycle = typeof reviewCycles.$inferSelect;
+
+export type InsertKpiAssignment = z.infer<typeof insertKpiAssignmentSchema>;
+export type UpdateKpiAssignment = z.infer<typeof updateKpiAssignmentSchema>;
+export type KpiAssignment = typeof kpiAssignments.$inferSelect;
+
+export type InsertKpiScore = z.infer<typeof insertKpiScoreSchema>;
+export type UpdateKpiScore = z.infer<typeof updateKpiScoreSchema>;
+export type KpiScore = typeof kpiScores.$inferSelect;
+
+export type InsertFeedback360Request = z.infer<typeof insertFeedback360RequestSchema>;
+export type Feedback360Request = typeof feedback360Requests.$inferSelect;
+
+export type InsertFeedback360Response = z.infer<typeof insertFeedback360ResponseSchema>;
+export type Feedback360Response = typeof feedback360Responses.$inferSelect;
+
+export type InsertReviewSubmission = z.infer<typeof insertReviewSubmissionSchema>;
+export type UpdateReviewSubmission = z.infer<typeof updateReviewSubmissionSchema>;
+export type ReviewSubmission = typeof reviewSubmissions.$inferSelect;
