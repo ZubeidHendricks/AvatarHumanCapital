@@ -34,6 +34,8 @@ import HRConversations from "@/pages/hr-conversations";
 import InterviewConsole from "@/pages/interview-console";
 import Recommendations from "@/pages/recommendations";
 import KpiManagement from "@/pages/kpi-management";
+import KpiReview from "@/pages/kpi-review";
+import KpiManagerReview from "@/pages/kpi-manager-review";
 
 function Router() {
   return (
@@ -67,6 +69,8 @@ function Router() {
       <Route path="/interview-console" component={InterviewConsole} />
       <Route path="/recommendations" component={Recommendations} />
       <Route path="/kpi-management" component={KpiManagement} />
+      <Route path="/kpi-review" component={KpiReview} />
+      <Route path="/kpi-manager-review" component={KpiManagerReview} />
       <Route component={NotFound} />
     </Switch>
   );
