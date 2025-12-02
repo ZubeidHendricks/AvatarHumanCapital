@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
-import { insertCandidateSchema, insertJobSchema, insertIntegrityCheckSchema, insertRecruitmentSessionSchema, insertInterviewSchema, updateInterviewSchema, insertTenantRequestSchema, updateTenantRequestSchema, type InsertCandidate } from "@shared/schema";
+import { insertCandidateSchema, insertJobSchema, insertIntegrityCheckSchema, insertRecruitmentSessionSchema, insertInterviewSchema, updateInterviewSchema, insertTenantRequestSchema, updateTenantRequestSchema, type InsertCandidate, insertIntegrityDocumentRequirementSchema, updateIntegrityDocumentRequirementSchema, insertCandidateDocumentSchema, updateCandidateDocumentSchema, documentTypes } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { IntegrityOrchestrator } from "./integrity-orchestrator";
 import { RecruitmentOrchestrator } from "./recruitment-orchestrator";
@@ -1164,6 +1164,332 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking reminders:", error);
       res.status(500).json({ message: "Failed to check reminders" });
+    }
+  });
+
+  // ==================== INTEGRITY DOCUMENT REQUIREMENTS ====================
+
+  // Get document types list
+  app.get("/api/document-types", async (req, res) => {
+    res.json(documentTypes);
+  });
+
+  // Get all document requirements for a candidate
+  app.get("/api/candidates/:candidateId/document-requirements", async (req, res) => {
+    try {
+      const requirements = await storage.getIntegrityDocumentRequirements(req.tenant.id, req.params.candidateId);
+      res.json(requirements);
+    } catch (error) {
+      console.error("Error fetching document requirements:", error);
+      res.status(500).json({ message: "Failed to fetch document requirements" });
+    }
+  });
+
+  // Get document requirements by integrity check
+  app.get("/api/integrity-checks/:checkId/document-requirements", async (req, res) => {
+    try {
+      const requirements = await storage.getIntegrityDocumentRequirementsByCheckId(req.tenant.id, req.params.checkId);
+      res.json(requirements);
+    } catch (error) {
+      console.error("Error fetching document requirements:", error);
+      res.status(500).json({ message: "Failed to fetch document requirements" });
+    }
+  });
+
+  // Get single document requirement
+  app.get("/api/document-requirements/:id", async (req, res) => {
+    try {
+      const requirement = await storage.getIntegrityDocumentRequirement(req.tenant.id, req.params.id);
+      if (!requirement) {
+        return res.status(404).json({ message: "Document requirement not found" });
+      }
+      res.json(requirement);
+    } catch (error) {
+      console.error("Error fetching document requirement:", error);
+      res.status(500).json({ message: "Failed to fetch document requirement" });
+    }
+  });
+
+  // Create document requirement
+  app.post("/api/document-requirements", async (req, res) => {
+    try {
+      const result = insertIntegrityDocumentRequirementSchema.safeParse(req.body);
+      if (!result.success) {
+        const validationError = fromZodError(result.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      
+      const requirement = await storage.createIntegrityDocumentRequirement(req.tenant.id, result.data);
+      res.status(201).json(requirement);
+    } catch (error) {
+      console.error("Error creating document requirement:", error);
+      res.status(500).json({ message: "Failed to create document requirement" });
+    }
+  });
+
+  // Update document requirement
+  app.patch("/api/document-requirements/:id", async (req, res) => {
+    try {
+      const result = updateIntegrityDocumentRequirementSchema.safeParse(req.body);
+      if (!result.success) {
+        const validationError = fromZodError(result.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      
+      const requirement = await storage.updateIntegrityDocumentRequirement(req.tenant.id, req.params.id, result.data);
+      if (!requirement) {
+        return res.status(404).json({ message: "Document requirement not found" });
+      }
+      res.json(requirement);
+    } catch (error) {
+      console.error("Error updating document requirement:", error);
+      res.status(500).json({ message: "Failed to update document requirement" });
+    }
+  });
+
+  // Delete document requirement
+  app.delete("/api/document-requirements/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteIntegrityDocumentRequirement(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Document requirement not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting document requirement:", error);
+      res.status(500).json({ message: "Failed to delete document requirement" });
+    }
+  });
+
+  // Create document requirements for an integrity check (batch creation)
+  app.post("/api/integrity-checks/:checkId/request-documents", async (req, res) => {
+    try {
+      const { documentTypes: requiredTypes, sendWhatsappRequest = true } = req.body;
+      
+      if (!requiredTypes || !Array.isArray(requiredTypes) || requiredTypes.length === 0) {
+        return res.status(400).json({ message: "documentTypes array is required" });
+      }
+      
+      const check = await storage.getIntegrityCheck(req.tenant.id, req.params.checkId);
+      if (!check) {
+        return res.status(404).json({ message: "Integrity check not found" });
+      }
+      
+      const candidate = await storage.getCandidate(req.tenant.id, check.candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+      
+      const createdRequirements = [];
+      const now = new Date();
+      const nextReminderAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+      
+      for (const docType of requiredTypes) {
+        const referenceCode = `DOC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        
+        const docTypeLabels: Record<string, string> = {
+          id_document: "ID Document (Passport or National ID)",
+          proof_of_address: "Proof of Address (Utility bill or bank statement)",
+          police_clearance: "Police Clearance Certificate",
+          drivers_license: "Driver's License",
+          passport: "Passport",
+          bank_statement: "Bank Statement",
+          qualification_certificate: "Qualification Certificate",
+          reference_letter: "Reference Letter",
+          work_permit: "Work Permit",
+          cv_resume: "CV/Resume",
+          payslip: "Recent Payslip",
+          tax_certificate: "Tax Certificate",
+          medical_certificate: "Medical Certificate",
+          other: "Other Document"
+        };
+        
+        const requirement = await storage.createIntegrityDocumentRequirement(req.tenant.id, {
+          candidateId: check.candidateId,
+          integrityCheckId: req.params.checkId,
+          documentType: docType,
+          description: docTypeLabels[docType] || docType,
+          referenceCode,
+          priority: "required",
+          status: sendWhatsappRequest ? "requested" : "pending",
+          requestedAt: sendWhatsappRequest ? now : undefined,
+          nextReminderAt,
+          reminderEnabled: 1,
+        });
+        
+        createdRequirements.push(requirement);
+      }
+      
+      // Send WhatsApp request if candidate has phone and flag is set
+      if (sendWhatsappRequest && candidate.phone) {
+        try {
+          const { WhatsAppService } = await import("./whatsapp-service");
+          const whatsappService = new WhatsAppService(storage);
+          
+          const docList = createdRequirements.map((r, i) => 
+            `${i + 1}. ${r.description} (Ref: ${r.referenceCode})`
+          ).join('\n');
+          
+          const message = `Hi ${candidate.fullName},\n\nWe need the following documents to complete your background verification:\n\n${docList}\n\nPlease reply with the document type (e.g., "ID Document") before uploading each document so we can track your submission.\n\nReference these codes when submitting:\n${createdRequirements.map(r => `- ${r.referenceCode}`).join('\n')}`;
+          
+          await whatsappService.sendMessage(candidate.phone.replace(/\D/g, ''), message);
+        } catch (whatsappError) {
+          console.error("Failed to send WhatsApp request:", whatsappError);
+          // Don't fail the request, just log the error
+        }
+      }
+      
+      res.status(201).json({
+        message: "Document requirements created",
+        requirements: createdRequirements,
+        whatsappSent: sendWhatsappRequest && !!candidate.phone
+      });
+    } catch (error) {
+      console.error("Error creating document requirements:", error);
+      res.status(500).json({ message: "Failed to create document requirements" });
+    }
+  });
+
+  // Send reminder for pending document requirements
+  app.post("/api/document-requirements/:id/send-reminder", async (req, res) => {
+    try {
+      const requirement = await storage.getIntegrityDocumentRequirement(req.tenant.id, req.params.id);
+      if (!requirement) {
+        return res.status(404).json({ message: "Document requirement not found" });
+      }
+      
+      const candidate = await storage.getCandidate(req.tenant.id, requirement.candidateId);
+      if (!candidate || !candidate.phone) {
+        return res.status(400).json({ message: "Candidate has no phone number" });
+      }
+      
+      try {
+        const { WhatsAppService } = await import("./whatsapp-service");
+        const whatsappService = new WhatsAppService(storage);
+        
+        const message = `Hi ${candidate.fullName},\n\nThis is a reminder that we're still waiting for your ${requirement.description}.\n\nReference code: ${requirement.referenceCode}\n\nPlease upload this document at your earliest convenience to complete your background verification.\n\nReply with "${requirement.documentType}" before sending the document.`;
+        
+        await whatsappService.sendMessage(candidate.phone.replace(/\D/g, ''), message);
+        
+        // Update reminder tracking
+        const now = new Date();
+        const nextReminderAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+        
+        await storage.updateIntegrityDocumentRequirement(req.tenant.id, req.params.id, {
+          remindersSent: (requirement.remindersSent || 0) + 1,
+          lastReminderAt: now,
+          nextReminderAt,
+        });
+        
+        res.json({ message: "Reminder sent successfully" });
+      } catch (whatsappError) {
+        console.error("Failed to send WhatsApp reminder:", whatsappError);
+        res.status(500).json({ message: "Failed to send reminder via WhatsApp" });
+      }
+    } catch (error) {
+      console.error("Error sending document requirement reminder:", error);
+      res.status(500).json({ message: "Failed to send reminder" });
+    }
+  });
+
+  // ==================== CANDIDATE DOCUMENTS ====================
+
+  // Get all documents for a candidate
+  app.get("/api/candidates/:candidateId/documents", async (req, res) => {
+    try {
+      const documents = await storage.getCandidateDocuments(req.tenant.id, req.params.candidateId);
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching candidate documents:", error);
+      res.status(500).json({ message: "Failed to fetch candidate documents" });
+    }
+  });
+
+  // Get single document
+  app.get("/api/candidate-documents/:id", async (req, res) => {
+    try {
+      const document = await storage.getCandidateDocument(req.tenant.id, req.params.id);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      res.json(document);
+    } catch (error) {
+      console.error("Error fetching candidate document:", error);
+      res.status(500).json({ message: "Failed to fetch candidate document" });
+    }
+  });
+
+  // Create candidate document (for manual uploads)
+  app.post("/api/candidate-documents", async (req, res) => {
+    try {
+      const result = insertCandidateDocumentSchema.safeParse(req.body);
+      if (!result.success) {
+        const validationError = fromZodError(result.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      
+      const document = await storage.createCandidateDocument(req.tenant.id, result.data);
+      
+      // If linked to a requirement, update the requirement status
+      if (result.data.requirementId) {
+        const requirement = await storage.getIntegrityDocumentRequirement(req.tenant.id, result.data.requirementId);
+        if (requirement) {
+          await storage.updateIntegrityDocumentRequirement(req.tenant.id, result.data.requirementId, {
+            status: 'received',
+            documentId: document.id,
+            receivedAt: new Date(),
+          });
+        }
+      }
+      
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Error creating candidate document:", error);
+      res.status(500).json({ message: "Failed to create candidate document" });
+    }
+  });
+
+  // Update candidate document (verification status)
+  app.patch("/api/candidate-documents/:id", async (req, res) => {
+    try {
+      const result = updateCandidateDocumentSchema.safeParse(req.body);
+      if (!result.success) {
+        const validationError = fromZodError(result.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      
+      const document = await storage.updateCandidateDocument(req.tenant.id, req.params.id, result.data);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // If document is verified and linked to a requirement, update requirement status
+      if (result.data.status === 'verified' && document.requirementId) {
+        await storage.updateIntegrityDocumentRequirement(req.tenant.id, document.requirementId, {
+          status: 'verified',
+          verifiedAt: new Date(),
+          verifiedBy: result.data.verifiedBy || 'manual',
+        });
+      }
+      
+      res.json(document);
+    } catch (error) {
+      console.error("Error updating candidate document:", error);
+      res.status(500).json({ message: "Failed to update candidate document" });
+    }
+  });
+
+  // Delete candidate document
+  app.delete("/api/candidate-documents/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteCandidateDocument(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting candidate document:", error);
+      res.status(500).json({ message: "Failed to delete candidate document" });
     }
   });
 

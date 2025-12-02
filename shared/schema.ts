@@ -111,6 +111,107 @@ export const integrityChecks = pgTable("integrity_checks", {
   candidateIdIdx: index("integrity_checks_candidate_id_idx").on(table.candidateId),
 }));
 
+// Document types for integrity verification
+export const documentTypes = [
+  "id_document",
+  "proof_of_address",
+  "police_clearance",
+  "drivers_license",
+  "passport",
+  "bank_statement",
+  "qualification_certificate",
+  "reference_letter",
+  "work_permit",
+  "cv_resume",
+  "payslip",
+  "tax_certificate",
+  "medical_certificate",
+  "other",
+] as const;
+
+export type DocumentType = (typeof documentTypes)[number];
+
+// Document requirements for integrity checks - tracks what documents are needed
+export const integrityDocumentRequirements = pgTable("integrity_document_requirements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  integrityCheckId: varchar("integrity_check_id").references(() => integrityChecks.id),
+  documentType: text("document_type").notNull(), // From documentTypes enum
+  description: text("description"), // Human-readable description of what's needed
+  referenceCode: text("reference_code").notNull(), // Unique code for tracking (e.g., "DOC-2024-001")
+  priority: text("priority").notNull().default("required"), // 'required' | 'optional'
+  status: text("status").notNull().default("pending"), // 'pending' | 'requested' | 'received' | 'verified' | 'rejected'
+  documentId: varchar("document_id"), // Link to received document
+  whatsappMessageId: text("whatsapp_message_id"), // WhatsApp message ID when requested
+  requestedAt: timestamp("requested_at"),
+  receivedAt: timestamp("received_at"),
+  verifiedAt: timestamp("verified_at"),
+  verifiedBy: varchar("verified_by"), // User or 'ai'
+  rejectionReason: text("rejection_reason"),
+  reminderEnabled: integer("reminder_enabled").default(1),
+  remindersSent: integer("reminders_sent").default(0),
+  lastReminderAt: timestamp("last_reminder_at"),
+  nextReminderAt: timestamp("next_reminder_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("integrity_doc_req_tenant_id_idx").on(table.tenantId),
+  candidateIdIdx: index("integrity_doc_req_candidate_id_idx").on(table.candidateId),
+  integrityCheckIdIdx: index("integrity_doc_req_check_id_idx").on(table.integrityCheckId),
+  referenceCodeIdx: index("integrity_doc_req_ref_code_idx").on(table.referenceCode),
+}));
+
+// Candidate documents - stores uploaded integrity/verification documents
+export const candidateDocuments = pgTable("candidate_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  candidateId: varchar("candidate_id").references(() => candidates.id),
+  requirementId: varchar("requirement_id").references(() => integrityDocumentRequirements.id),
+  documentType: text("document_type").notNull(), // From documentTypes enum
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: text("mime_type"),
+  referenceCode: text("reference_code"), // Linked to requirement reference
+  collectedVia: text("collected_via").notNull().default("portal"), // 'whatsapp' | 'portal' | 'manual' | 'email'
+  sourceMessageId: text("source_message_id"), // WhatsApp message ID if collected via WhatsApp
+  candidateNote: text("candidate_note"), // What the candidate said this document is
+  status: text("status").notNull().default("received"), // 'received' | 'verified' | 'rejected' | 'expired'
+  aiVerification: jsonb("ai_verification"), // AI verification results { verified: boolean, confidence: number, issues: [] }
+  verifiedAt: timestamp("verified_at"),
+  verifiedBy: varchar("verified_by"), // User ID or 'ai'
+  expiresAt: timestamp("expires_at"), // For documents with expiry dates
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("candidate_docs_tenant_id_idx").on(table.tenantId),
+  candidateIdIdx: index("candidate_docs_candidate_id_idx").on(table.candidateId),
+  requirementIdIdx: index("candidate_docs_requirement_id_idx").on(table.requirementId),
+  referenceCodeIdx: index("candidate_docs_ref_code_idx").on(table.referenceCode),
+}));
+
+// WhatsApp conversation state for document collection
+export const whatsappDocumentSessions = pgTable("whatsapp_document_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  phoneNumber: text("phone_number").notNull(),
+  currentState: text("current_state").notNull().default("idle"), // 'idle' | 'awaiting_doc_type' | 'awaiting_document' | 'confirming'
+  pendingRequirementId: varchar("pending_requirement_id"), // Which requirement we're collecting for
+  selectedDocType: text("selected_doc_type"), // What doc type candidate selected
+  lastMessageAt: timestamp("last_message_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("whatsapp_doc_sessions_tenant_id_idx").on(table.tenantId),
+  candidateIdIdx: index("whatsapp_doc_sessions_candidate_id_idx").on(table.candidateId),
+  phoneNumberIdx: index("whatsapp_doc_sessions_phone_idx").on(table.phoneNumber),
+}));
+
 export const recruitmentSessions = pgTable("recruitment_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id"),
@@ -303,6 +404,86 @@ export type Candidate = typeof candidates.$inferSelect;
 
 export type InsertIntegrityCheck = z.infer<typeof insertIntegrityCheckSchema>;
 export type IntegrityCheck = typeof integrityChecks.$inferSelect;
+
+// Integrity document requirements insert/update schemas
+export const insertIntegrityDocumentRequirementSchema = createInsertSchema(integrityDocumentRequirements, {
+  requestedAt: z.coerce.date().optional().nullable(),
+  receivedAt: z.coerce.date().optional().nullable(),
+  verifiedAt: z.coerce.date().optional().nullable(),
+  lastReminderAt: z.coerce.date().optional().nullable(),
+  nextReminderAt: z.coerce.date().optional().nullable(),
+}).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateIntegrityDocumentRequirementSchema = z.object({
+  status: z.enum(['pending', 'requested', 'received', 'verified', 'rejected']).optional(),
+  documentId: z.string().nullable().optional(),
+  whatsappMessageId: z.string().nullable().optional(),
+  requestedAt: z.coerce.date().nullable().optional(),
+  receivedAt: z.coerce.date().nullable().optional(),
+  verifiedAt: z.coerce.date().nullable().optional(),
+  verifiedBy: z.string().nullable().optional(),
+  rejectionReason: z.string().nullable().optional(),
+  reminderEnabled: z.number().optional(),
+  remindersSent: z.number().optional(),
+  lastReminderAt: z.coerce.date().nullable().optional(),
+  nextReminderAt: z.coerce.date().nullable().optional(),
+  metadata: z.any().optional(),
+});
+
+export type InsertIntegrityDocumentRequirement = z.infer<typeof insertIntegrityDocumentRequirementSchema>;
+export type UpdateIntegrityDocumentRequirement = z.infer<typeof updateIntegrityDocumentRequirementSchema>;
+export type IntegrityDocumentRequirement = typeof integrityDocumentRequirements.$inferSelect;
+
+// Candidate documents insert/update schemas
+export const insertCandidateDocumentSchema = createInsertSchema(candidateDocuments, {
+  verifiedAt: z.coerce.date().optional().nullable(),
+  expiresAt: z.coerce.date().optional().nullable(),
+}).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateCandidateDocumentSchema = z.object({
+  status: z.enum(['received', 'verified', 'rejected', 'expired']).optional(),
+  aiVerification: z.any().optional(),
+  verifiedAt: z.coerce.date().nullable().optional(),
+  verifiedBy: z.string().nullable().optional(),
+  expiresAt: z.coerce.date().nullable().optional(),
+  metadata: z.any().optional(),
+});
+
+export type InsertCandidateDocument = z.infer<typeof insertCandidateDocumentSchema>;
+export type UpdateCandidateDocument = z.infer<typeof updateCandidateDocumentSchema>;
+export type CandidateDocument = typeof candidateDocuments.$inferSelect;
+
+// WhatsApp document sessions insert/update schemas
+export const insertWhatsappDocumentSessionSchema = createInsertSchema(whatsappDocumentSessions, {
+  lastMessageAt: z.coerce.date().optional().nullable(),
+}).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateWhatsappDocumentSessionSchema = z.object({
+  currentState: z.enum(['idle', 'awaiting_doc_type', 'awaiting_document', 'confirming']).optional(),
+  pendingRequirementId: z.string().nullable().optional(),
+  selectedDocType: z.string().nullable().optional(),
+  lastMessageAt: z.coerce.date().nullable().optional(),
+  metadata: z.any().optional(),
+});
+
+export type InsertWhatsappDocumentSession = z.infer<typeof insertWhatsappDocumentSessionSchema>;
+export type UpdateWhatsappDocumentSession = z.infer<typeof updateWhatsappDocumentSessionSchema>;
+export type WhatsappDocumentSession = typeof whatsappDocumentSessions.$inferSelect;
 
 export type InsertRecruitmentSession = z.infer<typeof insertRecruitmentSessionSchema>;
 export type RecruitmentSession = typeof recruitmentSessions.$inferSelect;

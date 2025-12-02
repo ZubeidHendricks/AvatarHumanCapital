@@ -5,8 +5,26 @@ import type {
   InsertWhatsappMessage,
   InsertWhatsappConversation,
   InsertWhatsappDocumentRequest,
-  InsertWhatsappAppointment
+  InsertWhatsappAppointment,
+  IntegrityDocumentRequirement,
+  CandidateDocument
 } from "@shared/schema";
+
+const DOC_TYPE_KEYWORDS: Record<string, string[]> = {
+  id_document: ["id", "id document", "identity", "national id", "id card"],
+  proof_of_address: ["proof of address", "utility bill", "address", "bank statement address"],
+  police_clearance: ["police clearance", "criminal record", "police", "clearance"],
+  drivers_license: ["driver", "drivers license", "driving license", "licence"],
+  passport: ["passport"],
+  bank_statement: ["bank statement", "bank", "statement"],
+  qualification_certificate: ["qualification", "certificate", "degree", "diploma"],
+  reference_letter: ["reference", "reference letter", "recommendation"],
+  work_permit: ["work permit", "permit"],
+  cv_resume: ["cv", "resume", "curriculum vitae"],
+  payslip: ["payslip", "pay slip", "salary slip"],
+  tax_certificate: ["tax", "tax certificate", "sars"],
+  medical_certificate: ["medical", "medical certificate", "health"],
+};
 
 const WHATSAPP_API_URL = "https://graph.facebook.com/v18.0";
 
@@ -204,6 +222,40 @@ export class WhatsAppService {
     return conversation;
   }
 
+  detectDocumentType(text: string): string | null {
+    const lowerText = text.toLowerCase().trim();
+    
+    for (const [docType, keywords] of Object.entries(DOC_TYPE_KEYWORDS)) {
+      for (const keyword of keywords) {
+        if (lowerText.includes(keyword)) {
+          return docType;
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  getDocTypeLabel(docType: string): string {
+    const labels: Record<string, string> = {
+      id_document: "ID Document",
+      proof_of_address: "Proof of Address",
+      police_clearance: "Police Clearance",
+      drivers_license: "Driver's License",
+      passport: "Passport",
+      bank_statement: "Bank Statement",
+      qualification_certificate: "Qualification Certificate",
+      reference_letter: "Reference Letter",
+      work_permit: "Work Permit",
+      cv_resume: "CV/Resume",
+      payslip: "Payslip",
+      tax_certificate: "Tax Certificate",
+      medical_certificate: "Medical Certificate",
+      other: "Other Document"
+    };
+    return labels[docType] || docType;
+  }
+
   async processIncomingMessage(
     tenantId: string,
     waId: string,
@@ -222,28 +274,30 @@ export class WhatsAppService {
     let body = "";
     let mediaUrl = "";
     let mediaType = "";
+    let fileName = "";
 
     switch (messageType) {
       case "text":
         body = messageData.text?.body || "";
         break;
       case "image":
-        mediaUrl = messageData.image?.link || "";
+        mediaUrl = messageData.image?.id || messageData.image?.link || "";
         mediaType = messageData.image?.mime_type || "image/jpeg";
         body = messageData.image?.caption || "[Image]";
         break;
       case "document":
-        mediaUrl = messageData.document?.link || "";
+        mediaUrl = messageData.document?.id || messageData.document?.link || "";
         mediaType = messageData.document?.mime_type || "";
-        body = messageData.document?.filename || "[Document]";
+        fileName = messageData.document?.filename || "";
+        body = fileName || "[Document]";
         break;
       case "audio":
-        mediaUrl = messageData.audio?.link || "";
+        mediaUrl = messageData.audio?.id || messageData.audio?.link || "";
         mediaType = messageData.audio?.mime_type || "audio/ogg";
         body = "[Voice Message]";
         break;
       case "video":
-        mediaUrl = messageData.video?.link || "";
+        mediaUrl = messageData.video?.id || messageData.video?.link || "";
         mediaType = messageData.video?.mime_type || "video/mp4";
         body = messageData.video?.caption || "[Video]";
         break;
@@ -270,7 +324,223 @@ export class WhatsAppService {
       unreadCount: (conversation.unreadCount || 0) + 1,
     });
 
+    // Handle document collection tracking
+    if (conversation.candidateId) {
+      await this.handleDocumentCollection(
+        tenantId,
+        conversation,
+        message,
+        messageType,
+        body,
+        mediaUrl,
+        mediaType,
+        fileName
+      );
+    }
+
     return message;
+  }
+
+  async handleDocumentCollection(
+    tenantId: string,
+    conversation: WhatsappConversation,
+    message: WhatsappMessage,
+    messageType: string,
+    body: string,
+    mediaUrl: string,
+    mediaType: string,
+    fileName: string
+  ): Promise<void> {
+    if (!conversation.candidateId) return;
+
+    const candidateId = conversation.candidateId;
+    
+    // Get pending document requirements for this candidate
+    const pendingRequirements = await storage.getIntegrityDocumentRequirements(tenantId, candidateId);
+    const pending = pendingRequirements.filter(r => r.status === 'pending' || r.status === 'requested');
+    
+    if (pending.length === 0) return;
+
+    // Get or create WhatsApp document session for this candidate
+    let session = await storage.getWhatsappDocumentSessionByPhone(tenantId, conversation.phone);
+    
+    if (!session) {
+      session = await storage.createWhatsappDocumentSession(tenantId, {
+        candidateId,
+        phoneNumber: conversation.phone,
+        currentState: 'idle',
+        lastMessageAt: new Date(),
+      });
+    }
+
+    // Handle text messages - look for document type selection
+    if (messageType === 'text') {
+      const textLower = body.toLowerCase().trim();
+      
+      // Check if user specified a reference code
+      const refCodeMatch = textLower.match(/doc-[a-z0-9-]+/i);
+      if (refCodeMatch) {
+        const refCode = refCodeMatch[0].toUpperCase();
+        const matchedReq = pending.find(r => r.referenceCode === refCode);
+        if (matchedReq) {
+          await storage.updateWhatsappDocumentSession(tenantId, session.id, {
+            currentState: 'awaiting_document',
+            pendingRequirementId: matchedReq.id,
+            selectedDocType: matchedReq.documentType,
+            lastMessageAt: new Date(),
+          });
+          
+          await this.sendTextMessage(
+            tenantId,
+            conversation.id,
+            conversation.phone,
+            `Great! Please send your ${this.getDocTypeLabel(matchedReq.documentType)} now. You can send a photo or document file.`,
+            'ai'
+          );
+          return;
+        }
+      }
+      
+      // Check if user specified a document type
+      const detectedType = this.detectDocumentType(body);
+      if (detectedType) {
+        const matchedReq = pending.find(r => r.documentType === detectedType);
+        if (matchedReq) {
+          await storage.updateWhatsappDocumentSession(tenantId, session.id, {
+            currentState: 'awaiting_document',
+            pendingRequirementId: matchedReq.id,
+            selectedDocType: detectedType,
+            lastMessageAt: new Date(),
+          });
+          
+          await this.sendTextMessage(
+            tenantId,
+            conversation.id,
+            conversation.phone,
+            `Great! Please send your ${this.getDocTypeLabel(detectedType)} now. You can send a photo or document file.\n\nReference: ${matchedReq.referenceCode}`,
+            'ai'
+          );
+          return;
+        }
+      }
+      
+      // If we're in awaiting_document state and got a text, prompt for the document
+      if (session.currentState === 'awaiting_document') {
+        await this.sendTextMessage(
+          tenantId,
+          conversation.id,
+          conversation.phone,
+          `Please send the document as a photo or file attachment. I'm waiting for your ${session.selectedDocType ? this.getDocTypeLabel(session.selectedDocType) : 'document'}.`,
+          'ai'
+        );
+        return;
+      }
+      
+      // If idle and received text, show pending requirements
+      if (session.currentState === 'idle' && pending.length > 0) {
+        const docList = pending.map((r, i) => 
+          `${i + 1}. ${r.description || this.getDocTypeLabel(r.documentType)} (Ref: ${r.referenceCode})`
+        ).join('\n');
+        
+        await this.sendTextMessage(
+          tenantId,
+          conversation.id,
+          conversation.phone,
+          `Hi! I can help you submit documents. You have ${pending.length} pending document(s):\n\n${docList}\n\nPlease reply with the document type (e.g., "ID Document") or reference code before sending each document.`,
+          'ai'
+        );
+      }
+    }
+    
+    // Handle document/image uploads
+    if (['document', 'image'].includes(messageType) && mediaUrl) {
+      let matchedRequirement: IntegrityDocumentRequirement | undefined;
+      let docType = session.selectedDocType || 'other';
+      
+      // If we have a pending requirement in session, use that
+      if (session.pendingRequirementId) {
+        matchedRequirement = pending.find(r => r.id === session.pendingRequirementId);
+        if (matchedRequirement) {
+          docType = matchedRequirement.documentType;
+        }
+      }
+      
+      // If no session match, try to infer from caption or filename
+      if (!matchedRequirement && body && body !== '[Image]' && body !== '[Document]') {
+        const detectedType = this.detectDocumentType(body);
+        if (detectedType) {
+          matchedRequirement = pending.find(r => r.documentType === detectedType);
+          if (matchedRequirement) {
+            docType = detectedType;
+          }
+        }
+      }
+      
+      // If still no match and only one pending requirement, use that
+      if (!matchedRequirement && pending.length === 1) {
+        matchedRequirement = pending[0];
+        docType = matchedRequirement.documentType;
+      }
+      
+      // Create the candidate document record
+      const refCode = matchedRequirement?.referenceCode || `DOC-${Date.now().toString(36).toUpperCase()}`;
+      
+      const candidateDoc = await storage.createCandidateDocument(tenantId, {
+        candidateId,
+        requirementId: matchedRequirement?.id,
+        documentType: docType,
+        fileName: fileName || `${docType}_${Date.now()}`,
+        fileUrl: mediaUrl,
+        fileSize: undefined,
+        mimeType: mediaType,
+        referenceCode: refCode,
+        collectedVia: 'whatsapp',
+        sourceMessageId: message.whatsappMessageId || message.id,
+        candidateNote: body !== '[Image]' && body !== '[Document]' ? body : undefined,
+        status: 'received',
+      });
+      
+      // Update the requirement if we have a match
+      if (matchedRequirement) {
+        await storage.updateIntegrityDocumentRequirement(tenantId, matchedRequirement.id, {
+          status: 'received',
+          documentId: candidateDoc.id,
+          receivedAt: new Date(),
+          reminderEnabled: 0, // Stop reminders
+        });
+      }
+      
+      // Reset session state
+      await storage.updateWhatsappDocumentSession(tenantId, session.id, {
+        currentState: 'idle',
+        pendingRequirementId: null,
+        selectedDocType: null,
+        lastMessageAt: new Date(),
+      });
+      
+      // Send confirmation
+      const remainingPending = pending.filter(r => r.id !== matchedRequirement?.id && r.status !== 'received');
+      
+      let confirmationMsg = `✅ Thank you! I've received your ${this.getDocTypeLabel(docType)}.\n\nReference: ${refCode}\n\nOur team will review it shortly.`;
+      
+      if (remainingPending.length > 0) {
+        confirmationMsg += `\n\nYou still have ${remainingPending.length} document(s) pending:\n`;
+        confirmationMsg += remainingPending.map((r, i) => 
+          `${i + 1}. ${r.description || this.getDocTypeLabel(r.documentType)} (Ref: ${r.referenceCode})`
+        ).join('\n');
+        confirmationMsg += `\n\nReply with the document type when you're ready to send the next one.`;
+      } else {
+        confirmationMsg += `\n\nAll your required documents have been received! Thank you for your cooperation.`;
+      }
+      
+      await this.sendTextMessage(
+        tenantId,
+        conversation.id,
+        conversation.phone,
+        confirmationMsg,
+        'ai'
+      );
+    }
   }
 
   async updateMessageStatus(

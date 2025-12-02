@@ -1,4 +1,5 @@
 import type { IStorage } from "./storage";
+import type { IntegrityDocumentRequirement, Candidate } from "@shared/schema";
 
 export interface ReminderConfig {
   intervalHours: number;
@@ -11,8 +12,29 @@ export interface NotificationChannel {
   message: string;
 }
 
+const DOC_TYPE_LABELS: Record<string, string> = {
+  id_document: "ID Document",
+  proof_of_address: "Proof of Address",
+  police_clearance: "Police Clearance",
+  drivers_license: "Driver's License",
+  passport: "Passport",
+  bank_statement: "Bank Statement",
+  qualification_certificate: "Qualification Certificate",
+  reference_letter: "Reference Letter",
+  work_permit: "Work Permit",
+  cv_resume: "CV/Resume",
+  payslip: "Payslip",
+  tax_certificate: "Tax Certificate",
+  medical_certificate: "Medical Certificate",
+  other: "Other Document"
+};
+
 export class ReminderService {
   constructor(private storage: IStorage) {}
+
+  getDocTypeLabel(docType: string): string {
+    return DOC_TYPE_LABELS[docType] || docType;
+  }
 
   async checkAndSendReminders(): Promise<void> {
     const now = new Date();
@@ -37,9 +59,85 @@ export class ReminderService {
             console.error(`[Tenant ${tenant.companyName}] Failed to send reminder for check ${check.id}:`, error);
           }
         }
+        
+        // Also check document requirements with reminders enabled
+        await this.checkDocumentRequirementReminders(tenant.id, now);
       } catch (error) {
         console.error(`[Tenant ${tenant.companyName}] Failed to process reminders:`, error);
       }
+    }
+  }
+  
+  async checkDocumentRequirementReminders(tenantId: string, now: Date): Promise<void> {
+    const requirements = await this.storage.getIntegrityDocRequirementsNeedingReminders(tenantId, now);
+    
+    // Group requirements by candidate
+    const byCandidate = new Map<string, IntegrityDocumentRequirement[]>();
+    for (const req of requirements) {
+      const existing = byCandidate.get(req.candidateId) || [];
+      existing.push(req);
+      byCandidate.set(req.candidateId, existing);
+    }
+    
+    // Send consolidated reminder to each candidate
+    for (const [candidateId, reqs] of byCandidate.entries()) {
+      try {
+        await this.sendDocumentRequirementReminder(tenantId, candidateId, reqs);
+      } catch (error) {
+        console.error(`Failed to send document reminder for candidate ${candidateId}:`, error);
+      }
+    }
+  }
+  
+  async sendDocumentRequirementReminder(
+    tenantId: string,
+    candidateId: string,
+    requirements: IntegrityDocumentRequirement[]
+  ): Promise<void> {
+    const candidate = await this.storage.getCandidateById(tenantId, candidateId);
+    if (!candidate) {
+      console.error(`Candidate ${candidateId} not found for reminder`);
+      return;
+    }
+    
+    const docList = requirements.map((r, i) => {
+      const docLabel = r.description || this.getDocTypeLabel(r.documentType);
+      const dueInfo = r.dueDate ? ` (due: ${new Date(r.dueDate).toLocaleDateString()})` : '';
+      return `${i + 1}. ${docLabel}${dueInfo} [Ref: ${r.referenceCode}]`;
+    }).join('\n');
+    
+    const message = `Hi ${candidate.fullName || 'there'},
+
+This is a friendly reminder that we are still waiting for the following documents:
+
+${docList}
+
+Please submit these documents via WhatsApp by replying to this message with each document.
+
+Thank you,
+Avatar Human Capital Team`;
+
+    // Send via WhatsApp if available
+    if (candidate.phone && process.env.WHATSAPP_API_TOKEN) {
+      await this.sendWhatsAppMessage(candidate.phone, message);
+      console.log(`[Doc Reminder] Sent WhatsApp reminder to ${candidate.phone} for ${requirements.length} documents`);
+    } else if (candidate.email) {
+      await this.sendEmailNotification(candidate.email, "Document Submission Reminder", message);
+    }
+    
+    // Update reminder tracking for each requirement
+    const now = new Date();
+    for (const req of requirements) {
+      const intervalHours = req.reminderIntervalHours && req.reminderIntervalHours > 0 
+        ? req.reminderIntervalHours 
+        : 24;
+      const nextReminderAt = new Date(now.getTime() + intervalHours * 60 * 60 * 1000);
+      
+      await this.storage.updateIntegrityDocumentRequirement(tenantId, req.id, {
+        remindersSent: (req.remindersSent || 0) + 1,
+        lastReminderAt: now,
+        nextReminderAt: nextReminderAt,
+      });
     }
   }
 

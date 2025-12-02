@@ -6,25 +6,97 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Mail, Phone, MapPin, Briefcase, Calendar, Award, Languages, FileText, ShieldCheck, Mic, ChevronDown, Clock, MessageCircle, User, Bot, ArrowLeft, Download, ExternalLink, Eye } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import type { Candidate, InterviewSession } from "@shared/schema";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Mail, Phone, MapPin, Briefcase, Calendar, Award, Languages, FileText, ShieldCheck, Mic, ChevronDown, Clock, MessageCircle, User, Bot, ArrowLeft, Download, ExternalLink, Eye, Plus, CheckCircle, AlertCircle, FileCheck, Send, RefreshCcw } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import type { Candidate, InterviewSession, IntegrityDocumentRequirement, CandidateDocument } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+
+interface DocumentRequirement {
+  id: string;
+  documentType: string;
+  description: string;
+  status: string;
+  referenceCode: string;
+  dueDate?: string;
+  receivedAt?: string;
+  remindersSent?: number;
+}
+
+interface CollectedDocument {
+  id: string;
+  documentType: string;
+  fileName: string;
+  status: string;
+  referenceCode: string;
+  collectedVia: string;
+  createdAt?: string;
+}
+
+const DOC_TYPE_OPTIONS = [
+  { value: "id_document", label: "ID Document" },
+  { value: "proof_of_address", label: "Proof of Address" },
+  { value: "police_clearance", label: "Police Clearance" },
+  { value: "drivers_license", label: "Driver's License" },
+  { value: "passport", label: "Passport" },
+  { value: "bank_statement", label: "Bank Statement" },
+  { value: "qualification_certificate", label: "Qualification Certificate" },
+  { value: "reference_letter", label: "Reference Letter" },
+  { value: "work_permit", label: "Work Permit" },
+  { value: "cv_resume", label: "CV/Resume" },
+  { value: "payslip", label: "Payslip" },
+  { value: "tax_certificate", label: "Tax Certificate" },
+  { value: "medical_certificate", label: "Medical Certificate" },
+];
+
+function getDocTypeLabel(docType: string): string {
+  const option = DOC_TYPE_OPTIONS.find(o => o.value === docType);
+  return option?.label || docType;
+}
+
+function getStatusBadge(status: string) {
+  switch (status) {
+    case 'pending':
+      return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>;
+    case 'requested':
+      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Requested</Badge>;
+    case 'received':
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Received</Badge>;
+    case 'verified':
+      return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Verified</Badge>;
+    case 'rejected':
+      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Rejected</Badge>;
+    case 'expired':
+      return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">Expired</Badge>;
+    default:
+      return <Badge variant="outline">{status}</Badge>;
+  }
+}
 
 export default function CandidateDetail() {
   const [, params] = useRoute("/candidates/:id");
   const [, setLocation] = useLocation();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [interviewSessions, setInterviewSessions] = useState<InterviewSession[]>([]);
+  const [documentRequirements, setDocumentRequirements] = useState<DocumentRequirement[]>([]);
+  const [collectedDocuments, setCollectedDocuments] = useState<CollectedDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedInterview, setExpandedInterview] = useState<string | null>(null);
+  const [showAddDocDialog, setShowAddDocDialog] = useState(false);
+  const [newDocType, setNewDocType] = useState("");
+  const [newDocDescription, setNewDocDescription] = useState("");
+  const [newDocDueDate, setNewDocDueDate] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
     if (params?.id) {
       fetchCandidate(params.id);
       fetchInterviewSessions(params.id);
+      fetchDocumentRequirements(params.id);
+      fetchCollectedDocuments(params.id);
     }
   }, [params?.id]);
 
@@ -55,6 +127,128 @@ export default function CandidateDetail() {
       }
     } catch (error) {
       console.error("Failed to fetch interview sessions:", error);
+    }
+  };
+
+  const fetchDocumentRequirements = async (candidateId: string) => {
+    try {
+      const response = await fetch(`/api/integrity-document-requirements?candidateId=${candidateId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setDocumentRequirements(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch document requirements:", error);
+    }
+  };
+
+  const fetchCollectedDocuments = async (candidateId: string) => {
+    try {
+      const response = await fetch(`/api/candidate-documents?candidateId=${candidateId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCollectedDocuments(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch collected documents:", error);
+    }
+  };
+
+  const handleAddDocumentRequirement = async () => {
+    if (!newDocType || !params?.id) return;
+    
+    try {
+      const response = await fetch("/api/integrity-document-requirements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidateId: params.id,
+          documentType: newDocType,
+          description: newDocDescription || getDocTypeLabel(newDocType),
+          dueDate: newDocDueDate || undefined,
+          reminderEnabled: 1,
+          reminderIntervalHours: 24,
+        }),
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Document requirement added successfully",
+        });
+        setShowAddDocDialog(false);
+        setNewDocType("");
+        setNewDocDescription("");
+        setNewDocDueDate("");
+        fetchDocumentRequirements(params.id);
+      } else {
+        throw new Error("Failed to add requirement");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add document requirement",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSendReminder = async (requirementId: string) => {
+    if (!params?.id) return;
+    
+    try {
+      const response = await fetch(`/api/integrity-document-requirements/${requirementId}/remind`, {
+        method: "POST",
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Reminder Sent",
+          description: "Reminder has been sent to the candidate via WhatsApp",
+        });
+        fetchDocumentRequirements(params.id);
+      } else {
+        throw new Error("Failed to send reminder");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send reminder",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleVerifyDocument = async (documentId: string, verified: boolean) => {
+    if (!params?.id) return;
+    
+    try {
+      const response = await fetch(`/api/candidate-documents/${documentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: verified ? "verified" : "rejected",
+          verifiedAt: verified ? new Date().toISOString() : undefined,
+        }),
+      });
+      
+      if (response.ok) {
+        toast({
+          title: verified ? "Document Verified" : "Document Rejected",
+          description: verified 
+            ? "The document has been verified successfully" 
+            : "The document has been marked as rejected",
+        });
+        fetchCollectedDocuments(params.id);
+      } else {
+        throw new Error("Failed to update document");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update document status",
+        variant: "destructive",
+      });
     }
   };
 
@@ -574,6 +768,256 @@ export default function CandidateDetail() {
             </CardContent>
           </Card>
         )}
+
+        {/* Document Tracking Section */}
+        <Card data-testid="card-document-tracking">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileCheck className="h-5 w-5 text-blue-500" />
+                  Document Tracking
+                </CardTitle>
+                <CardDescription>
+                  Required documents and collected submissions for integrity verification
+                </CardDescription>
+              </div>
+              <Dialog open={showAddDocDialog} onOpenChange={setShowAddDocDialog}>
+                <DialogTrigger asChild>
+                  <Button size="sm" data-testid="button-add-doc-requirement">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Requirement
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Document Requirement</DialogTitle>
+                    <DialogDescription>
+                      Request a document from the candidate. They will be notified via WhatsApp.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Document Type</label>
+                      <Select value={newDocType} onValueChange={setNewDocType}>
+                        <SelectTrigger data-testid="select-doc-type">
+                          <SelectValue placeholder="Select document type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DOC_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Description (Optional)</label>
+                      <Input
+                        placeholder="Additional details about the document"
+                        value={newDocDescription}
+                        onChange={(e) => setNewDocDescription(e.target.value)}
+                        data-testid="input-doc-description"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Due Date (Optional)</label>
+                      <Input
+                        type="date"
+                        value={newDocDueDate}
+                        onChange={(e) => setNewDocDueDate(e.target.value)}
+                        data-testid="input-doc-due-date"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowAddDocDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleAddDocumentRequirement} disabled={!newDocType} data-testid="button-submit-doc-requirement">
+                      Add Requirement
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Pending Requirements */}
+              <div>
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-yellow-500" />
+                  Pending Requirements ({documentRequirements.filter(r => r.status === 'pending' || r.status === 'requested').length})
+                </h4>
+                {documentRequirements.filter(r => r.status === 'pending' || r.status === 'requested').length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Document</TableHead>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Reminders</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {documentRequirements
+                        .filter(r => r.status === 'pending' || r.status === 'requested')
+                        .map((req) => (
+                          <TableRow key={req.id} data-testid={`row-requirement-${req.id}`}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{getDocTypeLabel(req.documentType)}</p>
+                                {req.description && req.description !== getDocTypeLabel(req.documentType) && (
+                                  <p className="text-xs text-muted-foreground">{req.description}</p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <code className="text-xs bg-muted px-2 py-1 rounded">{req.referenceCode}</code>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(req.status)}</TableCell>
+                            <TableCell>
+                              {req.dueDate ? format(new Date(req.dueDate), 'MMM d, yyyy') : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {req.remindersSent || 0} sent
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSendReminder(req.id)}
+                                data-testid={`button-remind-${req.id}`}
+                              >
+                                <Send className="h-3 w-3 mr-1" />
+                                Remind
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No pending document requirements
+                  </p>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Collected Documents */}
+              <div>
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Collected Documents ({collectedDocuments.length})
+                </h4>
+                {collectedDocuments.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Document</TableHead>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Source</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Received</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {collectedDocuments.map((doc) => (
+                        <TableRow key={doc.id} data-testid={`row-document-${doc.id}`}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{getDocTypeLabel(doc.documentType)}</p>
+                              <p className="text-xs text-muted-foreground">{doc.fileName}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs bg-muted px-2 py-1 rounded">{doc.referenceCode}</code>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {doc.collectedVia === 'whatsapp' ? '📱 WhatsApp' : 
+                               doc.collectedVia === 'upload' ? '📤 Upload' : 
+                               doc.collectedVia}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                          <TableCell>
+                            {doc.createdAt ? format(new Date(doc.createdAt), 'MMM d, yyyy HH:mm') : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              {doc.status === 'received' && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-600"
+                                    onClick={() => handleVerifyDocument(doc.id, true)}
+                                    data-testid={`button-verify-${doc.id}`}
+                                  >
+                                    <CheckCircle className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600"
+                                    onClick={() => handleVerifyDocument(doc.id, false)}
+                                    data-testid={`button-reject-${doc.id}`}
+                                  >
+                                    <AlertCircle className="h-3 w-3" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No documents collected yet
+                  </p>
+                )}
+              </div>
+
+              {/* Completed Requirements */}
+              {documentRequirements.filter(r => r.status === 'received' || r.status === 'verified').length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-emerald-500" />
+                      Completed Requirements ({documentRequirements.filter(r => r.status === 'received' || r.status === 'verified').length})
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {documentRequirements
+                        .filter(r => r.status === 'received' || r.status === 'verified')
+                        .map((req) => (
+                          <Badge
+                            key={req.id}
+                            variant="outline"
+                            className="bg-green-50 text-green-700 border-green-200"
+                            data-testid={`badge-completed-${req.id}`}
+                          >
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            {getDocTypeLabel(req.documentType)}
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -58,6 +58,15 @@ import {
   type InsertOnboardingAgentLog,
   type OnboardingDocumentRequest,
   type InsertOnboardingDocumentRequest,
+  type IntegrityDocumentRequirement,
+  type InsertIntegrityDocumentRequirement,
+  type UpdateIntegrityDocumentRequirement,
+  type CandidateDocument,
+  type InsertCandidateDocument,
+  type UpdateCandidateDocument,
+  type WhatsappDocumentSession,
+  type InsertWhatsappDocumentSession,
+  type UpdateWhatsappDocumentSession,
   users,
   jobs,
   candidates,
@@ -86,7 +95,10 @@ import {
   whatsappAppointments,
   interviewSessions,
   onboardingAgentLogs,
-  onboardingDocumentRequests
+  onboardingDocumentRequests,
+  integrityDocumentRequirements,
+  candidateDocuments,
+  whatsappDocumentSessions
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte, sql, isNull, isNotNull } from "drizzle-orm";
@@ -292,6 +304,34 @@ export interface IStorage {
   getOverdueDocumentRequests(tenantId: string): Promise<OnboardingDocumentRequest[]>;
   createOnboardingDocumentRequest(tenantId: string, request: InsertOnboardingDocumentRequest): Promise<OnboardingDocumentRequest>;
   updateOnboardingDocumentRequest(tenantId: string, id: string, updates: Partial<InsertOnboardingDocumentRequest>): Promise<OnboardingDocumentRequest | undefined>;
+  
+  // Integrity Document Requirements
+  getIntegrityDocumentRequirements(tenantId: string, candidateId?: string): Promise<IntegrityDocumentRequirement[]>;
+  getIntegrityDocumentRequirementsByCheckId(tenantId: string, checkId: string): Promise<IntegrityDocumentRequirement[]>;
+  getIntegrityDocumentRequirement(tenantId: string, id: string): Promise<IntegrityDocumentRequirement | undefined>;
+  getIntegrityDocumentRequirementByRefCode(tenantId: string, referenceCode: string): Promise<IntegrityDocumentRequirement | undefined>;
+  getPendingIntegrityDocumentRequirements(tenantId: string): Promise<IntegrityDocumentRequirement[]>;
+  getIntegrityDocRequirementsNeedingReminders(tenantId: string, now: Date): Promise<IntegrityDocumentRequirement[]>;
+  createIntegrityDocumentRequirement(tenantId: string, requirement: InsertIntegrityDocumentRequirement): Promise<IntegrityDocumentRequirement>;
+  updateIntegrityDocumentRequirement(tenantId: string, id: string, updates: UpdateIntegrityDocumentRequirement): Promise<IntegrityDocumentRequirement | undefined>;
+  deleteIntegrityDocumentRequirement(tenantId: string, id: string): Promise<boolean>;
+  
+  // Candidate Documents (for integrity verification)
+  getCandidateDocuments(tenantId: string, candidateId?: string): Promise<CandidateDocument[]>;
+  getCandidateDocumentsByRequirementId(tenantId: string, requirementId: string): Promise<CandidateDocument[]>;
+  getCandidateDocument(tenantId: string, id: string): Promise<CandidateDocument | undefined>;
+  getCandidateDocumentByRefCode(tenantId: string, referenceCode: string): Promise<CandidateDocument | undefined>;
+  createCandidateDocument(tenantId: string, document: InsertCandidateDocument): Promise<CandidateDocument>;
+  updateCandidateDocument(tenantId: string, id: string, updates: UpdateCandidateDocument): Promise<CandidateDocument | undefined>;
+  deleteCandidateDocument(tenantId: string, id: string): Promise<boolean>;
+  
+  // WhatsApp Document Sessions
+  getWhatsappDocumentSession(tenantId: string, id: string): Promise<WhatsappDocumentSession | undefined>;
+  getWhatsappDocumentSessionByPhone(tenantId: string, phoneNumber: string): Promise<WhatsappDocumentSession | undefined>;
+  getWhatsappDocumentSessionByCandidate(tenantId: string, candidateId: string): Promise<WhatsappDocumentSession | undefined>;
+  createWhatsappDocumentSession(tenantId: string, session: InsertWhatsappDocumentSession): Promise<WhatsappDocumentSession>;
+  updateWhatsappDocumentSession(tenantId: string, id: string, updates: UpdateWhatsappDocumentSession): Promise<WhatsappDocumentSession | undefined>;
+  deleteWhatsappDocumentSession(tenantId: string, id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1541,6 +1581,180 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(onboardingDocumentRequests.id, id), eq(onboardingDocumentRequests.tenantId, tenantId)))
       .returning();
     return request || undefined;
+  }
+
+  // Integrity Document Requirements Implementation
+  async getIntegrityDocumentRequirements(tenantId: string, candidateId?: string): Promise<IntegrityDocumentRequirement[]> {
+    if (candidateId) {
+      return await db.select().from(integrityDocumentRequirements)
+        .where(and(eq(integrityDocumentRequirements.tenantId, tenantId), eq(integrityDocumentRequirements.candidateId, candidateId)))
+        .orderBy(desc(integrityDocumentRequirements.createdAt));
+    }
+    return await db.select().from(integrityDocumentRequirements)
+      .where(eq(integrityDocumentRequirements.tenantId, tenantId))
+      .orderBy(desc(integrityDocumentRequirements.createdAt));
+  }
+
+  async getIntegrityDocumentRequirementsByCheckId(tenantId: string, checkId: string): Promise<IntegrityDocumentRequirement[]> {
+    return await db.select().from(integrityDocumentRequirements)
+      .where(and(
+        eq(integrityDocumentRequirements.tenantId, tenantId),
+        eq(integrityDocumentRequirements.integrityCheckId, checkId)
+      ))
+      .orderBy(desc(integrityDocumentRequirements.createdAt));
+  }
+
+  async getIntegrityDocumentRequirement(tenantId: string, id: string): Promise<IntegrityDocumentRequirement | undefined> {
+    const [req] = await db.select().from(integrityDocumentRequirements)
+      .where(and(eq(integrityDocumentRequirements.id, id), eq(integrityDocumentRequirements.tenantId, tenantId)));
+    return req || undefined;
+  }
+
+  async getIntegrityDocumentRequirementByRefCode(tenantId: string, referenceCode: string): Promise<IntegrityDocumentRequirement | undefined> {
+    const [req] = await db.select().from(integrityDocumentRequirements)
+      .where(and(
+        eq(integrityDocumentRequirements.tenantId, tenantId),
+        eq(integrityDocumentRequirements.referenceCode, referenceCode)
+      ));
+    return req || undefined;
+  }
+
+  async getPendingIntegrityDocumentRequirements(tenantId: string): Promise<IntegrityDocumentRequirement[]> {
+    return await db.select().from(integrityDocumentRequirements)
+      .where(and(
+        eq(integrityDocumentRequirements.tenantId, tenantId),
+        eq(integrityDocumentRequirements.status, 'pending')
+      ))
+      .orderBy(desc(integrityDocumentRequirements.createdAt));
+  }
+
+  async getIntegrityDocRequirementsNeedingReminders(tenantId: string, now: Date): Promise<IntegrityDocumentRequirement[]> {
+    return await db.select().from(integrityDocumentRequirements)
+      .where(and(
+        eq(integrityDocumentRequirements.tenantId, tenantId),
+        eq(integrityDocumentRequirements.reminderEnabled, 1),
+        eq(integrityDocumentRequirements.status, 'pending'),
+        lte(integrityDocumentRequirements.nextReminderAt, now)
+      ))
+      .orderBy(integrityDocumentRequirements.nextReminderAt);
+  }
+
+  async createIntegrityDocumentRequirement(tenantId: string, requirement: InsertIntegrityDocumentRequirement): Promise<IntegrityDocumentRequirement> {
+    const [newReq] = await db.insert(integrityDocumentRequirements).values({ ...requirement, tenantId }).returning();
+    return newReq;
+  }
+
+  async updateIntegrityDocumentRequirement(tenantId: string, id: string, updates: UpdateIntegrityDocumentRequirement): Promise<IntegrityDocumentRequirement | undefined> {
+    const [req] = await db.update(integrityDocumentRequirements)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(integrityDocumentRequirements.id, id), eq(integrityDocumentRequirements.tenantId, tenantId)))
+      .returning();
+    return req || undefined;
+  }
+
+  async deleteIntegrityDocumentRequirement(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(integrityDocumentRequirements)
+      .where(and(eq(integrityDocumentRequirements.id, id), eq(integrityDocumentRequirements.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Candidate Documents Implementation
+  async getCandidateDocuments(tenantId: string, candidateId?: string): Promise<CandidateDocument[]> {
+    if (candidateId) {
+      return await db.select().from(candidateDocuments)
+        .where(and(eq(candidateDocuments.tenantId, tenantId), eq(candidateDocuments.candidateId, candidateId)))
+        .orderBy(desc(candidateDocuments.createdAt));
+    }
+    return await db.select().from(candidateDocuments)
+      .where(eq(candidateDocuments.tenantId, tenantId))
+      .orderBy(desc(candidateDocuments.createdAt));
+  }
+
+  async getCandidateDocumentsByRequirementId(tenantId: string, requirementId: string): Promise<CandidateDocument[]> {
+    return await db.select().from(candidateDocuments)
+      .where(and(
+        eq(candidateDocuments.tenantId, tenantId),
+        eq(candidateDocuments.requirementId, requirementId)
+      ))
+      .orderBy(desc(candidateDocuments.createdAt));
+  }
+
+  async getCandidateDocument(tenantId: string, id: string): Promise<CandidateDocument | undefined> {
+    const [doc] = await db.select().from(candidateDocuments)
+      .where(and(eq(candidateDocuments.id, id), eq(candidateDocuments.tenantId, tenantId)));
+    return doc || undefined;
+  }
+
+  async getCandidateDocumentByRefCode(tenantId: string, referenceCode: string): Promise<CandidateDocument | undefined> {
+    const [doc] = await db.select().from(candidateDocuments)
+      .where(and(
+        eq(candidateDocuments.tenantId, tenantId),
+        eq(candidateDocuments.referenceCode, referenceCode)
+      ));
+    return doc || undefined;
+  }
+
+  async createCandidateDocument(tenantId: string, document: InsertCandidateDocument): Promise<CandidateDocument> {
+    const [newDoc] = await db.insert(candidateDocuments).values({ ...document, tenantId }).returning();
+    return newDoc;
+  }
+
+  async updateCandidateDocument(tenantId: string, id: string, updates: UpdateCandidateDocument): Promise<CandidateDocument | undefined> {
+    const [doc] = await db.update(candidateDocuments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(candidateDocuments.id, id), eq(candidateDocuments.tenantId, tenantId)))
+      .returning();
+    return doc || undefined;
+  }
+
+  async deleteCandidateDocument(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(candidateDocuments)
+      .where(and(eq(candidateDocuments.id, id), eq(candidateDocuments.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // WhatsApp Document Sessions Implementation
+  async getWhatsappDocumentSession(tenantId: string, id: string): Promise<WhatsappDocumentSession | undefined> {
+    const [session] = await db.select().from(whatsappDocumentSessions)
+      .where(and(eq(whatsappDocumentSessions.id, id), eq(whatsappDocumentSessions.tenantId, tenantId)));
+    return session || undefined;
+  }
+
+  async getWhatsappDocumentSessionByPhone(tenantId: string, phoneNumber: string): Promise<WhatsappDocumentSession | undefined> {
+    const [session] = await db.select().from(whatsappDocumentSessions)
+      .where(and(
+        eq(whatsappDocumentSessions.tenantId, tenantId),
+        eq(whatsappDocumentSessions.phoneNumber, phoneNumber)
+      ));
+    return session || undefined;
+  }
+
+  async getWhatsappDocumentSessionByCandidate(tenantId: string, candidateId: string): Promise<WhatsappDocumentSession | undefined> {
+    const [session] = await db.select().from(whatsappDocumentSessions)
+      .where(and(
+        eq(whatsappDocumentSessions.tenantId, tenantId),
+        eq(whatsappDocumentSessions.candidateId, candidateId)
+      ));
+    return session || undefined;
+  }
+
+  async createWhatsappDocumentSession(tenantId: string, session: InsertWhatsappDocumentSession): Promise<WhatsappDocumentSession> {
+    const [newSession] = await db.insert(whatsappDocumentSessions).values({ ...session, tenantId }).returning();
+    return newSession;
+  }
+
+  async updateWhatsappDocumentSession(tenantId: string, id: string, updates: UpdateWhatsappDocumentSession): Promise<WhatsappDocumentSession | undefined> {
+    const [session] = await db.update(whatsappDocumentSessions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(whatsappDocumentSessions.id, id), eq(whatsappDocumentSessions.tenantId, tenantId)))
+      .returning();
+    return session || undefined;
+  }
+
+  async deleteWhatsappDocumentSession(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(whatsappDocumentSessions)
+      .where(and(eq(whatsappDocumentSessions.id, id), eq(whatsappDocumentSessions.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 
