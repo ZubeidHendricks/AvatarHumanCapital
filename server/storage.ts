@@ -67,6 +67,16 @@ import {
   type WhatsappDocumentSession,
   type InsertWhatsappDocumentSession,
   type UpdateWhatsappDocumentSession,
+  type InterviewRecording,
+  type InsertInterviewRecording,
+  type InterviewTranscript,
+  type InsertInterviewTranscript,
+  type InterviewFeedback,
+  type InsertInterviewFeedback,
+  type CandidateRecommendation,
+  type InsertCandidateRecommendation,
+  type ModelTrainingEvent,
+  type InsertModelTrainingEvent,
   users,
   jobs,
   candidates,
@@ -98,7 +108,12 @@ import {
   onboardingDocumentRequests,
   integrityDocumentRequirements,
   candidateDocuments,
-  whatsappDocumentSessions
+  whatsappDocumentSessions,
+  interviewRecordings,
+  interviewTranscripts,
+  interviewFeedback,
+  candidateRecommendations,
+  modelTrainingEvents
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte, sql, isNull, isNotNull } from "drizzle-orm";
@@ -285,9 +300,41 @@ export interface IStorage {
   getInterviewSessionByToken(token: string): Promise<InterviewSession | undefined>;
   getInterviewSessionsByCandidateId(tenantId: string, candidateId: string): Promise<InterviewSession[]>;
   getInterviewSessionsByConversationId(tenantId: string, conversationId: string): Promise<InterviewSession[]>;
+  getAllInterviewSessions(tenantId: string): Promise<InterviewSession[]>;
   createInterviewSession(tenantId: string, session: InsertInterviewSession): Promise<InterviewSession>;
   updateInterviewSession(tenantId: string, id: string, updates: Partial<InsertInterviewSession>): Promise<InterviewSession | undefined>;
   updateInterviewSessionByToken(token: string, updates: Partial<InsertInterviewSession>): Promise<InterviewSession | undefined>;
+  
+  // Interview Recordings
+  getInterviewRecordings(tenantId: string, sessionId: string): Promise<InterviewRecording[]>;
+  getInterviewRecording(tenantId: string, id: string): Promise<InterviewRecording | undefined>;
+  createInterviewRecording(tenantId: string, recording: InsertInterviewRecording): Promise<InterviewRecording>;
+  updateInterviewRecording(tenantId: string, id: string, updates: Partial<InsertInterviewRecording>): Promise<InterviewRecording | undefined>;
+  
+  // Interview Transcripts
+  getInterviewTranscripts(tenantId: string, sessionId: string): Promise<InterviewTranscript[]>;
+  getInterviewTranscript(tenantId: string, id: string): Promise<InterviewTranscript | undefined>;
+  createInterviewTranscript(tenantId: string, transcript: InsertInterviewTranscript): Promise<InterviewTranscript>;
+  createInterviewTranscriptsBatch(tenantId: string, transcripts: InsertInterviewTranscript[]): Promise<InterviewTranscript[]>;
+  
+  // Interview Feedback
+  getInterviewFeedback(tenantId: string, sessionId: string): Promise<InterviewFeedback[]>;
+  getInterviewFeedbackById(tenantId: string, id: string): Promise<InterviewFeedback | undefined>;
+  getInterviewFeedbackByCandidate(tenantId: string, candidateId: string): Promise<InterviewFeedback[]>;
+  createInterviewFeedback(tenantId: string, feedback: InsertInterviewFeedback): Promise<InterviewFeedback>;
+  updateInterviewFeedback(tenantId: string, id: string, updates: Partial<InsertInterviewFeedback>): Promise<InterviewFeedback | undefined>;
+  
+  // Candidate Recommendations
+  getCandidateRecommendations(tenantId: string, candidateId?: string): Promise<CandidateRecommendation[]>;
+  getCandidateRecommendation(tenantId: string, id: string): Promise<CandidateRecommendation | undefined>;
+  getCandidateRecommendationsByJob(tenantId: string, jobId: string): Promise<CandidateRecommendation[]>;
+  createCandidateRecommendation(tenantId: string, recommendation: InsertCandidateRecommendation): Promise<CandidateRecommendation>;
+  updateCandidateRecommendation(tenantId: string, id: string, updates: Partial<InsertCandidateRecommendation>): Promise<CandidateRecommendation | undefined>;
+  
+  // Model Training Events
+  getModelTrainingEvents(tenantId: string, sessionId?: string): Promise<ModelTrainingEvent[]>;
+  createModelTrainingEvent(tenantId: string, event: InsertModelTrainingEvent): Promise<ModelTrainingEvent>;
+  updateModelTrainingEvent(tenantId: string, id: string, updates: Partial<InsertModelTrainingEvent>): Promise<ModelTrainingEvent | undefined>;
   
   // Onboarding Agent Logs
   getOnboardingAgentLogs(tenantId: string, workflowId?: string): Promise<OnboardingAgentLog[]>;
@@ -1487,6 +1534,156 @@ export class DatabaseStorage implements IStorage {
       .where(eq(interviewSessions.token, token))
       .returning();
     return session || undefined;
+  }
+
+  async getAllInterviewSessions(tenantId: string): Promise<InterviewSession[]> {
+    return await db.select().from(interviewSessions)
+      .where(eq(interviewSessions.tenantId, tenantId))
+      .orderBy(desc(interviewSessions.createdAt));
+  }
+
+  // Interview Recordings Implementation
+  async getInterviewRecordings(tenantId: string, sessionId: string): Promise<InterviewRecording[]> {
+    return await db.select().from(interviewRecordings)
+      .where(and(eq(interviewRecordings.tenantId, tenantId), eq(interviewRecordings.sessionId, sessionId)))
+      .orderBy(desc(interviewRecordings.createdAt));
+  }
+
+  async getInterviewRecording(tenantId: string, id: string): Promise<InterviewRecording | undefined> {
+    const [recording] = await db.select().from(interviewRecordings)
+      .where(and(eq(interviewRecordings.id, id), eq(interviewRecordings.tenantId, tenantId)));
+    return recording || undefined;
+  }
+
+  async createInterviewRecording(tenantId: string, recording: InsertInterviewRecording): Promise<InterviewRecording> {
+    const [newRecording] = await db.insert(interviewRecordings).values({ ...recording, tenantId }).returning();
+    return newRecording;
+  }
+
+  async updateInterviewRecording(tenantId: string, id: string, updates: Partial<InsertInterviewRecording>): Promise<InterviewRecording | undefined> {
+    const [recording] = await db.update(interviewRecordings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(interviewRecordings.id, id), eq(interviewRecordings.tenantId, tenantId)))
+      .returning();
+    return recording || undefined;
+  }
+
+  // Interview Transcripts Implementation
+  async getInterviewTranscripts(tenantId: string, sessionId: string): Promise<InterviewTranscript[]> {
+    return await db.select().from(interviewTranscripts)
+      .where(and(eq(interviewTranscripts.tenantId, tenantId), eq(interviewTranscripts.sessionId, sessionId)))
+      .orderBy(interviewTranscripts.segmentIndex);
+  }
+
+  async getInterviewTranscript(tenantId: string, id: string): Promise<InterviewTranscript | undefined> {
+    const [transcript] = await db.select().from(interviewTranscripts)
+      .where(and(eq(interviewTranscripts.id, id), eq(interviewTranscripts.tenantId, tenantId)));
+    return transcript || undefined;
+  }
+
+  async createInterviewTranscript(tenantId: string, transcript: InsertInterviewTranscript): Promise<InterviewTranscript> {
+    const [newTranscript] = await db.insert(interviewTranscripts).values({ ...transcript, tenantId }).returning();
+    return newTranscript;
+  }
+
+  async createInterviewTranscriptsBatch(tenantId: string, transcripts: InsertInterviewTranscript[]): Promise<InterviewTranscript[]> {
+    if (transcripts.length === 0) return [];
+    const transcriptsWithTenant = transcripts.map(t => ({ ...t, tenantId }));
+    return await db.insert(interviewTranscripts).values(transcriptsWithTenant).returning();
+  }
+
+  // Interview Feedback Implementation
+  async getInterviewFeedback(tenantId: string, sessionId: string): Promise<InterviewFeedback[]> {
+    return await db.select().from(interviewFeedback)
+      .where(and(eq(interviewFeedback.tenantId, tenantId), eq(interviewFeedback.sessionId, sessionId)))
+      .orderBy(desc(interviewFeedback.createdAt));
+  }
+
+  async getInterviewFeedbackById(tenantId: string, id: string): Promise<InterviewFeedback | undefined> {
+    const [feedback] = await db.select().from(interviewFeedback)
+      .where(and(eq(interviewFeedback.id, id), eq(interviewFeedback.tenantId, tenantId)));
+    return feedback || undefined;
+  }
+
+  async getInterviewFeedbackByCandidate(tenantId: string, candidateId: string): Promise<InterviewFeedback[]> {
+    return await db.select().from(interviewFeedback)
+      .where(and(eq(interviewFeedback.tenantId, tenantId), eq(interviewFeedback.candidateId, candidateId)))
+      .orderBy(desc(interviewFeedback.createdAt));
+  }
+
+  async createInterviewFeedback(tenantId: string, feedback: InsertInterviewFeedback): Promise<InterviewFeedback> {
+    const [newFeedback] = await db.insert(interviewFeedback).values({ ...feedback, tenantId }).returning();
+    return newFeedback;
+  }
+
+  async updateInterviewFeedback(tenantId: string, id: string, updates: Partial<InsertInterviewFeedback>): Promise<InterviewFeedback | undefined> {
+    const [feedback] = await db.update(interviewFeedback)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(interviewFeedback.id, id), eq(interviewFeedback.tenantId, tenantId)))
+      .returning();
+    return feedback || undefined;
+  }
+
+  // Candidate Recommendations Implementation
+  async getCandidateRecommendations(tenantId: string, candidateId?: string): Promise<CandidateRecommendation[]> {
+    if (candidateId) {
+      return await db.select().from(candidateRecommendations)
+        .where(and(eq(candidateRecommendations.tenantId, tenantId), eq(candidateRecommendations.candidateId, candidateId), eq(candidateRecommendations.isActive, 1)))
+        .orderBy(desc(candidateRecommendations.score));
+    }
+    return await db.select().from(candidateRecommendations)
+      .where(and(eq(candidateRecommendations.tenantId, tenantId), eq(candidateRecommendations.isActive, 1)))
+      .orderBy(desc(candidateRecommendations.score));
+  }
+
+  async getCandidateRecommendation(tenantId: string, id: string): Promise<CandidateRecommendation | undefined> {
+    const [rec] = await db.select().from(candidateRecommendations)
+      .where(and(eq(candidateRecommendations.id, id), eq(candidateRecommendations.tenantId, tenantId)));
+    return rec || undefined;
+  }
+
+  async getCandidateRecommendationsByJob(tenantId: string, jobId: string): Promise<CandidateRecommendation[]> {
+    return await db.select().from(candidateRecommendations)
+      .where(and(eq(candidateRecommendations.tenantId, tenantId), eq(candidateRecommendations.jobId, jobId), eq(candidateRecommendations.isActive, 1)))
+      .orderBy(desc(candidateRecommendations.score));
+  }
+
+  async createCandidateRecommendation(tenantId: string, recommendation: InsertCandidateRecommendation): Promise<CandidateRecommendation> {
+    const [rec] = await db.insert(candidateRecommendations).values({ ...recommendation, tenantId }).returning();
+    return rec;
+  }
+
+  async updateCandidateRecommendation(tenantId: string, id: string, updates: Partial<InsertCandidateRecommendation>): Promise<CandidateRecommendation | undefined> {
+    const [rec] = await db.update(candidateRecommendations)
+      .set(updates)
+      .where(and(eq(candidateRecommendations.id, id), eq(candidateRecommendations.tenantId, tenantId)))
+      .returning();
+    return rec || undefined;
+  }
+
+  // Model Training Events Implementation
+  async getModelTrainingEvents(tenantId: string, sessionId?: string): Promise<ModelTrainingEvent[]> {
+    if (sessionId) {
+      return await db.select().from(modelTrainingEvents)
+        .where(and(eq(modelTrainingEvents.tenantId, tenantId), eq(modelTrainingEvents.sessionId, sessionId)))
+        .orderBy(desc(modelTrainingEvents.createdAt));
+    }
+    return await db.select().from(modelTrainingEvents)
+      .where(eq(modelTrainingEvents.tenantId, tenantId))
+      .orderBy(desc(modelTrainingEvents.createdAt));
+  }
+
+  async createModelTrainingEvent(tenantId: string, event: InsertModelTrainingEvent): Promise<ModelTrainingEvent> {
+    const [newEvent] = await db.insert(modelTrainingEvents).values({ ...event, tenantId }).returning();
+    return newEvent;
+  }
+
+  async updateModelTrainingEvent(tenantId: string, id: string, updates: Partial<InsertModelTrainingEvent>): Promise<ModelTrainingEvent | undefined> {
+    const [event] = await db.update(modelTrainingEvents)
+      .set(updates)
+      .where(and(eq(modelTrainingEvents.id, id), eq(modelTrainingEvents.tenantId, tenantId)))
+      .returning();
+    return event || undefined;
   }
 
   // Onboarding Agent Logs Implementation

@@ -2,10 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
-import { insertCandidateSchema, insertJobSchema, insertIntegrityCheckSchema, insertRecruitmentSessionSchema, insertInterviewSchema, updateInterviewSchema, insertTenantRequestSchema, updateTenantRequestSchema, type InsertCandidate, insertIntegrityDocumentRequirementSchema, updateIntegrityDocumentRequirementSchema, insertCandidateDocumentSchema, updateCandidateDocumentSchema, documentTypes } from "@shared/schema";
+import { insertCandidateSchema, insertJobSchema, insertIntegrityCheckSchema, insertRecruitmentSessionSchema, insertInterviewSchema, updateInterviewSchema, insertTenantRequestSchema, updateTenantRequestSchema, type InsertCandidate, insertIntegrityDocumentRequirementSchema, updateIntegrityDocumentRequirementSchema, insertCandidateDocumentSchema, updateCandidateDocumentSchema, documentTypes, insertInterviewSessionSchema, insertInterviewFeedbackSchema, updateInterviewFeedbackSchema } from "@shared/schema";
+import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { IntegrityOrchestrator } from "./integrity-orchestrator";
 import { RecruitmentOrchestrator } from "./recruitment-orchestrator";
+import { interviewOrchestrator } from "./interview-orchestrator";
 import { sourcingOrchestrator, type SpecialistCandidate } from "./sourcing-specialists";
 import { cvParser } from "./cv-parser";
 import { embeddingService } from "./embedding-service";
@@ -4353,6 +4355,243 @@ Format your response as JSON:
     } catch (error) {
       console.error("Error linking conversation to candidate:", error);
       res.status(500).json({ message: "Failed to link conversation" });
+    }
+  });
+
+  // ==================== AI INTERVIEW SYSTEM ====================
+
+  // Get all interview sessions
+  app.get("/api/interviews", async (req, res) => {
+    try {
+      const sessions = await interviewOrchestrator.getAllSessions(req.tenant.id);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching interviews:", error);
+      res.status(500).json({ message: "Failed to fetch interviews" });
+    }
+  });
+
+  // Get interview session by ID
+  app.get("/api/interviews/:id", async (req, res) => {
+    try {
+      const details = await interviewOrchestrator.getInterviewDetails(req.tenant.id, req.params.id);
+      if (!details) {
+        return res.status(404).json({ message: "Interview not found" });
+      }
+      res.json(details);
+    } catch (error) {
+      console.error("Error fetching interview:", error);
+      res.status(500).json({ message: "Failed to fetch interview" });
+    }
+  });
+
+  // Get interviews by candidate
+  app.get("/api/candidates/:candidateId/interviews", async (req, res) => {
+    try {
+      const sessions = await interviewOrchestrator.getSessionsByCandidate(req.tenant.id, req.params.candidateId);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching candidate interviews:", error);
+      res.status(500).json({ message: "Failed to fetch interviews" });
+    }
+  });
+
+  // Validation schemas for interview API
+  const createInterviewRequestSchema = z.object({
+    candidateId: z.string().min(1, "Candidate ID is required"),
+    jobTitle: z.string().min(1, "Job title is required"),
+    interviewType: z.enum(['voice', 'video']).optional().default('voice'),
+    customPrompt: z.string().optional(),
+  });
+
+  const completeInterviewRequestSchema = z.object({
+    transcripts: z.array(z.object({
+      role: z.enum(['candidate', 'ai', 'interviewer']),
+      text: z.string(),
+      timestamp: z.number().optional(),
+      emotion: z.string().optional(),
+      emotionScores: z.record(z.string(), z.number()).optional(),
+    })),
+    emotionAnalysis: z.record(z.string(), z.any()).optional(),
+    recordingUrl: z.string().url().optional(),
+    duration: z.number().int().positive().optional(),
+  });
+
+  const updateDecisionRequestSchema = z.object({
+    feedbackId: z.string().min(1, "Feedback ID is required"),
+    decision: z.enum(['accepted', 'rejected', 'pipeline']),
+    notes: z.string().optional(),
+  });
+
+  // Create new interview session
+  app.post("/api/interviews", async (req, res) => {
+    try {
+      const parsed = createInterviewRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: fromZodError(parsed.error).message });
+      }
+      
+      const { candidateId, jobTitle, interviewType, customPrompt } = parsed.data;
+
+      const session = await interviewOrchestrator.createInterviewSession(
+        req.tenant.id,
+        candidateId,
+        jobTitle,
+        interviewType,
+        customPrompt
+      );
+      
+      res.status(201).json(session);
+    } catch (error) {
+      console.error("Error creating interview:", error);
+      res.status(500).json({ message: "Failed to create interview" });
+    }
+  });
+
+  // Start interview session
+  app.post("/api/interviews/:id/start", async (req, res) => {
+    try {
+      const session = await interviewOrchestrator.startInterview(req.tenant.id, req.params.id);
+      if (!session) {
+        return res.status(404).json({ message: "Interview not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      console.error("Error starting interview:", error);
+      res.status(500).json({ message: "Failed to start interview" });
+    }
+  });
+
+  // Complete interview with transcripts and analysis
+  app.post("/api/interviews/:id/complete", async (req, res) => {
+    try {
+      const parsed = completeInterviewRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: fromZodError(parsed.error).message });
+      }
+      
+      const { transcripts, emotionAnalysis, recordingUrl, duration } = parsed.data;
+
+      const result = await interviewOrchestrator.completeInterview(
+        req.tenant.id,
+        req.params.id,
+        transcripts,
+        emotionAnalysis,
+        recordingUrl,
+        duration
+      );
+      
+      if (!result) {
+        return res.status(404).json({ message: "Interview not found" });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error completing interview:", error);
+      res.status(500).json({ message: "Failed to complete interview" });
+    }
+  });
+
+  // Update interview decision (HR override)
+  app.patch("/api/interviews/:id/decision", async (req, res) => {
+    try {
+      const parsed = updateDecisionRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: fromZodError(parsed.error).message });
+      }
+      
+      const { feedbackId, decision, notes } = parsed.data;
+
+      const feedback = await interviewOrchestrator.updateDecision(
+        req.tenant.id,
+        feedbackId,
+        decision,
+        "system", // TODO: Use actual user ID
+        notes
+      );
+      
+      if (!feedback) {
+        return res.status(404).json({ message: "Feedback not found" });
+      }
+      
+      res.json(feedback);
+    } catch (error) {
+      console.error("Error updating decision:", error);
+      res.status(500).json({ message: "Failed to update decision" });
+    }
+  });
+
+  // Get interview feedback for a session
+  app.get("/api/interviews/:id/feedback", async (req, res) => {
+    try {
+      const feedback = await storage.getInterviewFeedback(req.tenant.id, req.params.id);
+      res.json(feedback);
+    } catch (error) {
+      console.error("Error fetching feedback:", error);
+      res.status(500).json({ message: "Failed to fetch feedback" });
+    }
+  });
+
+  // Get interview recordings
+  app.get("/api/interviews/:id/recordings", async (req, res) => {
+    try {
+      const recordings = await storage.getInterviewRecordings(req.tenant.id, req.params.id);
+      res.json(recordings);
+    } catch (error) {
+      console.error("Error fetching recordings:", error);
+      res.status(500).json({ message: "Failed to fetch recordings" });
+    }
+  });
+
+  // Get interview transcripts
+  app.get("/api/interviews/:id/transcripts", async (req, res) => {
+    try {
+      const transcripts = await storage.getInterviewTranscripts(req.tenant.id, req.params.id);
+      res.json(transcripts);
+    } catch (error) {
+      console.error("Error fetching transcripts:", error);
+      res.status(500).json({ message: "Failed to fetch transcripts" });
+    }
+  });
+
+  // Get candidate recommendations
+  app.get("/api/recommendations", async (req, res) => {
+    try {
+      const { candidateId } = req.query;
+      const recommendations = await interviewOrchestrator.getRecommendations(
+        req.tenant.id,
+        candidateId as string | undefined
+      );
+      res.json(recommendations);
+    } catch (error) {
+      console.error("Error fetching recommendations:", error);
+      res.status(500).json({ message: "Failed to fetch recommendations" });
+    }
+  });
+
+  // Generate recommendations for a candidate
+  app.post("/api/candidates/:candidateId/recommendations", async (req, res) => {
+    try {
+      await interviewOrchestrator.generateRecommendations(req.tenant.id, req.params.candidateId);
+      const recommendations = await interviewOrchestrator.getRecommendations(req.tenant.id, req.params.candidateId);
+      res.json(recommendations);
+    } catch (error) {
+      console.error("Error generating recommendations:", error);
+      res.status(500).json({ message: "Failed to generate recommendations" });
+    }
+  });
+
+  // Interview system status
+  app.get("/api/interviews/status/check", async (_req, res) => {
+    try {
+      const status = interviewOrchestrator.getStatus();
+      res.json({
+        configured: interviewOrchestrator.isConfigured(),
+        services: status,
+      });
+    } catch (error) {
+      console.error("Error checking interview status:", error);
+      res.status(500).json({ message: "Failed to check status" });
     }
   });
 

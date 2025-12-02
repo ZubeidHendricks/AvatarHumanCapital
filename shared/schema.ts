@@ -1238,3 +1238,200 @@ export type OnboardingAgentLog = typeof onboardingAgentLogs.$inferSelect;
 
 export type InsertOnboardingDocumentRequest = z.infer<typeof insertOnboardingDocumentRequestSchema>;
 export type OnboardingDocumentRequest = typeof onboardingDocumentRequests.$inferSelect;
+
+// ==================== AI INTERVIEW SYSTEM ====================
+
+// Interview Recordings - Video/audio files from interviews
+export const interviewRecordings = pgTable("interview_recordings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  sessionId: varchar("session_id").notNull().references(() => interviewSessions.id),
+  candidateId: varchar("candidate_id").references(() => candidates.id),
+  recordingType: text("recording_type").notNull(), // 'video', 'audio', 'screen'
+  mediaUrl: text("media_url"), // URL to stored recording
+  thumbnailUrl: text("thumbnail_url"), // Preview image
+  storageProvider: text("storage_provider").default("local"), // 'local', 's3', 'tavus', 'hume'
+  externalId: text("external_id"), // ID from external service (Tavus/Hume)
+  duration: integer("duration"), // Duration in seconds
+  fileSize: integer("file_size"), // Size in bytes
+  mimeType: text("mime_type"), // 'video/mp4', 'audio/webm', etc.
+  transcriptionJobId: text("transcription_job_id"), // For async transcription
+  transcriptionStatus: text("transcription_status").default("pending"), // 'pending', 'processing', 'completed', 'failed'
+  metadata: jsonb("metadata"), // Additional recording metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("interview_recordings_tenant_id_idx").on(table.tenantId),
+  sessionIdIdx: index("interview_recordings_session_id_idx").on(table.sessionId),
+  candidateIdIdx: index("interview_recordings_candidate_id_idx").on(table.candidateId),
+  recordingTypeIdx: index("interview_recordings_type_idx").on(table.recordingType),
+}));
+
+// Interview Transcripts - Detailed text segments from interviews
+export const interviewTranscripts = pgTable("interview_transcripts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  sessionId: varchar("session_id").notNull().references(() => interviewSessions.id),
+  recordingId: varchar("recording_id").references(() => interviewRecordings.id),
+  segmentIndex: integer("segment_index").notNull(), // Order of segment
+  speakerRole: text("speaker_role").notNull(), // 'candidate', 'ai', 'interviewer'
+  speakerName: text("speaker_name"),
+  text: text("text").notNull(),
+  startTime: integer("start_time"), // Start time in milliseconds
+  endTime: integer("end_time"), // End time in milliseconds
+  confidence: integer("confidence"), // Transcription confidence 0-100
+  language: text("language").default("en"),
+  sentiment: text("sentiment"), // 'positive', 'negative', 'neutral'
+  emotionScores: jsonb("emotion_scores"), // { joy: 0.8, sadness: 0.1, anger: 0.05, ... }
+  keywords: text("keywords").array(), // Extracted key terms
+  embedding: vector("embedding", { dimensions: 1536 }), // For semantic search
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("interview_transcripts_tenant_id_idx").on(table.tenantId),
+  sessionIdIdx: index("interview_transcripts_session_id_idx").on(table.sessionId),
+  recordingIdIdx: index("interview_transcripts_recording_id_idx").on(table.recordingId),
+  speakerRoleIdx: index("interview_transcripts_speaker_role_idx").on(table.speakerRole),
+  embeddingIdx: index("interview_transcripts_embedding_idx").using("hnsw", table.embedding.op("vector_cosine_ops")),
+}));
+
+// Interview Feedback - Human/AI evaluations and decisions
+export const interviewFeedback = pgTable("interview_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  sessionId: varchar("session_id").notNull().references(() => interviewSessions.id),
+  candidateId: varchar("candidate_id").references(() => candidates.id),
+  evaluatorType: text("evaluator_type").notNull(), // 'ai', 'human'
+  evaluatorId: varchar("evaluator_id").references(() => users.id), // If human evaluator
+  decision: text("decision"), // 'accepted', 'rejected', 'pipeline', 'needs_review'
+  decisionConfidence: integer("decision_confidence"), // AI confidence 0-100
+  overallScore: integer("overall_score"), // 0-100
+  technicalScore: integer("technical_score"), // 0-100
+  communicationScore: integer("communication_score"), // 0-100
+  cultureFitScore: integer("culture_fit_score"), // 0-100
+  problemSolvingScore: integer("problem_solving_score"), // 0-100
+  strengths: text("strengths").array(),
+  weaknesses: text("weaknesses").array(),
+  keyInsights: text("key_insights").array(),
+  rationale: text("rationale"), // Detailed reasoning for decision
+  recommendations: text("recommendations"), // Next steps
+  flaggedConcerns: text("flagged_concerns").array(), // Red flags
+  competencyScores: jsonb("competency_scores"), // { 'leadership': 85, 'teamwork': 90, ... }
+  isFinalized: integer("is_finalized").default(0), // 0 = draft, 1 = finalized
+  finalizedAt: timestamp("finalized_at"),
+  finalizedBy: varchar("finalized_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("interview_feedback_tenant_id_idx").on(table.tenantId),
+  sessionIdIdx: index("interview_feedback_session_id_idx").on(table.sessionId),
+  candidateIdIdx: index("interview_feedback_candidate_id_idx").on(table.candidateId),
+  decisionIdx: index("interview_feedback_decision_idx").on(table.decision),
+  evaluatorTypeIdx: index("interview_feedback_evaluator_type_idx").on(table.evaluatorType),
+}));
+
+// Candidate Recommendations - AI-generated suggestions based on interviews
+export const candidateRecommendations = pgTable("candidate_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  sessionId: varchar("session_id").references(() => interviewSessions.id),
+  recommendationType: text("recommendation_type").notNull(), // 'hire', 'pipeline', 'better_fit', 'similar_candidate', 'role_suggestion'
+  score: integer("score"), // Relevance score 0-100
+  reasoning: text("reasoning"),
+  suggestedJobId: varchar("suggested_job_id").references(() => jobs.id), // Alternative job suggestion
+  suggestedCandidateId: varchar("suggested_candidate_id").references(() => candidates.id), // Similar candidate
+  featureVector: vector("feature_vector", { dimensions: 1536 }), // For similarity search
+  metadata: jsonb("metadata"), // Additional context
+  isActive: integer("is_active").default(1), // 0 = dismissed, 1 = active
+  viewedAt: timestamp("viewed_at"),
+  actedUponAt: timestamp("acted_upon_at"),
+  actedUponAction: text("acted_upon_action"), // 'scheduled', 'hired', 'rejected', 'dismissed'
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"), // When recommendation becomes stale
+}, (table) => ({
+  tenantIdIdx: index("candidate_recommendations_tenant_id_idx").on(table.tenantId),
+  candidateIdIdx: index("candidate_recommendations_candidate_id_idx").on(table.candidateId),
+  jobIdIdx: index("candidate_recommendations_job_id_idx").on(table.jobId),
+  sessionIdIdx: index("candidate_recommendations_session_id_idx").on(table.sessionId),
+  typeIdx: index("candidate_recommendations_type_idx").on(table.recommendationType),
+  featureVectorIdx: index("candidate_recommendations_vector_idx").using("hnsw", table.featureVector.op("vector_cosine_ops")),
+}));
+
+// Model Training Events - For reinforcement learning
+export const modelTrainingEvents = pgTable("model_training_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  sessionId: varchar("session_id").references(() => interviewSessions.id),
+  candidateId: varchar("candidate_id").references(() => candidates.id),
+  eventType: text("event_type").notNull(), // 'interview_completed', 'decision_made', 'outcome_confirmed', 'feedback_received'
+  modelVersion: text("model_version"), // Which model version was used
+  policyVersion: text("policy_version"), // RL policy version
+  features: jsonb("features"), // Feature snapshot for training
+  labels: jsonb("labels"), // Outcome labels { hired: true, performance_90d: 85 }
+  reward: integer("reward"), // Computed reward signal
+  predictionConfidence: integer("prediction_confidence"), // Model's confidence at time of prediction
+  actualOutcome: text("actual_outcome"), // 'hired', 'rejected', 'quit_30d', 'top_performer', etc.
+  outcomeConfirmedAt: timestamp("outcome_confirmed_at"),
+  isUsedForTraining: integer("is_used_for_training").default(0),
+  trainedAt: timestamp("trained_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("model_training_events_tenant_id_idx").on(table.tenantId),
+  sessionIdIdx: index("model_training_events_session_id_idx").on(table.sessionId),
+  candidateIdIdx: index("model_training_events_candidate_id_idx").on(table.candidateId),
+  eventTypeIdx: index("model_training_events_type_idx").on(table.eventType),
+  modelVersionIdx: index("model_training_events_model_version_idx").on(table.modelVersion),
+  isUsedForTrainingIdx: index("model_training_events_training_idx").on(table.isUsedForTraining),
+}));
+
+// Insert schemas for interview system
+export const insertInterviewRecordingSchema = createInsertSchema(interviewRecordings).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInterviewTranscriptSchema = createInsertSchema(interviewTranscripts).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+});
+
+export const insertInterviewFeedbackSchema = createInsertSchema(interviewFeedback).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateInterviewFeedbackSchema = insertInterviewFeedbackSchema.partial();
+
+export const insertCandidateRecommendationSchema = createInsertSchema(candidateRecommendations).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+});
+
+export const insertModelTrainingEventSchema = createInsertSchema(modelTrainingEvents).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+});
+
+export type InsertInterviewRecording = z.infer<typeof insertInterviewRecordingSchema>;
+export type InterviewRecording = typeof interviewRecordings.$inferSelect;
+
+export type InsertInterviewTranscript = z.infer<typeof insertInterviewTranscriptSchema>;
+export type InterviewTranscript = typeof interviewTranscripts.$inferSelect;
+
+export type InsertInterviewFeedback = z.infer<typeof insertInterviewFeedbackSchema>;
+export type InterviewFeedback = typeof interviewFeedback.$inferSelect;
+
+export type InsertCandidateRecommendation = z.infer<typeof insertCandidateRecommendationSchema>;
+export type CandidateRecommendation = typeof candidateRecommendations.$inferSelect;
+
+export type InsertModelTrainingEvent = z.infer<typeof insertModelTrainingEventSchema>;
+export type ModelTrainingEvent = typeof modelTrainingEvents.$inferSelect;
