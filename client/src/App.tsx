@@ -36,6 +36,7 @@ import Recommendations from "@/pages/recommendations";
 import KpiManagement from "@/pages/kpi-management";
 import KpiReview from "@/pages/kpi-review";
 import KpiManagerReview from "@/pages/kpi-manager-review";
+import KpiHRDashboard from "@/pages/kpi-hr-dashboard";
 
 function Router() {
   return (
@@ -71,6 +72,7 @@ function Router() {
       <Route path="/kpi-management" component={KpiManagement} />
       <Route path="/kpi-review" component={KpiReview} />
       <Route path="/kpi-manager-review" component={KpiManagerReview} />
+      <Route path="/kpi-hr-dashboard" component={KpiHRDashboard} />
       <Route component={NotFound} />
     </Switch>
   );
