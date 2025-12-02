@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown, UserSearch, Shield, Settings, Users, Briefcase, TrendingUp, FileText, MessageCircle } from "lucide-react";
+import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown, UserSearch, Shield, Settings, Users, Briefcase, TrendingUp, FileText, MessageCircle, ClipboardList, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -115,6 +115,13 @@ export function Navbar() {
                   <span>Video Interview</span>
                 </DropdownMenuItem>
               </Link>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <Link href="/interview-console">
+                <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
+                  <ClipboardList className="w-4 h-4 mr-2 text-amber-400" />
+                  <span>Interview Console</span>
+                </DropdownMenuItem>
+              </Link>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -142,6 +149,13 @@ export function Navbar() {
                 <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
                   <MessageCircle className="w-4 h-4 mr-2 text-green-400" />
                   <span>WhatsApp Monitor</span>
+                </DropdownMenuItem>
+              </Link>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <Link href="/recommendations">
+                <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
+                  <Sparkles className="w-4 h-4 mr-2 text-amber-400" />
+                  <span>AI Recommendations</span>
                 </DropdownMenuItem>
               </Link>
             </DropdownMenuContent>
@@ -258,6 +272,11 @@ export function Navbar() {
                   <Video className="w-4 h-4" /> Video Interview
                 </Button>
               </Link>
+              <Link href="/interview-console">
+                <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
+                  <ClipboardList className="w-4 h-4" /> Interview Console
+                </Button>
+              </Link>
 
               <div className="h-px bg-white/10 my-2" />
               
@@ -270,6 +289,11 @@ export function Navbar() {
               <Link href="/whatsapp-monitor">
                 <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
                   <MessageCircle className="w-4 h-4" /> WhatsApp Monitor
+                </Button>
+              </Link>
+              <Link href="/recommendations">
+                <Button variant="ghost" className="w-full justify-start mb-2 gap-2">
+                  <Sparkles className="w-4 h-4" /> AI Recommendations
                 </Button>
               </Link>
 

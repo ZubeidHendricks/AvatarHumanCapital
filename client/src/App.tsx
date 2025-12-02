@@ -31,6 +31,8 @@ import WhatsAppMonitor from "@/pages/whatsapp-monitor";
 import InterviewInvite from "@/pages/interview-invite";
 import OnboardingDashboard from "@/pages/onboarding-dashboard";
 import HRConversations from "@/pages/hr-conversations";
+import InterviewConsole from "@/pages/interview-console";
+import Recommendations from "@/pages/recommendations";
 
 function Router() {
   return (
@@ -61,6 +63,8 @@ function Router() {
       <Route path="/whatsapp-monitor" component={WhatsAppMonitor} />
       <Route path="/onboarding-dashboard" component={OnboardingDashboard} />
       <Route path="/hr-conversations" component={HRConversations} />
+      <Route path="/interview-console" component={InterviewConsole} />
+      <Route path="/recommendations" component={Recommendations} />
       <Route component={NotFound} />
     </Switch>
   );
