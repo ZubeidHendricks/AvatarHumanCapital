@@ -877,6 +877,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const candidate = await storage.getCandidate(req.tenant.id, interview.candidateId);
         candidateName = candidate?.fullName || null;
       }
+      
+      // Fetch transcripts and feedback if linked to a session
+      let transcripts: any[] = [];
+      let feedback: any[] = [];
+      let recordings: any[] = [];
+      
+      if (interview.sessionId) {
+        transcripts = await storage.getInterviewTranscripts(req.tenant.id, interview.sessionId);
+        feedback = await storage.getInterviewFeedback(req.tenant.id, interview.sessionId);
+        recordings = await storage.getInterviewRecordings(req.tenant.id, interview.sessionId);
+      }
+      
       // Return in InterviewDetails format expected by frontend
       res.json({
         session: {
@@ -885,9 +897,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           jobTitle: (interview.metadata as any)?.jobRole || interview.type + " Interview",
           interviewType: interview.type,
         },
-        recordings: [],
-        transcripts: [],
-        feedback: [],
+        recordings,
+        transcripts,
+        feedback,
       });
     } catch (error) {
       console.error("Error fetching interview:", error);

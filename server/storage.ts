@@ -113,7 +113,33 @@ import {
   interviewTranscripts,
   interviewFeedback,
   candidateRecommendations,
-  modelTrainingEvents
+  modelTrainingEvents,
+  kpiTemplates,
+  reviewCycles,
+  kpiAssignments,
+  kpiScores,
+  feedback360Requests,
+  feedback360Responses,
+  reviewSubmissions,
+  type KpiTemplate,
+  type InsertKpiTemplate,
+  type UpdateKpiTemplate,
+  type ReviewCycle,
+  type InsertReviewCycle,
+  type UpdateReviewCycle,
+  type KpiAssignment,
+  type InsertKpiAssignment,
+  type UpdateKpiAssignment,
+  type KpiScore,
+  type InsertKpiScore,
+  type UpdateKpiScore,
+  type Feedback360Request,
+  type InsertFeedback360Request,
+  type Feedback360Response,
+  type InsertFeedback360Response,
+  type ReviewSubmission,
+  type InsertReviewSubmission,
+  type UpdateReviewSubmission
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte, sql, isNull, isNotNull } from "drizzle-orm";
@@ -379,6 +405,63 @@ export interface IStorage {
   createWhatsappDocumentSession(tenantId: string, session: InsertWhatsappDocumentSession): Promise<WhatsappDocumentSession>;
   updateWhatsappDocumentSession(tenantId: string, id: string, updates: UpdateWhatsappDocumentSession): Promise<WhatsappDocumentSession | undefined>;
   deleteWhatsappDocumentSession(tenantId: string, id: string): Promise<boolean>;
+  
+  // KPI Templates
+  getAllKpiTemplates(tenantId: string): Promise<KpiTemplate[]>;
+  getKpiTemplate(tenantId: string, id: string): Promise<KpiTemplate | undefined>;
+  getKpiTemplatesByCategory(tenantId: string, category: string): Promise<KpiTemplate[]>;
+  createKpiTemplate(tenantId: string, template: InsertKpiTemplate): Promise<KpiTemplate>;
+  updateKpiTemplate(tenantId: string, id: string, updates: UpdateKpiTemplate): Promise<KpiTemplate | undefined>;
+  deleteKpiTemplate(tenantId: string, id: string): Promise<boolean>;
+  
+  // Review Cycles
+  getAllReviewCycles(tenantId: string): Promise<ReviewCycle[]>;
+  getReviewCycle(tenantId: string, id: string): Promise<ReviewCycle | undefined>;
+  getActiveReviewCycles(tenantId: string): Promise<ReviewCycle[]>;
+  createReviewCycle(tenantId: string, cycle: InsertReviewCycle): Promise<ReviewCycle>;
+  updateReviewCycle(tenantId: string, id: string, updates: UpdateReviewCycle): Promise<ReviewCycle | undefined>;
+  deleteReviewCycle(tenantId: string, id: string): Promise<boolean>;
+  
+  // KPI Assignments
+  getKpiAssignments(tenantId: string, reviewCycleId?: string): Promise<KpiAssignment[]>;
+  getKpiAssignment(tenantId: string, id: string): Promise<KpiAssignment | undefined>;
+  getKpiAssignmentsByEmployee(tenantId: string, employeeId: string, reviewCycleId?: string): Promise<KpiAssignment[]>;
+  getKpiAssignmentsByManager(tenantId: string, managerId: string, reviewCycleId?: string): Promise<KpiAssignment[]>;
+  createKpiAssignment(tenantId: string, assignment: InsertKpiAssignment): Promise<KpiAssignment>;
+  createKpiAssignmentsBatch(tenantId: string, assignments: InsertKpiAssignment[]): Promise<KpiAssignment[]>;
+  updateKpiAssignment(tenantId: string, id: string, updates: UpdateKpiAssignment): Promise<KpiAssignment | undefined>;
+  deleteKpiAssignment(tenantId: string, id: string): Promise<boolean>;
+  
+  // KPI Scores
+  getKpiScores(tenantId: string, assignmentId: string): Promise<KpiScore[]>;
+  getKpiScore(tenantId: string, id: string): Promise<KpiScore | undefined>;
+  getKpiScoresByScorer(tenantId: string, scorerId: string): Promise<KpiScore[]>;
+  createKpiScore(tenantId: string, score: InsertKpiScore): Promise<KpiScore>;
+  updateKpiScore(tenantId: string, id: string, updates: UpdateKpiScore): Promise<KpiScore | undefined>;
+  deleteKpiScore(tenantId: string, id: string): Promise<boolean>;
+  
+  // 360 Feedback Requests
+  getFeedback360Requests(tenantId: string, reviewCycleId?: string): Promise<Feedback360Request[]>;
+  getFeedback360Request(tenantId: string, id: string): Promise<Feedback360Request | undefined>;
+  getFeedback360RequestByToken(token: string): Promise<Feedback360Request | undefined>;
+  getFeedback360RequestsBySubject(tenantId: string, subjectId: string): Promise<Feedback360Request[]>;
+  getFeedback360RequestsByReviewer(tenantId: string, reviewerId: string): Promise<Feedback360Request[]>;
+  createFeedback360Request(tenantId: string, request: InsertFeedback360Request): Promise<Feedback360Request>;
+  updateFeedback360Request(tenantId: string, id: string, updates: Partial<InsertFeedback360Request>): Promise<Feedback360Request | undefined>;
+  
+  // 360 Feedback Responses
+  getFeedback360Responses(tenantId: string, requestId: string): Promise<Feedback360Response[]>;
+  getFeedback360Response(tenantId: string, id: string): Promise<Feedback360Response | undefined>;
+  createFeedback360Response(tenantId: string, response: InsertFeedback360Response): Promise<Feedback360Response>;
+  
+  // Review Submissions
+  getReviewSubmissions(tenantId: string, reviewCycleId?: string): Promise<ReviewSubmission[]>;
+  getReviewSubmission(tenantId: string, id: string): Promise<ReviewSubmission | undefined>;
+  getReviewSubmissionByEmployee(tenantId: string, employeeId: string, reviewCycleId: string): Promise<ReviewSubmission | undefined>;
+  getReviewSubmissionsByManager(tenantId: string, managerId: string, reviewCycleId?: string): Promise<ReviewSubmission[]>;
+  getPendingReviewSubmissions(tenantId: string): Promise<ReviewSubmission[]>;
+  createReviewSubmission(tenantId: string, submission: InsertReviewSubmission): Promise<ReviewSubmission>;
+  updateReviewSubmission(tenantId: string, id: string, updates: UpdateReviewSubmission): Promise<ReviewSubmission | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1952,6 +2035,327 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(whatsappDocumentSessions)
       .where(and(eq(whatsappDocumentSessions.id, id), eq(whatsappDocumentSessions.tenantId, tenantId)));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // KPI Templates Implementation
+  async getAllKpiTemplates(tenantId: string): Promise<KpiTemplate[]> {
+    return await db.select().from(kpiTemplates)
+      .where(eq(kpiTemplates.tenantId, tenantId))
+      .orderBy(kpiTemplates.category, kpiTemplates.name);
+  }
+
+  async getKpiTemplate(tenantId: string, id: string): Promise<KpiTemplate | undefined> {
+    const [template] = await db.select().from(kpiTemplates)
+      .where(and(eq(kpiTemplates.id, id), eq(kpiTemplates.tenantId, tenantId)));
+    return template || undefined;
+  }
+
+  async getKpiTemplatesByCategory(tenantId: string, category: string): Promise<KpiTemplate[]> {
+    return await db.select().from(kpiTemplates)
+      .where(and(eq(kpiTemplates.tenantId, tenantId), eq(kpiTemplates.category, category)))
+      .orderBy(kpiTemplates.name);
+  }
+
+  async createKpiTemplate(tenantId: string, template: InsertKpiTemplate): Promise<KpiTemplate> {
+    const [newTemplate] = await db.insert(kpiTemplates).values({ ...template, tenantId }).returning();
+    return newTemplate;
+  }
+
+  async updateKpiTemplate(tenantId: string, id: string, updates: UpdateKpiTemplate): Promise<KpiTemplate | undefined> {
+    const [template] = await db.update(kpiTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(kpiTemplates.id, id), eq(kpiTemplates.tenantId, tenantId)))
+      .returning();
+    return template || undefined;
+  }
+
+  async deleteKpiTemplate(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(kpiTemplates)
+      .where(and(eq(kpiTemplates.id, id), eq(kpiTemplates.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Review Cycles Implementation
+  async getAllReviewCycles(tenantId: string): Promise<ReviewCycle[]> {
+    return await db.select().from(reviewCycles)
+      .where(eq(reviewCycles.tenantId, tenantId))
+      .orderBy(desc(reviewCycles.startDate));
+  }
+
+  async getReviewCycle(tenantId: string, id: string): Promise<ReviewCycle | undefined> {
+    const [cycle] = await db.select().from(reviewCycles)
+      .where(and(eq(reviewCycles.id, id), eq(reviewCycles.tenantId, tenantId)));
+    return cycle || undefined;
+  }
+
+  async getActiveReviewCycles(tenantId: string): Promise<ReviewCycle[]> {
+    return await db.select().from(reviewCycles)
+      .where(and(
+        eq(reviewCycles.tenantId, tenantId),
+        sql`${reviewCycles.status} IN ('active', 'self_assessment', 'manager_review')`
+      ))
+      .orderBy(desc(reviewCycles.startDate));
+  }
+
+  async createReviewCycle(tenantId: string, cycle: InsertReviewCycle): Promise<ReviewCycle> {
+    const [newCycle] = await db.insert(reviewCycles).values({ ...cycle, tenantId }).returning();
+    return newCycle;
+  }
+
+  async updateReviewCycle(tenantId: string, id: string, updates: UpdateReviewCycle): Promise<ReviewCycle | undefined> {
+    const [cycle] = await db.update(reviewCycles)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(reviewCycles.id, id), eq(reviewCycles.tenantId, tenantId)))
+      .returning();
+    return cycle || undefined;
+  }
+
+  async deleteReviewCycle(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(reviewCycles)
+      .where(and(eq(reviewCycles.id, id), eq(reviewCycles.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // KPI Assignments Implementation
+  async getKpiAssignments(tenantId: string, reviewCycleId?: string): Promise<KpiAssignment[]> {
+    if (reviewCycleId) {
+      return await db.select().from(kpiAssignments)
+        .where(and(eq(kpiAssignments.tenantId, tenantId), eq(kpiAssignments.reviewCycleId, reviewCycleId)))
+        .orderBy(kpiAssignments.createdAt);
+    }
+    return await db.select().from(kpiAssignments)
+      .where(eq(kpiAssignments.tenantId, tenantId))
+      .orderBy(kpiAssignments.createdAt);
+  }
+
+  async getKpiAssignment(tenantId: string, id: string): Promise<KpiAssignment | undefined> {
+    const [assignment] = await db.select().from(kpiAssignments)
+      .where(and(eq(kpiAssignments.id, id), eq(kpiAssignments.tenantId, tenantId)));
+    return assignment || undefined;
+  }
+
+  async getKpiAssignmentsByEmployee(tenantId: string, employeeId: string, reviewCycleId?: string): Promise<KpiAssignment[]> {
+    if (reviewCycleId) {
+      return await db.select().from(kpiAssignments)
+        .where(and(
+          eq(kpiAssignments.tenantId, tenantId),
+          eq(kpiAssignments.employeeId, employeeId),
+          eq(kpiAssignments.reviewCycleId, reviewCycleId)
+        ))
+        .orderBy(kpiAssignments.createdAt);
+    }
+    return await db.select().from(kpiAssignments)
+      .where(and(eq(kpiAssignments.tenantId, tenantId), eq(kpiAssignments.employeeId, employeeId)))
+      .orderBy(kpiAssignments.createdAt);
+  }
+
+  async getKpiAssignmentsByManager(tenantId: string, managerId: string, reviewCycleId?: string): Promise<KpiAssignment[]> {
+    if (reviewCycleId) {
+      return await db.select().from(kpiAssignments)
+        .where(and(
+          eq(kpiAssignments.tenantId, tenantId),
+          eq(kpiAssignments.managerId, managerId),
+          eq(kpiAssignments.reviewCycleId, reviewCycleId)
+        ))
+        .orderBy(kpiAssignments.createdAt);
+    }
+    return await db.select().from(kpiAssignments)
+      .where(and(eq(kpiAssignments.tenantId, tenantId), eq(kpiAssignments.managerId, managerId)))
+      .orderBy(kpiAssignments.createdAt);
+  }
+
+  async createKpiAssignment(tenantId: string, assignment: InsertKpiAssignment): Promise<KpiAssignment> {
+    const [newAssignment] = await db.insert(kpiAssignments).values({ ...assignment, tenantId }).returning();
+    return newAssignment;
+  }
+
+  async createKpiAssignmentsBatch(tenantId: string, assignments: InsertKpiAssignment[]): Promise<KpiAssignment[]> {
+    const assignmentsWithTenant = assignments.map(a => ({ ...a, tenantId }));
+    return await db.insert(kpiAssignments).values(assignmentsWithTenant).returning();
+  }
+
+  async updateKpiAssignment(tenantId: string, id: string, updates: UpdateKpiAssignment): Promise<KpiAssignment | undefined> {
+    const [assignment] = await db.update(kpiAssignments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(kpiAssignments.id, id), eq(kpiAssignments.tenantId, tenantId)))
+      .returning();
+    return assignment || undefined;
+  }
+
+  async deleteKpiAssignment(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(kpiAssignments)
+      .where(and(eq(kpiAssignments.id, id), eq(kpiAssignments.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // KPI Scores Implementation
+  async getKpiScores(tenantId: string, assignmentId: string): Promise<KpiScore[]> {
+    return await db.select().from(kpiScores)
+      .where(and(eq(kpiScores.tenantId, tenantId), eq(kpiScores.assignmentId, assignmentId)))
+      .orderBy(kpiScores.createdAt);
+  }
+
+  async getKpiScore(tenantId: string, id: string): Promise<KpiScore | undefined> {
+    const [score] = await db.select().from(kpiScores)
+      .where(and(eq(kpiScores.id, id), eq(kpiScores.tenantId, tenantId)));
+    return score || undefined;
+  }
+
+  async getKpiScoresByScorer(tenantId: string, scorerId: string): Promise<KpiScore[]> {
+    return await db.select().from(kpiScores)
+      .where(and(eq(kpiScores.tenantId, tenantId), eq(kpiScores.scorerId, scorerId)))
+      .orderBy(desc(kpiScores.createdAt));
+  }
+
+  async createKpiScore(tenantId: string, score: InsertKpiScore): Promise<KpiScore> {
+    const [newScore] = await db.insert(kpiScores).values({ ...score, tenantId }).returning();
+    return newScore;
+  }
+
+  async updateKpiScore(tenantId: string, id: string, updates: UpdateKpiScore): Promise<KpiScore | undefined> {
+    const [score] = await db.update(kpiScores)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(kpiScores.id, id), eq(kpiScores.tenantId, tenantId)))
+      .returning();
+    return score || undefined;
+  }
+
+  async deleteKpiScore(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(kpiScores)
+      .where(and(eq(kpiScores.id, id), eq(kpiScores.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // 360 Feedback Requests Implementation
+  async getFeedback360Requests(tenantId: string, reviewCycleId?: string): Promise<Feedback360Request[]> {
+    if (reviewCycleId) {
+      return await db.select().from(feedback360Requests)
+        .where(and(eq(feedback360Requests.tenantId, tenantId), eq(feedback360Requests.reviewCycleId, reviewCycleId)))
+        .orderBy(desc(feedback360Requests.createdAt));
+    }
+    return await db.select().from(feedback360Requests)
+      .where(eq(feedback360Requests.tenantId, tenantId))
+      .orderBy(desc(feedback360Requests.createdAt));
+  }
+
+  async getFeedback360Request(tenantId: string, id: string): Promise<Feedback360Request | undefined> {
+    const [request] = await db.select().from(feedback360Requests)
+      .where(and(eq(feedback360Requests.id, id), eq(feedback360Requests.tenantId, tenantId)));
+    return request || undefined;
+  }
+
+  async getFeedback360RequestByToken(token: string): Promise<Feedback360Request | undefined> {
+    const [request] = await db.select().from(feedback360Requests)
+      .where(eq(feedback360Requests.token, token));
+    return request || undefined;
+  }
+
+  async getFeedback360RequestsBySubject(tenantId: string, subjectId: string): Promise<Feedback360Request[]> {
+    return await db.select().from(feedback360Requests)
+      .where(and(eq(feedback360Requests.tenantId, tenantId), eq(feedback360Requests.subjectId, subjectId)))
+      .orderBy(desc(feedback360Requests.createdAt));
+  }
+
+  async getFeedback360RequestsByReviewer(tenantId: string, reviewerId: string): Promise<Feedback360Request[]> {
+    return await db.select().from(feedback360Requests)
+      .where(and(eq(feedback360Requests.tenantId, tenantId), eq(feedback360Requests.reviewerId, reviewerId)))
+      .orderBy(desc(feedback360Requests.createdAt));
+  }
+
+  async createFeedback360Request(tenantId: string, request: InsertFeedback360Request): Promise<Feedback360Request> {
+    const [newRequest] = await db.insert(feedback360Requests).values({ ...request, tenantId }).returning();
+    return newRequest;
+  }
+
+  async updateFeedback360Request(tenantId: string, id: string, updates: Partial<InsertFeedback360Request>): Promise<Feedback360Request | undefined> {
+    const [request] = await db.update(feedback360Requests)
+      .set(updates)
+      .where(and(eq(feedback360Requests.id, id), eq(feedback360Requests.tenantId, tenantId)))
+      .returning();
+    return request || undefined;
+  }
+
+  // 360 Feedback Responses Implementation
+  async getFeedback360Responses(tenantId: string, requestId: string): Promise<Feedback360Response[]> {
+    return await db.select().from(feedback360Responses)
+      .where(and(eq(feedback360Responses.tenantId, tenantId), eq(feedback360Responses.requestId, requestId)))
+      .orderBy(desc(feedback360Responses.createdAt));
+  }
+
+  async getFeedback360Response(tenantId: string, id: string): Promise<Feedback360Response | undefined> {
+    const [response] = await db.select().from(feedback360Responses)
+      .where(and(eq(feedback360Responses.id, id), eq(feedback360Responses.tenantId, tenantId)));
+    return response || undefined;
+  }
+
+  async createFeedback360Response(tenantId: string, response: InsertFeedback360Response): Promise<Feedback360Response> {
+    const [newResponse] = await db.insert(feedback360Responses).values({ ...response, tenantId }).returning();
+    return newResponse;
+  }
+
+  // Review Submissions Implementation
+  async getReviewSubmissions(tenantId: string, reviewCycleId?: string): Promise<ReviewSubmission[]> {
+    if (reviewCycleId) {
+      return await db.select().from(reviewSubmissions)
+        .where(and(eq(reviewSubmissions.tenantId, tenantId), eq(reviewSubmissions.reviewCycleId, reviewCycleId)))
+        .orderBy(desc(reviewSubmissions.createdAt));
+    }
+    return await db.select().from(reviewSubmissions)
+      .where(eq(reviewSubmissions.tenantId, tenantId))
+      .orderBy(desc(reviewSubmissions.createdAt));
+  }
+
+  async getReviewSubmission(tenantId: string, id: string): Promise<ReviewSubmission | undefined> {
+    const [submission] = await db.select().from(reviewSubmissions)
+      .where(and(eq(reviewSubmissions.id, id), eq(reviewSubmissions.tenantId, tenantId)));
+    return submission || undefined;
+  }
+
+  async getReviewSubmissionByEmployee(tenantId: string, employeeId: string, reviewCycleId: string): Promise<ReviewSubmission | undefined> {
+    const [submission] = await db.select().from(reviewSubmissions)
+      .where(and(
+        eq(reviewSubmissions.tenantId, tenantId),
+        eq(reviewSubmissions.employeeId, employeeId),
+        eq(reviewSubmissions.reviewCycleId, reviewCycleId)
+      ));
+    return submission || undefined;
+  }
+
+  async getReviewSubmissionsByManager(tenantId: string, managerId: string, reviewCycleId?: string): Promise<ReviewSubmission[]> {
+    if (reviewCycleId) {
+      return await db.select().from(reviewSubmissions)
+        .where(and(
+          eq(reviewSubmissions.tenantId, tenantId),
+          eq(reviewSubmissions.managerId, managerId),
+          eq(reviewSubmissions.reviewCycleId, reviewCycleId)
+        ))
+        .orderBy(desc(reviewSubmissions.createdAt));
+    }
+    return await db.select().from(reviewSubmissions)
+      .where(and(eq(reviewSubmissions.tenantId, tenantId), eq(reviewSubmissions.managerId, managerId)))
+      .orderBy(desc(reviewSubmissions.createdAt));
+  }
+
+  async getPendingReviewSubmissions(tenantId: string): Promise<ReviewSubmission[]> {
+    return await db.select().from(reviewSubmissions)
+      .where(and(
+        eq(reviewSubmissions.tenantId, tenantId),
+        sql`${reviewSubmissions.selfAssessmentStatus} = 'pending' OR ${reviewSubmissions.managerReviewStatus} = 'pending'`
+      ))
+      .orderBy(desc(reviewSubmissions.createdAt));
+  }
+
+  async createReviewSubmission(tenantId: string, submission: InsertReviewSubmission): Promise<ReviewSubmission> {
+    const [newSubmission] = await db.insert(reviewSubmissions).values({ ...submission, tenantId }).returning();
+    return newSubmission;
+  }
+
+  async updateReviewSubmission(tenantId: string, id: string, updates: UpdateReviewSubmission): Promise<ReviewSubmission | undefined> {
+    const [submission] = await db.update(reviewSubmissions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(reviewSubmissions.id, id), eq(reviewSubmissions.tenantId, tenantId)))
+      .returning();
+    return submission || undefined;
   }
 }
 
