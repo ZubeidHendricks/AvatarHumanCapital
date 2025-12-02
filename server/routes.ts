@@ -4640,6 +4640,616 @@ Format your response as JSON:
     }
   });
 
+  // ==================== KPI TEMPLATES ====================
+  
+  app.get("/api/kpi-templates", async (req, res) => {
+    try {
+      const { category } = req.query;
+      let templates;
+      if (category) {
+        templates = await storage.getKpiTemplatesByCategory(req.tenant.id, category as string);
+      } else {
+        templates = await storage.getAllKpiTemplates(req.tenant.id);
+      }
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching KPI templates:", error);
+      res.status(500).json({ message: "Failed to fetch KPI templates" });
+    }
+  });
+
+  app.get("/api/kpi-templates/:id", async (req, res) => {
+    try {
+      const template = await storage.getKpiTemplate(req.tenant.id, req.params.id);
+      if (!template) {
+        return res.status(404).json({ message: "KPI template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching KPI template:", error);
+      res.status(500).json({ message: "Failed to fetch KPI template" });
+    }
+  });
+
+  app.post("/api/kpi-templates", async (req, res) => {
+    try {
+      const template = await storage.createKpiTemplate(req.tenant.id, req.body);
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Error creating KPI template:", error);
+      res.status(500).json({ message: "Failed to create KPI template" });
+    }
+  });
+
+  app.patch("/api/kpi-templates/:id", async (req, res) => {
+    try {
+      const template = await storage.updateKpiTemplate(req.tenant.id, req.params.id, req.body);
+      if (!template) {
+        return res.status(404).json({ message: "KPI template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error("Error updating KPI template:", error);
+      res.status(500).json({ message: "Failed to update KPI template" });
+    }
+  });
+
+  app.delete("/api/kpi-templates/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteKpiTemplate(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "KPI template not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting KPI template:", error);
+      res.status(500).json({ message: "Failed to delete KPI template" });
+    }
+  });
+
+  // ==================== REVIEW CYCLES ====================
+  
+  app.get("/api/review-cycles", async (req, res) => {
+    try {
+      const { active } = req.query;
+      let cycles;
+      if (active === 'true') {
+        cycles = await storage.getActiveReviewCycles(req.tenant.id);
+      } else {
+        cycles = await storage.getAllReviewCycles(req.tenant.id);
+      }
+      res.json(cycles);
+    } catch (error) {
+      console.error("Error fetching review cycles:", error);
+      res.status(500).json({ message: "Failed to fetch review cycles" });
+    }
+  });
+
+  app.get("/api/review-cycles/:id", async (req, res) => {
+    try {
+      const cycle = await storage.getReviewCycle(req.tenant.id, req.params.id);
+      if (!cycle) {
+        return res.status(404).json({ message: "Review cycle not found" });
+      }
+      res.json(cycle);
+    } catch (error) {
+      console.error("Error fetching review cycle:", error);
+      res.status(500).json({ message: "Failed to fetch review cycle" });
+    }
+  });
+
+  app.post("/api/review-cycles", async (req, res) => {
+    try {
+      const cycle = await storage.createReviewCycle(req.tenant.id, req.body);
+      res.status(201).json(cycle);
+    } catch (error) {
+      console.error("Error creating review cycle:", error);
+      res.status(500).json({ message: "Failed to create review cycle" });
+    }
+  });
+
+  app.patch("/api/review-cycles/:id", async (req, res) => {
+    try {
+      const cycle = await storage.updateReviewCycle(req.tenant.id, req.params.id, req.body);
+      if (!cycle) {
+        return res.status(404).json({ message: "Review cycle not found" });
+      }
+      res.json(cycle);
+    } catch (error) {
+      console.error("Error updating review cycle:", error);
+      res.status(500).json({ message: "Failed to update review cycle" });
+    }
+  });
+
+  app.delete("/api/review-cycles/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteReviewCycle(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Review cycle not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting review cycle:", error);
+      res.status(500).json({ message: "Failed to delete review cycle" });
+    }
+  });
+
+  // ==================== KPI ASSIGNMENTS ====================
+  
+  app.get("/api/kpi-assignments", async (req, res) => {
+    try {
+      const { reviewCycleId, employeeId, managerId } = req.query;
+      let assignments;
+      
+      if (employeeId) {
+        assignments = await storage.getKpiAssignmentsByEmployee(
+          req.tenant.id, 
+          employeeId as string,
+          reviewCycleId as string | undefined
+        );
+      } else if (managerId) {
+        assignments = await storage.getKpiAssignmentsByManager(
+          req.tenant.id,
+          managerId as string,
+          reviewCycleId as string | undefined
+        );
+      } else {
+        assignments = await storage.getKpiAssignments(
+          req.tenant.id,
+          reviewCycleId as string | undefined
+        );
+      }
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching KPI assignments:", error);
+      res.status(500).json({ message: "Failed to fetch KPI assignments" });
+    }
+  });
+
+  app.get("/api/kpi-assignments/:id", async (req, res) => {
+    try {
+      const assignment = await storage.getKpiAssignment(req.tenant.id, req.params.id);
+      if (!assignment) {
+        return res.status(404).json({ message: "KPI assignment not found" });
+      }
+      res.json(assignment);
+    } catch (error) {
+      console.error("Error fetching KPI assignment:", error);
+      res.status(500).json({ message: "Failed to fetch KPI assignment" });
+    }
+  });
+
+  app.post("/api/kpi-assignments", async (req, res) => {
+    try {
+      const assignment = await storage.createKpiAssignment(req.tenant.id, req.body);
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Error creating KPI assignment:", error);
+      res.status(500).json({ message: "Failed to create KPI assignment" });
+    }
+  });
+
+  app.post("/api/kpi-assignments/batch", async (req, res) => {
+    try {
+      const { assignments } = req.body;
+      if (!Array.isArray(assignments)) {
+        return res.status(400).json({ message: "Assignments must be an array" });
+      }
+      const created = await storage.createKpiAssignmentsBatch(req.tenant.id, assignments);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error batch creating KPI assignments:", error);
+      res.status(500).json({ message: "Failed to create KPI assignments" });
+    }
+  });
+
+  app.patch("/api/kpi-assignments/:id", async (req, res) => {
+    try {
+      const assignment = await storage.updateKpiAssignment(req.tenant.id, req.params.id, req.body);
+      if (!assignment) {
+        return res.status(404).json({ message: "KPI assignment not found" });
+      }
+      res.json(assignment);
+    } catch (error) {
+      console.error("Error updating KPI assignment:", error);
+      res.status(500).json({ message: "Failed to update KPI assignment" });
+    }
+  });
+
+  app.delete("/api/kpi-assignments/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteKpiAssignment(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "KPI assignment not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting KPI assignment:", error);
+      res.status(500).json({ message: "Failed to delete KPI assignment" });
+    }
+  });
+
+  // ==================== KPI SCORES ====================
+  
+  app.get("/api/kpi-scores", async (req, res) => {
+    try {
+      const { assignmentId, scorerId } = req.query;
+      let scores;
+      
+      if (assignmentId) {
+        scores = await storage.getKpiScores(req.tenant.id, assignmentId as string);
+      } else if (scorerId) {
+        scores = await storage.getKpiScoresByScorer(req.tenant.id, scorerId as string);
+      } else {
+        return res.status(400).json({ message: "Either assignmentId or scorerId is required" });
+      }
+      res.json(scores);
+    } catch (error) {
+      console.error("Error fetching KPI scores:", error);
+      res.status(500).json({ message: "Failed to fetch KPI scores" });
+    }
+  });
+
+  app.get("/api/kpi-scores/:id", async (req, res) => {
+    try {
+      const score = await storage.getKpiScore(req.tenant.id, req.params.id);
+      if (!score) {
+        return res.status(404).json({ message: "KPI score not found" });
+      }
+      res.json(score);
+    } catch (error) {
+      console.error("Error fetching KPI score:", error);
+      res.status(500).json({ message: "Failed to fetch KPI score" });
+    }
+  });
+
+  app.post("/api/kpi-scores", async (req, res) => {
+    try {
+      const score = await storage.createKpiScore(req.tenant.id, req.body);
+      res.status(201).json(score);
+    } catch (error) {
+      console.error("Error creating KPI score:", error);
+      res.status(500).json({ message: "Failed to create KPI score" });
+    }
+  });
+
+  app.patch("/api/kpi-scores/:id", async (req, res) => {
+    try {
+      const score = await storage.updateKpiScore(req.tenant.id, req.params.id, req.body);
+      if (!score) {
+        return res.status(404).json({ message: "KPI score not found" });
+      }
+      res.json(score);
+    } catch (error) {
+      console.error("Error updating KPI score:", error);
+      res.status(500).json({ message: "Failed to update KPI score" });
+    }
+  });
+
+  app.delete("/api/kpi-scores/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteKpiScore(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "KPI score not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting KPI score:", error);
+      res.status(500).json({ message: "Failed to delete KPI score" });
+    }
+  });
+
+  // ==================== 360 FEEDBACK REQUESTS ====================
+  
+  app.get("/api/feedback-360-requests", async (req, res) => {
+    try {
+      const { reviewCycleId, subjectId, reviewerId } = req.query;
+      let requests;
+      
+      if (subjectId) {
+        requests = await storage.getFeedback360RequestsBySubject(req.tenant.id, subjectId as string);
+      } else if (reviewerId) {
+        requests = await storage.getFeedback360RequestsByReviewer(req.tenant.id, reviewerId as string);
+      } else {
+        requests = await storage.getFeedback360Requests(req.tenant.id, reviewCycleId as string | undefined);
+      }
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching 360 feedback requests:", error);
+      res.status(500).json({ message: "Failed to fetch 360 feedback requests" });
+    }
+  });
+
+  app.get("/api/feedback-360-requests/:id", async (req, res) => {
+    try {
+      const request = await storage.getFeedback360Request(req.tenant.id, req.params.id);
+      if (!request) {
+        return res.status(404).json({ message: "360 feedback request not found" });
+      }
+      res.json(request);
+    } catch (error) {
+      console.error("Error fetching 360 feedback request:", error);
+      res.status(500).json({ message: "Failed to fetch 360 feedback request" });
+    }
+  });
+
+  app.post("/api/feedback-360-requests", async (req, res) => {
+    try {
+      const crypto = await import('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
+      const request = await storage.createFeedback360Request(req.tenant.id, {
+        ...req.body,
+        token,
+        status: 'pending'
+      });
+      res.status(201).json(request);
+    } catch (error) {
+      console.error("Error creating 360 feedback request:", error);
+      res.status(500).json({ message: "Failed to create 360 feedback request" });
+    }
+  });
+
+  app.patch("/api/feedback-360-requests/:id", async (req, res) => {
+    try {
+      const request = await storage.updateFeedback360Request(req.tenant.id, req.params.id, req.body);
+      if (!request) {
+        return res.status(404).json({ message: "360 feedback request not found" });
+      }
+      res.json(request);
+    } catch (error) {
+      console.error("Error updating 360 feedback request:", error);
+      res.status(500).json({ message: "Failed to update 360 feedback request" });
+    }
+  });
+
+  // Public token-based 360 feedback submission
+  app.get("/api/feedback-360/token/:token", async (req, res) => {
+    try {
+      const request = await storage.getFeedback360RequestByToken(req.params.token);
+      if (!request) {
+        return res.status(404).json({ message: "Feedback request not found or expired" });
+      }
+      if (request.status === 'completed') {
+        return res.status(400).json({ message: "Feedback already submitted" });
+      }
+      if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "Feedback request has expired" });
+      }
+      res.json(request);
+    } catch (error) {
+      console.error("Error fetching 360 feedback by token:", error);
+      res.status(500).json({ message: "Failed to fetch feedback request" });
+    }
+  });
+
+  // ==================== 360 FEEDBACK RESPONSES ====================
+  
+  app.get("/api/feedback-360-responses", async (req, res) => {
+    try {
+      const { requestId } = req.query;
+      if (!requestId) {
+        return res.status(400).json({ message: "requestId is required" });
+      }
+      const responses = await storage.getFeedback360Responses(req.tenant.id, requestId as string);
+      res.json(responses);
+    } catch (error) {
+      console.error("Error fetching 360 feedback responses:", error);
+      res.status(500).json({ message: "Failed to fetch 360 feedback responses" });
+    }
+  });
+
+  app.post("/api/feedback-360-responses", async (req, res) => {
+    try {
+      const response = await storage.createFeedback360Response(req.tenant.id, req.body);
+      
+      // Mark request as completed
+      if (req.body.requestId) {
+        await storage.updateFeedback360Request(req.tenant.id, req.body.requestId, {
+          status: 'completed',
+          completedAt: new Date()
+        });
+      }
+      
+      res.status(201).json(response);
+    } catch (error) {
+      console.error("Error creating 360 feedback response:", error);
+      res.status(500).json({ message: "Failed to create 360 feedback response" });
+    }
+  });
+
+  // Public token-based submission endpoint
+  app.post("/api/feedback-360/submit/:token", async (req, res) => {
+    try {
+      const request = await storage.getFeedback360RequestByToken(req.params.token);
+      if (!request) {
+        return res.status(404).json({ message: "Feedback request not found" });
+      }
+      if (request.status === 'completed') {
+        return res.status(400).json({ message: "Feedback already submitted" });
+      }
+      if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "Feedback request has expired" });
+      }
+
+      const response = await storage.createFeedback360Response(request.tenantId, {
+        requestId: request.id,
+        ...req.body
+      });
+
+      await storage.updateFeedback360Request(request.tenantId, request.id, {
+        status: 'completed',
+        completedAt: new Date()
+      });
+
+      res.status(201).json(response);
+    } catch (error) {
+      console.error("Error submitting 360 feedback:", error);
+      res.status(500).json({ message: "Failed to submit feedback" });
+    }
+  });
+
+  // ==================== REVIEW SUBMISSIONS ====================
+  
+  app.get("/api/review-submissions", async (req, res) => {
+    try {
+      const { reviewCycleId, managerId, pending } = req.query;
+      let submissions;
+      
+      if (pending === 'true') {
+        submissions = await storage.getPendingReviewSubmissions(req.tenant.id);
+      } else if (managerId) {
+        submissions = await storage.getReviewSubmissionsByManager(
+          req.tenant.id,
+          managerId as string,
+          reviewCycleId as string | undefined
+        );
+      } else {
+        submissions = await storage.getReviewSubmissions(
+          req.tenant.id,
+          reviewCycleId as string | undefined
+        );
+      }
+      res.json(submissions);
+    } catch (error) {
+      console.error("Error fetching review submissions:", error);
+      res.status(500).json({ message: "Failed to fetch review submissions" });
+    }
+  });
+
+  app.get("/api/review-submissions/:id", async (req, res) => {
+    try {
+      const submission = await storage.getReviewSubmission(req.tenant.id, req.params.id);
+      if (!submission) {
+        return res.status(404).json({ message: "Review submission not found" });
+      }
+      res.json(submission);
+    } catch (error) {
+      console.error("Error fetching review submission:", error);
+      res.status(500).json({ message: "Failed to fetch review submission" });
+    }
+  });
+
+  app.post("/api/review-submissions", async (req, res) => {
+    try {
+      // Check if submission already exists for this employee/cycle
+      const existing = await storage.getReviewSubmissionByEmployee(
+        req.tenant.id,
+        req.body.employeeId,
+        req.body.reviewCycleId
+      );
+      
+      if (existing) {
+        return res.status(409).json({ message: "Review submission already exists for this employee and cycle" });
+      }
+      
+      const submission = await storage.createReviewSubmission(req.tenant.id, {
+        ...req.body,
+        selfAssessmentStatus: 'pending',
+        managerReviewStatus: 'pending'
+      });
+      res.status(201).json(submission);
+    } catch (error) {
+      console.error("Error creating review submission:", error);
+      res.status(500).json({ message: "Failed to create review submission" });
+    }
+  });
+
+  app.patch("/api/review-submissions/:id", async (req, res) => {
+    try {
+      const submission = await storage.updateReviewSubmission(req.tenant.id, req.params.id, req.body);
+      if (!submission) {
+        return res.status(404).json({ message: "Review submission not found" });
+      }
+      res.json(submission);
+    } catch (error) {
+      console.error("Error updating review submission:", error);
+      res.status(500).json({ message: "Failed to update review submission" });
+    }
+  });
+
+  // Submit self-assessment
+  app.post("/api/review-submissions/:id/self-assessment", async (req, res) => {
+    try {
+      const submission = await storage.getReviewSubmission(req.tenant.id, req.params.id);
+      if (!submission) {
+        return res.status(404).json({ message: "Review submission not found" });
+      }
+      
+      const updated = await storage.updateReviewSubmission(req.tenant.id, req.params.id, {
+        selfAssessmentData: req.body.data,
+        selfAssessmentStatus: 'completed',
+        selfAssessmentSubmittedAt: new Date()
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error submitting self-assessment:", error);
+      res.status(500).json({ message: "Failed to submit self-assessment" });
+    }
+  });
+
+  // Submit manager review
+  app.post("/api/review-submissions/:id/manager-review", async (req, res) => {
+    try {
+      const submission = await storage.getReviewSubmission(req.tenant.id, req.params.id);
+      if (!submission) {
+        return res.status(404).json({ message: "Review submission not found" });
+      }
+      
+      if (submission.selfAssessmentStatus !== 'completed') {
+        return res.status(400).json({ message: "Self-assessment must be completed before manager review" });
+      }
+      
+      const updated = await storage.updateReviewSubmission(req.tenant.id, req.params.id, {
+        managerReviewData: req.body.data,
+        managerReviewStatus: 'completed',
+        managerReviewSubmittedAt: new Date(),
+        finalScore: req.body.finalScore
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error submitting manager review:", error);
+      res.status(500).json({ message: "Failed to submit manager review" });
+    }
+  });
+
+  // WhatsApp notification for KPI reviews
+  app.post("/api/review-submissions/:id/send-whatsapp-notification", async (req, res) => {
+    try {
+      const { type } = req.body; // 'self_assessment' or 'manager_review'
+      const submission = await storage.getReviewSubmission(req.tenant.id, req.params.id);
+      
+      if (!submission) {
+        return res.status(404).json({ message: "Review submission not found" });
+      }
+
+      // Get employee/manager info
+      const employee = await storage.getEmployee(req.tenant.id, submission.employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+
+      const whatsappService = new WhatsAppService(process.env.WHATSAPP_API_TOKEN || '');
+      const message = type === 'self_assessment'
+        ? `Hi ${employee.fullName}, your KPI self-assessment is ready. Please complete your scores (1-5) for the current review period. Reply with your employee ID to begin.`
+        : `Hi, a self-assessment from ${employee.fullName} is pending your review. Please log in to approve or provide feedback on their KPI scores.`;
+
+      const phoneNumber = type === 'manager_review' && submission.managerId
+        ? (await storage.getEmployee(req.tenant.id, submission.managerId))?.phone
+        : employee.phone;
+
+      if (phoneNumber) {
+        await whatsappService.sendTextMessage(phoneNumber, message);
+      }
+
+      res.json({ message: "WhatsApp notification sent" });
+    } catch (error) {
+      console.error("Error sending WhatsApp notification:", error);
+      res.status(500).json({ message: "Failed to send WhatsApp notification" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
