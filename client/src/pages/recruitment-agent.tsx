@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTenantQueryKey } from "@/hooks/useTenant";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { Navbar } from "@/components/layout/navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,7 +76,11 @@ const SOURCING_SPECIALISTS = [
 
 
 export default function RecruitmentAgent() {
-  const [selectedJobId, setSelectedJobId] = useState<string>("");
+  const searchString = useSearch();
+  const urlParams = new URLSearchParams(searchString);
+  const jobIdFromUrl = urlParams.get('jobId');
+  
+  const [selectedJobId, setSelectedJobId] = useState<string>(jobIdFromUrl || "");
   const [maxCandidates, setMaxCandidates] = useState(20);
   const [minMatchScore, setMinMatchScore] = useState(60);
   const [currentStep, setCurrentStep] = useState(0);
@@ -86,6 +90,13 @@ export default function RecruitmentAgent() {
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showCandidateDialog, setShowCandidateDialog] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  
+  // Update selectedJobId when URL param changes
+  useEffect(() => {
+    if (jobIdFromUrl && jobIdFromUrl !== selectedJobId) {
+      setSelectedJobId(jobIdFromUrl);
+    }
+  }, [jobIdFromUrl]);
   
   const queryClient = useQueryClient();
   const jobsKey = useTenantQueryKey(['jobs']);

@@ -645,6 +645,12 @@ BENEFITS:
                               </Badge>
                             </div>
                             <div className="col-span-2 text-right flex justify-end gap-2">
+                              <Link href={`/recruitment-agent?jobId=${job.id}`}>
+                                <Button variant="outline" size="sm" className="gap-2 border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400" data-testid={`button-start-search-${job.id}`}>
+                                  <Search className="h-4 w-4" />
+                                  Start Search
+                                </Button>
+                              </Link>
                               <Link href={`/candidates-list?jobId=${job.id}`}>
                                 <Button variant="outline" size="sm" className="gap-2 border-white/10 hover:bg-white/5" data-testid={`button-view-candidates-${job.id}`}>
                                   <Eye className="h-4 w-4" />

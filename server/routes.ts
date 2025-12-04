@@ -433,6 +433,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/jobs/conversation/create", async (req, res) => {
     try {
       const { sessionId, isDraft = false, jobSpec: editedJobSpec } = req.body;
+      
+      console.log("[Job Creation] Received request:", { sessionId, isDraft, hasEditedSpec: !!editedJobSpec });
 
       if (!sessionId) {
         return res.status(400).json({ message: "Session ID is required" });
@@ -441,7 +443,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const agent = getOrCreateConversation(sessionId);
       const originalJobSpec = agent.getJobSpec();
       
+      console.log("[Job Creation] Original spec from agent:", originalJobSpec);
+      console.log("[Job Creation] Edited spec from request:", editedJobSpec);
+      
       const rawJobSpec = editedJobSpec || originalJobSpec;
+      console.log("[Job Creation] Using rawJobSpec:", rawJobSpec);
       
       const parseOptionalNumber = (val: any): number | undefined => {
         if (val === undefined || val === null || val === '') return undefined;
@@ -465,6 +471,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inferredDepartment = jobSpec.department || inferDepartmentFromTitle(jobSpec.title || "");
       
       // Create the job with collected data (use placeholders for missing required fields)
+      console.log("[Job Creation] Creating job with data:", {
+        title: jobSpec.title || "Untitled Job (Draft)",
+        department: inferredDepartment || "General",
+        status: isDraft ? "Draft" : "Active",
+        tenantId: req.tenant.id
+      });
+      
       const job = await storage.createJob(req.tenant.id, {
         title: jobSpec.title || "Untitled Job (Draft)",
         department: inferredDepartment || "General",
@@ -483,6 +496,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         equipmentExperience: jobSpec.equipmentExperience as any,
         status: isDraft ? "Draft" : "Active",
       });
+      
+      console.log("[Job Creation] Job created successfully:", { id: job.id, title: job.title });
 
       // Generate embedding in background (skip for drafts since they might be incomplete)
       if (!isDraft) {
