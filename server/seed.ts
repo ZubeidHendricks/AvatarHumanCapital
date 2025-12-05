@@ -52,7 +52,7 @@ async function seedDatabase() {
     console.log("Creating default tenant...");
     const [tenant] = await db.insert(tenantConfig).values({
       companyName: "Avatar Human Capital",
-      subdomain: "ahc",
+      subdomain: "company",
       logoUrl: "/logo.png",
       primaryColor: "#6366f1",
       secondaryColor: "#8b5cf6",
