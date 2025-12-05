@@ -1660,14 +1660,201 @@ BENEFITS:
               
               <Card className="border-white/10 bg-card/20">
                 <CardHeader>
-                  <CardTitle>Risk Assessment Overview</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-orange-400" />
+                    Risk Assessment Overview
+                  </CardTitle>
                   <CardDescription>AI-generated risk profiles based on background data</CardDescription>
                 </CardHeader>
-                <CardContent className="flex items-center justify-center h-[200px]">
-                  <div className="text-center text-muted-foreground">
-                    <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                    <p>Select a candidate to view detailed risk analysis</p>
-                  </div>
+                <CardContent>
+                  {!selectedRiskCandidate ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground mb-3">Select a candidate to view risk analysis:</p>
+                      <ScrollArea className="h-[180px]">
+                        <div className="space-y-2">
+                          {candidates && candidates.length > 0 ? candidates.slice(0, 8).map((candidate: any) => {
+                            const riskData = getCandidateRiskData(candidate.id);
+                            return (
+                              <div 
+                                key={candidate.id}
+                                onClick={() => setSelectedRiskCandidate(candidate)}
+                                className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors"
+                                data-testid={`risk-candidate-${candidate.id}`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                                      {(candidate.fullName || candidate.name || 'U').substring(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium text-sm">{candidate.fullName || candidate.name}</p>
+                                    <p className="text-xs text-muted-foreground">{candidate.role || 'Candidate'}</p>
+                                  </div>
+                                </div>
+                                {riskData.hasData ? (
+                                  <Badge 
+                                    data-testid={`badge-risk-level-${candidate.id}`}
+                                    className={
+                                      riskData.riskLevel === 'low' ? 'bg-green-500/20 text-green-400' :
+                                      riskData.riskLevel === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                      riskData.riskLevel === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                                      'bg-red-500/20 text-red-400'
+                                    }
+                                  >
+                                    {riskData.riskLevel.charAt(0).toUpperCase() + riskData.riskLevel.slice(1)}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-muted-foreground" data-testid={`badge-no-data-${candidate.id}`}>No Data</Badge>
+                                )}
+                              </div>
+                            );
+                          }) : (
+                            <div className="text-center text-muted-foreground py-8">
+                              <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No candidates available</p>
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-primary/20 text-primary">
+                              {(selectedRiskCandidate.fullName || selectedRiskCandidate.name || 'U').substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-bold">{selectedRiskCandidate.fullName || selectedRiskCandidate.name}</p>
+                            <p className="text-sm text-muted-foreground">{selectedRiskCandidate.role || 'Candidate'}</p>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setSelectedRiskCandidate(null)}
+                          data-testid="close-risk-view"
+                        >
+                          <RotateCcw className="w-4 h-4 mr-1" /> Back
+                        </Button>
+                      </div>
+                      
+                      {(() => {
+                        const riskData = getCandidateRiskData(selectedRiskCandidate.id);
+                        if (!riskData.hasData) {
+                          return (
+                            <div className="text-center text-muted-foreground py-6">
+                              <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No risk assessment data available</p>
+                              <p className="text-xs mt-1">Run an integrity check or social screening first</p>
+                              <div className="flex gap-2 justify-center mt-3">
+                                <Link href="/integrity-agent">
+                                  <Button size="sm" variant="outline">
+                                    <ShieldCheck className="w-4 h-4 mr-1" /> Start Integrity Check
+                                  </Button>
+                                </Link>
+                                <Link href="/social-screening">
+                                  <Button size="sm" variant="outline">
+                                    <Search className="w-4 h-4 mr-1" /> Social Screening
+                                  </Button>
+                                </Link>
+                              </div>
+                            </div>
+                          );
+                        }
+                        
+                        return (
+                          <div className="space-y-3" data-testid="risk-detail-view">
+                            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-cyan-900/20 to-purple-900/20 border border-cyan-500/20">
+                              <span className="text-sm font-medium">Overall Risk Score</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-2xl font-bold" data-testid="text-risk-score">{riskData.overallRiskScore}%</span>
+                                <Badge 
+                                  data-testid="badge-detail-risk-level"
+                                  className={
+                                    riskData.riskLevel === 'low' ? 'bg-green-500/20 text-green-400' :
+                                    riskData.riskLevel === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                    riskData.riskLevel === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                                    'bg-red-500/20 text-red-400'
+                                  }
+                                >
+                                  {riskData.riskLevel.charAt(0).toUpperCase() + riskData.riskLevel.slice(1)} Risk
+                                </Badge>
+                              </div>
+                            </div>
+                            
+                            {riskData.integrityCheck && (
+                              <div className="p-3 rounded-lg bg-white/5 border border-white/5" data-testid="section-integrity-check">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium flex items-center gap-2">
+                                    <FileCheck className="w-4 h-4 text-cyan-400" /> Integrity Check
+                                  </span>
+                                  <Badge variant="outline" data-testid="badge-integrity-status">{riskData.integrityCheck.status}</Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <span className="text-muted-foreground">Criminal: </span>
+                                    <span className={riskData.integrityCheck.checks?.criminal?.passed ? 'text-green-400' : 'text-red-400'} data-testid="text-criminal-status">
+                                      {riskData.integrityCheck.checks?.criminal?.passed ? 'Clear' : 'Review'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Credit: </span>
+                                    <span className={riskData.integrityCheck.checks?.credit?.passed ? 'text-green-400' : 'text-red-400'} data-testid="text-credit-status">
+                                      {riskData.integrityCheck.checks?.credit?.passed ? 'Clear' : 'Review'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Identity: </span>
+                                    <span className={riskData.integrityCheck.checks?.identity?.passed ? 'text-green-400' : 'text-red-400'} data-testid="text-identity-status">
+                                      {riskData.integrityCheck.checks?.identity?.passed ? 'Verified' : 'Pending'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">References: </span>
+                                    <span className={riskData.integrityCheck.checks?.reference?.passed ? 'text-green-400' : 'text-yellow-400'} data-testid="text-reference-status">
+                                      {riskData.integrityCheck.checks?.reference?.passed ? 'Verified' : 'Pending'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {riskData.socialScreening?.results?.aggregatedResults && (
+                              <div className="p-3 rounded-lg bg-white/5 border border-white/5" data-testid="section-social-screening">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-purple-400" /> Social Screening
+                                  </span>
+                                  <Badge variant="outline" data-testid="badge-social-status">{riskData.socialScreening.status}</Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <span className="text-muted-foreground">Culture Fit: </span>
+                                    <span className="text-primary" data-testid="text-culture-fit">{riskData.socialScreening.results.aggregatedResults.overallScore || 'N/A'}%</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Sentiment: </span>
+                                    <span 
+                                      data-testid="text-sentiment-score"
+                                      className={
+                                        riskData.socialScreening.results.aggregatedResults.sentimentScore >= 70 ? 'text-green-400' :
+                                        riskData.socialScreening.results.aggregatedResults.sentimentScore >= 40 ? 'text-yellow-400' : 'text-red-400'
+                                    }>
+                                      {riskData.socialScreening.results.aggregatedResults.sentimentScore || 'N/A'}%
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
