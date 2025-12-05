@@ -12,6 +12,8 @@ import { RecruitmentOrchestrator } from "./recruitment-orchestrator";
 import { interviewOrchestrator } from "./interview-orchestrator";
 import { sourcingOrchestrator, type SpecialistCandidate } from "./sourcing-specialists";
 import { cvParser } from "./cv-parser";
+import { cvTemplateGenerator } from "./cv-template-generator";
+import { Packer } from "docx";
 import { embeddingService } from "./embedding-service";
 import { getOrCreateConversation, deleteConversation } from "./job-creation-agent";
 import { requireAdmin } from "./admin-middleware";
@@ -208,6 +210,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error uploading CV:", error);
       res.status(500).json({ 
         message: "Failed to upload CV",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.post("/api/candidates/:id/generate-cv-template", upload.single("cv"), async (req, res) => {
+    try {
+      const candidateId = req.params.id;
+      const file = req.file;
+      const { jobTitle } = req.body;
+
+      if (!file) {
+        return res.status(400).json({ message: "No CV file uploaded" });
+      }
+
+      console.log(`Generating CV template for candidate ${candidateId}...`);
+
+      const cvText = await cvParser.extractTextFromPDF(file.buffer);
+      
+      const templateData = await cvTemplateGenerator.extractTemplateData(cvText, jobTitle);
+      
+      const doc = cvTemplateGenerator.generateDocument(templateData);
+      
+      const buffer = await Packer.toBuffer(doc);
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="CV_Template_${templateData.personalProfile.fullName.replace(/\s+/g, '_')}.docx"`);
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error generating CV template:", error);
+      res.status(500).json({ 
+        message: "Failed to generate CV template",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.post("/api/cv-template/generate", upload.single("cv"), async (req, res) => {
+    try {
+      const file = req.file;
+      const { jobTitle } = req.body;
+
+      if (!file) {
+        return res.status(400).json({ message: "No CV file uploaded" });
+      }
+
+      console.log("Generating CV template from uploaded file...");
+
+      const cvText = await cvParser.extractTextFromPDF(file.buffer);
+      
+      const templateData = await cvTemplateGenerator.extractTemplateData(cvText, jobTitle);
+      
+      const doc = cvTemplateGenerator.generateDocument(templateData);
+      
+      const buffer = await Packer.toBuffer(doc);
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="CV_Template_${templateData.personalProfile.fullName.replace(/\s+/g, '_')}.docx"`);
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error generating CV template:", error);
+      res.status(500).json({ 
+        message: "Failed to generate CV template",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.post("/api/cv-template/preview", upload.single("cv"), async (req, res) => {
+    try {
+      const file = req.file;
+      const { jobTitle } = req.body;
+
+      if (!file) {
+        return res.status(400).json({ message: "No CV file uploaded" });
+      }
+
+      console.log("Extracting CV data for preview...");
+
+      const cvText = await cvParser.extractTextFromPDF(file.buffer);
+      
+      const templateData = await cvTemplateGenerator.extractTemplateData(cvText, jobTitle);
+      
+      res.json({
+        message: "CV data extracted successfully",
+        data: templateData,
+      });
+    } catch (error) {
+      console.error("Error extracting CV data:", error);
+      res.status(500).json({ 
+        message: "Failed to extract CV data",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
