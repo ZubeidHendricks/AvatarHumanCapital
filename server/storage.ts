@@ -139,7 +139,22 @@ import {
   type InsertFeedback360Response,
   type ReviewSubmission,
   type InsertReviewSubmission,
-  type UpdateReviewSubmission
+  type UpdateReviewSubmission,
+  candidateSocialConsent,
+  candidateSocialProfiles,
+  socialScreeningFindings,
+  socialScreeningPosts,
+  type CandidateSocialConsent,
+  type InsertCandidateSocialConsent,
+  type UpdateCandidateSocialConsent,
+  type CandidateSocialProfile,
+  type InsertCandidateSocialProfile,
+  type UpdateCandidateSocialProfile,
+  type SocialScreeningFinding,
+  type InsertSocialScreeningFinding,
+  type UpdateSocialScreeningFinding,
+  type SocialScreeningPost,
+  type InsertSocialScreeningPost
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte, sql, isNull, isNotNull } from "drizzle-orm";
@@ -462,6 +477,36 @@ export interface IStorage {
   getPendingReviewSubmissions(tenantId: string): Promise<ReviewSubmission[]>;
   createReviewSubmission(tenantId: string, submission: InsertReviewSubmission): Promise<ReviewSubmission>;
   updateReviewSubmission(tenantId: string, id: string, updates: UpdateReviewSubmission): Promise<ReviewSubmission | undefined>;
+  
+  // Social Screening - Consent
+  getAllSocialConsents(tenantId: string): Promise<CandidateSocialConsent[]>;
+  getSocialConsent(tenantId: string, id: string): Promise<CandidateSocialConsent | undefined>;
+  getSocialConsentByCandidate(tenantId: string, candidateId: string): Promise<CandidateSocialConsent | undefined>;
+  getSocialConsentByToken(token: string): Promise<CandidateSocialConsent | undefined>;
+  createSocialConsent(tenantId: string, consent: InsertCandidateSocialConsent): Promise<CandidateSocialConsent>;
+  updateSocialConsent(tenantId: string, id: string, updates: UpdateCandidateSocialConsent): Promise<CandidateSocialConsent | undefined>;
+  
+  // Social Screening - Profiles
+  getSocialProfiles(tenantId: string, candidateId?: string): Promise<CandidateSocialProfile[]>;
+  getSocialProfile(tenantId: string, id: string): Promise<CandidateSocialProfile | undefined>;
+  getSocialProfilesByCandidate(tenantId: string, candidateId: string): Promise<CandidateSocialProfile[]>;
+  createSocialProfile(tenantId: string, profile: InsertCandidateSocialProfile): Promise<CandidateSocialProfile>;
+  updateSocialProfile(tenantId: string, id: string, updates: UpdateCandidateSocialProfile): Promise<CandidateSocialProfile | undefined>;
+  deleteSocialProfile(tenantId: string, id: string): Promise<boolean>;
+  
+  // Social Screening - Findings
+  getSocialScreeningFindings(tenantId: string, candidateId?: string): Promise<SocialScreeningFinding[]>;
+  getSocialScreeningFinding(tenantId: string, id: string): Promise<SocialScreeningFinding | undefined>;
+  getSocialScreeningFindingsByCandidate(tenantId: string, candidateId: string): Promise<SocialScreeningFinding[]>;
+  getSocialScreeningFindingByIntegrityCheck(tenantId: string, integrityCheckId: string): Promise<SocialScreeningFinding | undefined>;
+  getPendingHumanReviewFindings(tenantId: string): Promise<SocialScreeningFinding[]>;
+  createSocialScreeningFinding(tenantId: string, finding: InsertSocialScreeningFinding): Promise<SocialScreeningFinding>;
+  updateSocialScreeningFinding(tenantId: string, id: string, updates: UpdateSocialScreeningFinding): Promise<SocialScreeningFinding | undefined>;
+  
+  // Social Screening - Posts
+  getSocialScreeningPosts(tenantId: string, findingId: string): Promise<SocialScreeningPost[]>;
+  createSocialScreeningPost(tenantId: string, post: InsertSocialScreeningPost): Promise<SocialScreeningPost>;
+  deleteExpiredSocialScreeningPosts(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2356,6 +2401,168 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(reviewSubmissions.id, id), eq(reviewSubmissions.tenantId, tenantId)))
       .returning();
     return submission || undefined;
+  }
+
+  // ============================================
+  // SOCIAL SCREENING IMPLEMENTATION
+  // ============================================
+
+  // Social Screening - Consent
+  async getAllSocialConsents(tenantId: string): Promise<CandidateSocialConsent[]> {
+    return await db.select().from(candidateSocialConsent)
+      .where(eq(candidateSocialConsent.tenantId, tenantId))
+      .orderBy(desc(candidateSocialConsent.createdAt));
+  }
+
+  async getSocialConsent(tenantId: string, id: string): Promise<CandidateSocialConsent | undefined> {
+    const [consent] = await db.select().from(candidateSocialConsent)
+      .where(and(eq(candidateSocialConsent.id, id), eq(candidateSocialConsent.tenantId, tenantId)));
+    return consent || undefined;
+  }
+
+  async getSocialConsentByCandidate(tenantId: string, candidateId: string): Promise<CandidateSocialConsent | undefined> {
+    const [consent] = await db.select().from(candidateSocialConsent)
+      .where(and(
+        eq(candidateSocialConsent.tenantId, tenantId),
+        eq(candidateSocialConsent.candidateId, candidateId)
+      ))
+      .orderBy(desc(candidateSocialConsent.createdAt));
+    return consent || undefined;
+  }
+
+  async getSocialConsentByToken(token: string): Promise<CandidateSocialConsent | undefined> {
+    const [consent] = await db.select().from(candidateSocialConsent)
+      .where(eq(candidateSocialConsent.consentToken, token));
+    return consent || undefined;
+  }
+
+  async createSocialConsent(tenantId: string, consent: InsertCandidateSocialConsent): Promise<CandidateSocialConsent> {
+    const [newConsent] = await db.insert(candidateSocialConsent).values({ ...consent, tenantId }).returning();
+    return newConsent;
+  }
+
+  async updateSocialConsent(tenantId: string, id: string, updates: UpdateCandidateSocialConsent): Promise<CandidateSocialConsent | undefined> {
+    const [consent] = await db.update(candidateSocialConsent)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(candidateSocialConsent.id, id), eq(candidateSocialConsent.tenantId, tenantId)))
+      .returning();
+    return consent || undefined;
+  }
+
+  // Social Screening - Profiles
+  async getSocialProfiles(tenantId: string, candidateId?: string): Promise<CandidateSocialProfile[]> {
+    if (candidateId) {
+      return await db.select().from(candidateSocialProfiles)
+        .where(and(eq(candidateSocialProfiles.tenantId, tenantId), eq(candidateSocialProfiles.candidateId, candidateId)))
+        .orderBy(desc(candidateSocialProfiles.createdAt));
+    }
+    return await db.select().from(candidateSocialProfiles)
+      .where(eq(candidateSocialProfiles.tenantId, tenantId))
+      .orderBy(desc(candidateSocialProfiles.createdAt));
+  }
+
+  async getSocialProfile(tenantId: string, id: string): Promise<CandidateSocialProfile | undefined> {
+    const [profile] = await db.select().from(candidateSocialProfiles)
+      .where(and(eq(candidateSocialProfiles.id, id), eq(candidateSocialProfiles.tenantId, tenantId)));
+    return profile || undefined;
+  }
+
+  async getSocialProfilesByCandidate(tenantId: string, candidateId: string): Promise<CandidateSocialProfile[]> {
+    return await db.select().from(candidateSocialProfiles)
+      .where(and(eq(candidateSocialProfiles.tenantId, tenantId), eq(candidateSocialProfiles.candidateId, candidateId)))
+      .orderBy(desc(candidateSocialProfiles.createdAt));
+  }
+
+  async createSocialProfile(tenantId: string, profile: InsertCandidateSocialProfile): Promise<CandidateSocialProfile> {
+    const [newProfile] = await db.insert(candidateSocialProfiles).values({ ...profile, tenantId }).returning();
+    return newProfile;
+  }
+
+  async updateSocialProfile(tenantId: string, id: string, updates: UpdateCandidateSocialProfile): Promise<CandidateSocialProfile | undefined> {
+    const [profile] = await db.update(candidateSocialProfiles)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(candidateSocialProfiles.id, id), eq(candidateSocialProfiles.tenantId, tenantId)))
+      .returning();
+    return profile || undefined;
+  }
+
+  async deleteSocialProfile(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(candidateSocialProfiles)
+      .where(and(eq(candidateSocialProfiles.id, id), eq(candidateSocialProfiles.tenantId, tenantId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Social Screening - Findings
+  async getSocialScreeningFindings(tenantId: string, candidateId?: string): Promise<SocialScreeningFinding[]> {
+    if (candidateId) {
+      return await db.select().from(socialScreeningFindings)
+        .where(and(eq(socialScreeningFindings.tenantId, tenantId), eq(socialScreeningFindings.candidateId, candidateId)))
+        .orderBy(desc(socialScreeningFindings.createdAt));
+    }
+    return await db.select().from(socialScreeningFindings)
+      .where(eq(socialScreeningFindings.tenantId, tenantId))
+      .orderBy(desc(socialScreeningFindings.createdAt));
+  }
+
+  async getSocialScreeningFinding(tenantId: string, id: string): Promise<SocialScreeningFinding | undefined> {
+    const [finding] = await db.select().from(socialScreeningFindings)
+      .where(and(eq(socialScreeningFindings.id, id), eq(socialScreeningFindings.tenantId, tenantId)));
+    return finding || undefined;
+  }
+
+  async getSocialScreeningFindingsByCandidate(tenantId: string, candidateId: string): Promise<SocialScreeningFinding[]> {
+    return await db.select().from(socialScreeningFindings)
+      .where(and(eq(socialScreeningFindings.tenantId, tenantId), eq(socialScreeningFindings.candidateId, candidateId)))
+      .orderBy(desc(socialScreeningFindings.createdAt));
+  }
+
+  async getSocialScreeningFindingByIntegrityCheck(tenantId: string, integrityCheckId: string): Promise<SocialScreeningFinding | undefined> {
+    const [finding] = await db.select().from(socialScreeningFindings)
+      .where(and(
+        eq(socialScreeningFindings.tenantId, tenantId),
+        eq(socialScreeningFindings.integrityCheckId, integrityCheckId)
+      ));
+    return finding || undefined;
+  }
+
+  async getPendingHumanReviewFindings(tenantId: string): Promise<SocialScreeningFinding[]> {
+    return await db.select().from(socialScreeningFindings)
+      .where(and(
+        eq(socialScreeningFindings.tenantId, tenantId),
+        eq(socialScreeningFindings.humanReviewStatus, 'pending')
+      ))
+      .orderBy(desc(socialScreeningFindings.createdAt));
+  }
+
+  async createSocialScreeningFinding(tenantId: string, finding: InsertSocialScreeningFinding): Promise<SocialScreeningFinding> {
+    const [newFinding] = await db.insert(socialScreeningFindings).values({ ...finding, tenantId }).returning();
+    return newFinding;
+  }
+
+  async updateSocialScreeningFinding(tenantId: string, id: string, updates: UpdateSocialScreeningFinding): Promise<SocialScreeningFinding | undefined> {
+    const [finding] = await db.update(socialScreeningFindings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(socialScreeningFindings.id, id), eq(socialScreeningFindings.tenantId, tenantId)))
+      .returning();
+    return finding || undefined;
+  }
+
+  // Social Screening - Posts
+  async getSocialScreeningPosts(tenantId: string, findingId: string): Promise<SocialScreeningPost[]> {
+    return await db.select().from(socialScreeningPosts)
+      .where(and(eq(socialScreeningPosts.tenantId, tenantId), eq(socialScreeningPosts.findingId, findingId)))
+      .orderBy(desc(socialScreeningPosts.createdAt));
+  }
+
+  async createSocialScreeningPost(tenantId: string, post: InsertSocialScreeningPost): Promise<SocialScreeningPost> {
+    const [newPost] = await db.insert(socialScreeningPosts).values({ ...post, tenantId }).returning();
+    return newPost;
+  }
+
+  async deleteExpiredSocialScreeningPosts(): Promise<number> {
+    const result = await db.delete(socialScreeningPosts)
+      .where(lte(socialScreeningPosts.expiresAt, new Date()));
+    return result.rowCount ?? 0;
   }
 }
 

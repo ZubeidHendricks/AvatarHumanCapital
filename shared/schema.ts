@@ -1597,6 +1597,189 @@ export const reviewSubmissions = pgTable("review_submissions", {
   managerIdIdx: index("review_submissions_manager_id_idx").on(table.managerId),
 }));
 
+// ============================================
+// SOCIAL INTELLIGENCE SCREENING SYSTEM
+// ============================================
+
+// Social platforms supported for screening
+export const socialPlatforms = ["facebook", "twitter", "linkedin", "reddit", "instagram", "tiktok", "other"] as const;
+export type SocialPlatform = (typeof socialPlatforms)[number];
+
+// Social screening consent status
+export const consentStatuses = ["pending", "granted", "denied", "expired", "revoked"] as const;
+export type ConsentStatus = (typeof consentStatuses)[number];
+
+// Candidate social screening consent - POPIA/GDPR compliant consent tracking
+export const candidateSocialConsent = pgTable("candidate_social_consent", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  consentStatus: text("consent_status").notNull().default("pending"), // pending, granted, denied, expired, revoked
+  consentMethod: text("consent_method"), // 'whatsapp', 'email', 'web_form', 'verbal'
+  consentText: text("consent_text"), // The actual consent text shown to candidate
+  ipAddress: text("ip_address"), // For audit trail
+  userAgent: text("user_agent"), // Browser/device info
+  consentToken: varchar("consent_token"), // Unique token for consent verification
+  grantedAt: timestamp("granted_at"),
+  expiresAt: timestamp("expires_at"), // Consent expiration (e.g., 90 days)
+  revokedAt: timestamp("revoked_at"),
+  revokedReason: text("revoked_reason"),
+  whatsappMessageId: text("whatsapp_message_id"), // If requested via WhatsApp
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("candidate_social_consent_tenant_id_idx").on(table.tenantId),
+  candidateIdIdx: index("candidate_social_consent_candidate_id_idx").on(table.candidateId),
+  consentTokenIdx: index("candidate_social_consent_token_idx").on(table.consentToken),
+}));
+
+// Candidate social profiles - linked social media accounts for screening
+export const candidateSocialProfiles = pgTable("candidate_social_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  consentId: varchar("consent_id").references(() => candidateSocialConsent.id),
+  platform: text("platform").notNull(), // facebook, twitter, linkedin, reddit, instagram
+  profileUrl: text("profile_url"), // URL to the profile
+  profileUsername: text("profile_username"), // Username/handle
+  profileName: text("profile_name"), // Display name
+  profileData: jsonb("profile_data"), // Raw profile data (encrypted at rest)
+  lastScrapedAt: timestamp("last_scraped_at"),
+  scrapeStatus: text("scrape_status").notNull().default("pending"), // pending, in_progress, completed, failed
+  scrapeError: text("scrape_error"),
+  dataRetentionExpiresAt: timestamp("data_retention_expires_at"), // When raw data should be deleted (90 days)
+  isVerified: integer("is_verified").default(0), // If profile ownership was verified
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("candidate_social_profiles_tenant_id_idx").on(table.tenantId),
+  candidateIdIdx: index("candidate_social_profiles_candidate_id_idx").on(table.candidateId),
+  platformIdx: index("candidate_social_profiles_platform_idx").on(table.platform),
+}));
+
+// Social screening findings - AI analysis results
+export const socialScreeningFindings = pgTable("social_screening_findings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  integrityCheckId: varchar("integrity_check_id").references(() => integrityChecks.id),
+  profileId: varchar("profile_id").references(() => candidateSocialProfiles.id),
+  
+  // Scoring
+  overallScore: integer("overall_score"), // 0-100 culture fit score
+  riskLevel: text("risk_level"), // 'low', 'medium', 'high', 'critical'
+  cultureFitScore: integer("culture_fit_score"), // 0-100
+  professionalismScore: integer("professionalism_score"), // 0-100
+  communicationScore: integer("communication_score"), // 0-100
+  
+  // AI Analysis
+  sentimentAnalysis: jsonb("sentiment_analysis"), // { positive: %, negative: %, neutral: % }
+  topicsIdentified: text("topics_identified").array(), // ['politics', 'sports', 'tech', etc.]
+  redFlags: jsonb("red_flags"), // [{ type: '', description: '', severity: '', evidence: '' }]
+  positiveIndicators: jsonb("positive_indicators"), // [{ type: '', description: '', evidence: '' }]
+  culturalAlignmentFactors: jsonb("cultural_alignment_factors"), // { values: [], interests: [], behavior: [] }
+  
+  // Summary
+  aiSummary: text("ai_summary"), // Executive summary of findings
+  aiRecommendation: text("ai_recommendation"), // 'proceed', 'review', 'caution', 'reject'
+  aiConfidence: integer("ai_confidence"), // 0-100 confidence in the assessment
+  
+  // Human Review
+  humanReviewStatus: text("human_review_status").notNull().default("pending"), // pending, approved, modified, rejected
+  humanReviewedBy: varchar("human_reviewed_by").references(() => users.id),
+  humanReviewedAt: timestamp("human_reviewed_at"),
+  humanReviewNotes: text("human_review_notes"),
+  humanOverrideScore: integer("human_override_score"), // If HR overrides the AI score
+  humanOverrideReason: text("human_override_reason"),
+  
+  // Audit
+  analysisVersion: text("analysis_version"), // Model version used for analysis
+  processingTimeMs: integer("processing_time_ms"),
+  tokensUsed: integer("tokens_used"), // LLM tokens consumed
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("social_screening_findings_tenant_id_idx").on(table.tenantId),
+  candidateIdIdx: index("social_screening_findings_candidate_id_idx").on(table.candidateId),
+  integrityCheckIdIdx: index("social_screening_findings_integrity_check_idx").on(table.integrityCheckId),
+  riskLevelIdx: index("social_screening_findings_risk_level_idx").on(table.riskLevel),
+}));
+
+// Social screening posts - individual posts/content analyzed (ephemeral, deleted after 90 days)
+export const socialScreeningPosts = pgTable("social_screening_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  findingId: varchar("finding_id").notNull().references(() => socialScreeningFindings.id),
+  profileId: varchar("profile_id").references(() => candidateSocialProfiles.id),
+  platform: text("platform").notNull(),
+  postId: text("post_id"), // Original post ID from platform
+  postUrl: text("post_url"),
+  postDate: timestamp("post_date"),
+  contentType: text("content_type"), // 'text', 'image', 'video', 'link', 'repost'
+  contentSummary: text("content_summary"), // AI-summarized content (not raw text for privacy)
+  sentiment: text("sentiment"), // 'positive', 'negative', 'neutral'
+  relevanceScore: integer("relevance_score"), // 0-100 how relevant to screening
+  flagged: integer("flagged").default(0), // If this post triggered a red flag
+  flagReason: text("flag_reason"),
+  expiresAt: timestamp("expires_at"), // When to delete (90-day retention)
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  findingIdIdx: index("social_screening_posts_finding_id_idx").on(table.findingId),
+  expiresAtIdx: index("social_screening_posts_expires_at_idx").on(table.expiresAt),
+}));
+
+// Insert schemas for Social Screening
+export const insertCandidateSocialConsentSchema = createInsertSchema(candidateSocialConsent).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateCandidateSocialConsentSchema = insertCandidateSocialConsentSchema.partial();
+
+export const insertCandidateSocialProfileSchema = createInsertSchema(candidateSocialProfiles).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateCandidateSocialProfileSchema = insertCandidateSocialProfileSchema.partial();
+
+export const insertSocialScreeningFindingSchema = createInsertSchema(socialScreeningFindings).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateSocialScreeningFindingSchema = insertSocialScreeningFindingSchema.partial();
+
+export const insertSocialScreeningPostSchema = createInsertSchema(socialScreeningPosts).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+});
+
+// Types for Social Screening
+export type InsertCandidateSocialConsent = z.infer<typeof insertCandidateSocialConsentSchema>;
+export type UpdateCandidateSocialConsent = z.infer<typeof updateCandidateSocialConsentSchema>;
+export type CandidateSocialConsent = typeof candidateSocialConsent.$inferSelect;
+
+export type InsertCandidateSocialProfile = z.infer<typeof insertCandidateSocialProfileSchema>;
+export type UpdateCandidateSocialProfile = z.infer<typeof updateCandidateSocialProfileSchema>;
+export type CandidateSocialProfile = typeof candidateSocialProfiles.$inferSelect;
+
+export type InsertSocialScreeningFinding = z.infer<typeof insertSocialScreeningFindingSchema>;
+export type UpdateSocialScreeningFinding = z.infer<typeof updateSocialScreeningFindingSchema>;
+export type SocialScreeningFinding = typeof socialScreeningFindings.$inferSelect;
+
+export type InsertSocialScreeningPost = z.infer<typeof insertSocialScreeningPostSchema>;
+export type SocialScreeningPost = typeof socialScreeningPosts.$inferSelect;
+
 // Insert schemas for KPI system
 export const insertKpiTemplateSchema = createInsertSchema(kpiTemplates).omit({
   id: true,
