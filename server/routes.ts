@@ -5567,6 +5567,448 @@ Format your response as JSON:
     }
   });
 
+  // ============================================
+  // SOCIAL SCREENING ROUTES
+  // ============================================
+
+  // Social Screening - Consent Management
+  app.get("/api/social-screening/consents", async (req, res) => {
+    try {
+      const consents = await storage.getAllSocialConsents(req.tenant.id);
+      res.json(consents);
+    } catch (error) {
+      console.error("Error fetching social consents:", error);
+      res.status(500).json({ message: "Failed to fetch social consents" });
+    }
+  });
+
+  app.get("/api/social-screening/consents/:id", async (req, res) => {
+    try {
+      const consent = await storage.getSocialConsent(req.tenant.id, req.params.id);
+      if (!consent) {
+        return res.status(404).json({ message: "Social consent not found" });
+      }
+      res.json(consent);
+    } catch (error) {
+      console.error("Error fetching social consent:", error);
+      res.status(500).json({ message: "Failed to fetch social consent" });
+    }
+  });
+
+  app.get("/api/social-screening/consents/candidate/:candidateId", async (req, res) => {
+    try {
+      const consent = await storage.getSocialConsentByCandidate(req.tenant.id, req.params.candidateId);
+      res.json(consent || null);
+    } catch (error) {
+      console.error("Error fetching social consent by candidate:", error);
+      res.status(500).json({ message: "Failed to fetch social consent" });
+    }
+  });
+
+  // Public consent token verification (no auth required for candidate link)
+  app.get("/api/social-screening/verify-consent/:token", async (req, res) => {
+    try {
+      const consent = await storage.getSocialConsentByToken(req.params.token);
+      if (!consent) {
+        return res.status(404).json({ message: "Invalid or expired consent token" });
+      }
+      
+      // Check if token has expired (24 hours)
+      const tokenAge = Date.now() - new Date(consent.createdAt).getTime();
+      if (tokenAge > 24 * 60 * 60 * 1000) {
+        return res.status(410).json({ message: "Consent token has expired" });
+      }
+      
+      // Get candidate info
+      const candidate = await storage.getCandidate(consent.tenantId, consent.candidateId);
+      
+      res.json({ 
+        consent,
+        candidate: candidate ? { name: candidate.name, email: candidate.email } : null
+      });
+    } catch (error) {
+      console.error("Error verifying consent token:", error);
+      res.status(500).json({ message: "Failed to verify consent token" });
+    }
+  });
+
+  // Candidate submits consent (public endpoint)
+  app.post("/api/social-screening/submit-consent/:token", async (req, res) => {
+    try {
+      const consent = await storage.getSocialConsentByToken(req.params.token);
+      if (!consent) {
+        return res.status(404).json({ message: "Invalid or expired consent token" });
+      }
+      
+      const { granted, platforms, socialHandles, ipAddress, userAgent } = req.body;
+      
+      const updated = await storage.updateSocialConsent(consent.tenantId, consent.id, {
+        consentGranted: granted,
+        consentedPlatforms: platforms || [],
+        socialHandles: socialHandles || {},
+        consentGrantedAt: granted ? new Date() : undefined,
+        ipAddress,
+        userAgent
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error submitting consent:", error);
+      res.status(500).json({ message: "Failed to submit consent" });
+    }
+  });
+
+  app.post("/api/social-screening/consents", async (req, res) => {
+    try {
+      const { candidateId } = req.body;
+      
+      // Verify candidate exists
+      const candidate = await storage.getCandidate(req.tenant.id, candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+      
+      // Generate unique consent token
+      const consentToken = crypto.randomUUID();
+      
+      const consent = await storage.createSocialConsent(req.tenant.id, {
+        candidateId,
+        consentToken,
+        consentGranted: false,
+        consentedPlatforms: [],
+        socialHandles: {}
+      });
+      
+      res.status(201).json(consent);
+    } catch (error) {
+      console.error("Error creating social consent:", error);
+      res.status(500).json({ message: "Failed to create social consent" });
+    }
+  });
+
+  // Request consent via WhatsApp
+  app.post("/api/social-screening/consents/:id/send-request", async (req, res) => {
+    try {
+      const consent = await storage.getSocialConsent(req.tenant.id, req.params.id);
+      if (!consent) {
+        return res.status(404).json({ message: "Social consent not found" });
+      }
+      
+      const candidate = await storage.getCandidate(req.tenant.id, consent.candidateId);
+      if (!candidate || !candidate.phone) {
+        return res.status(400).json({ message: "Candidate phone number not available" });
+      }
+      
+      // Send WhatsApp message with consent link
+      const consentLink = `${req.headers.origin || process.env.APP_URL}/social-consent/${consent.consentToken}`;
+      
+      const waId = candidate.phone.replace(/\D/g, '');
+      const conversation = await whatsappService.getOrCreateConversation(
+        req.tenant.id,
+        candidate.phone,
+        waId,
+        candidate.name,
+        consent.candidateId,
+        'social_screening'
+      );
+      
+      await whatsappService.sendMessage(conversation.id, {
+        type: 'text',
+        text: {
+          body: `Hello ${candidate.name},\n\nAs part of our hiring process, we conduct a culture fit assessment through social media screening. This is done in compliance with POPIA regulations.\n\nPlease review and provide your consent here: ${consentLink}\n\nThis link expires in 24 hours.`
+        }
+      });
+      
+      res.json({ success: true, message: "Consent request sent via WhatsApp" });
+    } catch (error) {
+      console.error("Error sending consent request:", error);
+      res.status(500).json({ message: "Failed to send consent request" });
+    }
+  });
+
+  // Social Screening - Profiles
+  app.get("/api/social-screening/profiles", async (req, res) => {
+    try {
+      const candidateId = req.query.candidateId as string | undefined;
+      const profiles = await storage.getSocialProfiles(req.tenant.id, candidateId);
+      res.json(profiles);
+    } catch (error) {
+      console.error("Error fetching social profiles:", error);
+      res.status(500).json({ message: "Failed to fetch social profiles" });
+    }
+  });
+
+  app.get("/api/social-screening/profiles/candidate/:candidateId", async (req, res) => {
+    try {
+      const profiles = await storage.getSocialProfilesByCandidate(req.tenant.id, req.params.candidateId);
+      res.json(profiles);
+    } catch (error) {
+      console.error("Error fetching social profiles:", error);
+      res.status(500).json({ message: "Failed to fetch social profiles" });
+    }
+  });
+
+  app.post("/api/social-screening/profiles", async (req, res) => {
+    try {
+      const { candidateId, platform, profileUrl, username } = req.body;
+      
+      // Verify consent was granted for this platform
+      const consent = await storage.getSocialConsentByCandidate(req.tenant.id, candidateId);
+      if (!consent || !consent.consentGranted) {
+        return res.status(403).json({ message: "Candidate has not granted consent for social screening" });
+      }
+      
+      if (!consent.consentedPlatforms.includes(platform)) {
+        return res.status(403).json({ message: `Candidate has not consented to ${platform} screening` });
+      }
+      
+      const profile = await storage.createSocialProfile(req.tenant.id, {
+        candidateId,
+        platform,
+        profileUrl,
+        username,
+        verificationStatus: 'pending'
+      });
+      
+      res.status(201).json(profile);
+    } catch (error) {
+      console.error("Error creating social profile:", error);
+      res.status(500).json({ message: "Failed to create social profile" });
+    }
+  });
+
+  app.patch("/api/social-screening/profiles/:id", async (req, res) => {
+    try {
+      const profile = await storage.updateSocialProfile(req.tenant.id, req.params.id, req.body);
+      if (!profile) {
+        return res.status(404).json({ message: "Social profile not found" });
+      }
+      res.json(profile);
+    } catch (error) {
+      console.error("Error updating social profile:", error);
+      res.status(500).json({ message: "Failed to update social profile" });
+    }
+  });
+
+  app.delete("/api/social-screening/profiles/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteSocialProfile(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Social profile not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting social profile:", error);
+      res.status(500).json({ message: "Failed to delete social profile" });
+    }
+  });
+
+  // Social Screening - Findings
+  app.get("/api/social-screening/findings", async (req, res) => {
+    try {
+      const candidateId = req.query.candidateId as string | undefined;
+      const findings = await storage.getSocialScreeningFindings(req.tenant.id, candidateId);
+      res.json(findings);
+    } catch (error) {
+      console.error("Error fetching social findings:", error);
+      res.status(500).json({ message: "Failed to fetch social findings" });
+    }
+  });
+
+  app.get("/api/social-screening/findings/pending-review", async (req, res) => {
+    try {
+      const findings = await storage.getPendingHumanReviewFindings(req.tenant.id);
+      res.json(findings);
+    } catch (error) {
+      console.error("Error fetching pending review findings:", error);
+      res.status(500).json({ message: "Failed to fetch pending findings" });
+    }
+  });
+
+  app.get("/api/social-screening/findings/:id", async (req, res) => {
+    try {
+      const finding = await storage.getSocialScreeningFinding(req.tenant.id, req.params.id);
+      if (!finding) {
+        return res.status(404).json({ message: "Social screening finding not found" });
+      }
+      res.json(finding);
+    } catch (error) {
+      console.error("Error fetching social finding:", error);
+      res.status(500).json({ message: "Failed to fetch social finding" });
+    }
+  });
+
+  app.get("/api/social-screening/findings/candidate/:candidateId", async (req, res) => {
+    try {
+      const findings = await storage.getSocialScreeningFindingsByCandidate(req.tenant.id, req.params.candidateId);
+      res.json(findings);
+    } catch (error) {
+      console.error("Error fetching social findings:", error);
+      res.status(500).json({ message: "Failed to fetch social findings" });
+    }
+  });
+
+  // Initiate social screening for a candidate
+  app.post("/api/social-screening/initiate/:candidateId", async (req, res) => {
+    try {
+      const candidateId = req.params.candidateId;
+      
+      // Verify candidate exists
+      const candidate = await storage.getCandidate(req.tenant.id, candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+      
+      // Check consent status
+      const consent = await storage.getSocialConsentByCandidate(req.tenant.id, candidateId);
+      if (!consent || !consent.consentGranted) {
+        return res.status(403).json({ message: "Candidate consent required before initiating social screening" });
+      }
+      
+      // Create integrity check for social screening
+      const integrityCheck = await storage.createIntegrityCheck(req.tenant.id, {
+        candidateId,
+        checkType: 'social_screening',
+        status: 'pending',
+        priority: 'medium',
+        initiatedBy: 'system'
+      });
+      
+      // Create social screening finding record
+      const finding = await storage.createSocialScreeningFinding(req.tenant.id, {
+        candidateId,
+        integrityCheckId: integrityCheck.id,
+        screeningStatus: 'pending',
+        platformsAnalyzed: consent.consentedPlatforms,
+        overallRiskLevel: 'unknown',
+        cultureFitScore: null,
+        humanReviewStatus: 'not_required'
+      });
+      
+      // Import and run the social screening agent
+      try {
+        const { SocialScreeningAgent } = await import("./social-screening-agent");
+        const agent = new SocialScreeningAgent(storage);
+        
+        // Run analysis asynchronously
+        agent.runScreening(req.tenant.id, finding.id, consent.consentedPlatforms, consent.socialHandles || {})
+          .catch(err => console.error("Social screening failed:", err));
+      } catch (agentError) {
+        console.warn("Social screening agent not available, marking for manual review:", agentError);
+        await storage.updateSocialScreeningFinding(req.tenant.id, finding.id, {
+          screeningStatus: 'failed',
+          humanReviewStatus: 'pending'
+        });
+      }
+      
+      res.status(201).json({ 
+        integrityCheck, 
+        finding,
+        message: "Social screening initiated" 
+      });
+    } catch (error) {
+      console.error("Error initiating social screening:", error);
+      res.status(500).json({ message: "Failed to initiate social screening" });
+    }
+  });
+
+  // Human review of social screening findings
+  app.post("/api/social-screening/findings/:id/review", async (req, res) => {
+    try {
+      const { decision, reviewerNotes, adjustedRiskLevel, adjustedCultureFitScore } = req.body;
+      
+      const finding = await storage.getSocialScreeningFinding(req.tenant.id, req.params.id);
+      if (!finding) {
+        return res.status(404).json({ message: "Social screening finding not found" });
+      }
+      
+      const updated = await storage.updateSocialScreeningFinding(req.tenant.id, req.params.id, {
+        humanReviewStatus: decision, // 'approved' | 'rejected' | 'flagged'
+        humanReviewNotes: reviewerNotes,
+        humanReviewedAt: new Date(),
+        humanReviewedBy: 'current_user', // Should come from auth context
+        overallRiskLevel: adjustedRiskLevel || finding.overallRiskLevel,
+        cultureFitScore: adjustedCultureFitScore ?? finding.cultureFitScore
+      });
+      
+      // Update related integrity check
+      if (finding.integrityCheckId) {
+        await storage.updateIntegrityCheck(req.tenant.id, finding.integrityCheckId, {
+          status: decision === 'approved' ? 'passed' : decision === 'rejected' ? 'failed' : 'flagged',
+          completedAt: new Date(),
+          result: {
+            socialScreeningResult: decision,
+            riskLevel: adjustedRiskLevel || finding.overallRiskLevel,
+            cultureFitScore: adjustedCultureFitScore ?? finding.cultureFitScore
+          }
+        });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error reviewing social finding:", error);
+      res.status(500).json({ message: "Failed to submit review" });
+    }
+  });
+
+  // Get posts for a finding
+  app.get("/api/social-screening/findings/:findingId/posts", async (req, res) => {
+    try {
+      const posts = await storage.getSocialScreeningPosts(req.tenant.id, req.params.findingId);
+      res.json(posts);
+    } catch (error) {
+      console.error("Error fetching social posts:", error);
+      res.status(500).json({ message: "Failed to fetch social posts" });
+    }
+  });
+
+  // Cleanup expired posts (admin/cron endpoint)
+  app.post("/api/social-screening/cleanup-expired", requireAdmin, async (req, res) => {
+    try {
+      const deletedCount = await storage.deleteExpiredSocialScreeningPosts();
+      res.json({ success: true, deletedCount });
+    } catch (error) {
+      console.error("Error cleaning up expired posts:", error);
+      res.status(500).json({ message: "Failed to cleanup expired posts" });
+    }
+  });
+
+  // Get social screening dashboard stats
+  app.get("/api/social-screening/stats", async (req, res) => {
+    try {
+      const [consents, findings, pendingReviews] = await Promise.all([
+        storage.getAllSocialConsents(req.tenant.id),
+        storage.getSocialScreeningFindings(req.tenant.id),
+        storage.getPendingHumanReviewFindings(req.tenant.id)
+      ]);
+      
+      const stats = {
+        totalConsentsRequested: consents.length,
+        consentGranted: consents.filter(c => c.consentGranted).length,
+        consentPending: consents.filter(c => !c.consentGranted && !c.consentGrantedAt).length,
+        consentDenied: consents.filter(c => !c.consentGranted && c.consentGrantedAt).length,
+        totalScreenings: findings.length,
+        screeningsCompleted: findings.filter(f => f.screeningStatus === 'completed').length,
+        screeningsPending: findings.filter(f => f.screeningStatus === 'pending' || f.screeningStatus === 'in_progress').length,
+        screeningsFailed: findings.filter(f => f.screeningStatus === 'failed').length,
+        pendingHumanReview: pendingReviews.length,
+        averageCultureFitScore: findings.filter(f => f.cultureFitScore !== null).reduce((sum, f) => sum + (f.cultureFitScore || 0), 0) / 
+          (findings.filter(f => f.cultureFitScore !== null).length || 1),
+        riskDistribution: {
+          low: findings.filter(f => f.overallRiskLevel === 'low').length,
+          medium: findings.filter(f => f.overallRiskLevel === 'medium').length,
+          high: findings.filter(f => f.overallRiskLevel === 'high').length,
+          critical: findings.filter(f => f.overallRiskLevel === 'critical').length
+        }
+      };
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching social screening stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
