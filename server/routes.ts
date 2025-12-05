@@ -20,6 +20,7 @@ import { requireAdmin } from "./admin-middleware";
 import multer from "multer";
 import { PDFParse } from "pdf-parse";
 import AdmZip from "adm-zip";
+import mammoth from "mammoth";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -3657,13 +3658,28 @@ Format your response as JSON:
             status: "processing",
           });
 
-          // Parse PDF to extract text
+          // Parse file to extract text based on type
           let rawText = "";
           if (file.mimetype === "application/pdf") {
             const parser = new PDFParse({ data: file.buffer });
             const pdfData = await parser.getText();
             rawText = pdfData.text;
             await parser.destroy();
+          } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+                     file.originalname.toLowerCase().endsWith('.docx')) {
+            // Handle Word documents (.docx)
+            const result = await mammoth.extractRawText({ buffer: file.buffer });
+            rawText = result.value;
+          } else if (file.mimetype === "application/msword" ||
+                     file.originalname.toLowerCase().endsWith('.doc')) {
+            // Older .doc format - try mammoth but may not work perfectly
+            try {
+              const result = await mammoth.extractRawText({ buffer: file.buffer });
+              rawText = result.value;
+            } catch (docError) {
+              console.warn(`Could not parse .doc file ${file.originalname}, treating as text`);
+              rawText = file.buffer.toString("utf-8");
+            }
           } else {
             rawText = file.buffer.toString("utf-8");
           }
@@ -3768,57 +3784,76 @@ Format your response as JSON:
       const zip = new AdmZip(file.buffer);
       const zipEntries = zip.getEntries();
       
-      // Filter for PDF files only
-      const pdfEntries = zipEntries.filter(entry => 
-        !entry.isDirectory && 
-        entry.entryName.toLowerCase().endsWith('.pdf') &&
-        !entry.entryName.startsWith('__MACOSX') && // Ignore macOS metadata
-        !entry.entryName.includes('/.') // Ignore hidden files
-      );
+      // Filter for PDF and Word document files
+      const cvEntries = zipEntries.filter(entry => {
+        if (entry.isDirectory) return false;
+        const name = entry.entryName.toLowerCase();
+        if (name.startsWith('__macosx') || name.includes('/.')) return false;
+        return name.endsWith('.pdf') || name.endsWith('.docx') || name.endsWith('.doc');
+      });
 
-      if (pdfEntries.length === 0) {
-        return res.status(400).json({ message: "No PDF files found in the ZIP archive" });
+      if (cvEntries.length === 0) {
+        return res.status(400).json({ message: "No CV files (PDF, DOCX, DOC) found in the ZIP archive" });
       }
 
-      console.log(`Found ${pdfEntries.length} PDF files in ZIP`);
+      console.log(`Found ${cvEntries.length} CV files in ZIP`);
 
       // Create batch for this ZIP upload
       const batch = await storage.createDocumentBatch(req.tenant.id, {
         name: `ZIP Upload: ${file.originalname} - ${new Date().toLocaleDateString()}`,
         type: "cvs",
         status: "processing",
-        totalDocuments: pdfEntries.length,
+        totalDocuments: cvEntries.length,
         processedDocuments: 0,
         failedDocuments: 0,
       });
 
       const results: Array<{ filename: string; status: string; candidateId?: string; error?: string }> = [];
 
-      // Process each PDF from the ZIP
-      for (const entry of pdfEntries) {
-        const pdfFilename = entry.entryName.split('/').pop() || entry.entryName;
+      // Process each CV from the ZIP
+      for (const entry of cvEntries) {
+        const cvFilename = entry.entryName.split('/').pop() || entry.entryName;
+        const fileExt = cvFilename.toLowerCase().split('.').pop();
         
         try {
-          console.log(`Processing: ${pdfFilename}`);
-          const pdfBuffer = entry.getData();
+          console.log(`Processing: ${cvFilename}`);
+          const fileBuffer = entry.getData();
+          
+          // Determine mime type based on extension
+          let mimeType = "application/octet-stream";
+          if (fileExt === "pdf") {
+            mimeType = "application/pdf";
+          } else if (fileExt === "docx") {
+            mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+          } else if (fileExt === "doc") {
+            mimeType = "application/msword";
+          }
           
           // Create document record
           const doc = await storage.createDocument(req.tenant.id, {
             batchId: batch.id,
-            filename: `${Date.now()}-${pdfFilename}`,
-            originalFilename: pdfFilename,
-            mimeType: "application/pdf",
-            fileSize: pdfBuffer.length,
-            filePath: `/uploads/${batch.id}/${pdfFilename}`,
+            filename: `${Date.now()}-${cvFilename}`,
+            originalFilename: cvFilename,
+            mimeType,
+            fileSize: fileBuffer.length,
+            filePath: `/uploads/${batch.id}/${cvFilename}`,
             type: "cv",
             status: "processing",
           });
 
-          // Extract text from PDF
-          const parser = new PDFParse({ data: pdfBuffer });
-          const pdfData = await parser.getText();
-          let rawText = pdfData.text;
-          await parser.destroy();
+          // Extract text based on file type
+          let rawText = "";
+          if (fileExt === "pdf") {
+            const parser = new PDFParse({ data: fileBuffer });
+            const pdfData = await parser.getText();
+            rawText = pdfData.text;
+            await parser.destroy();
+          } else if (fileExt === "docx" || fileExt === "doc") {
+            const result = await mammoth.extractRawText({ buffer: fileBuffer });
+            rawText = result.value;
+          } else {
+            rawText = fileBuffer.toString("utf-8");
+          }
           
           // Sanitize text for PostgreSQL
           rawText = rawText.replace(/\x00/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
@@ -3847,16 +3882,18 @@ Format your response as JSON:
             match: 0,
           });
 
-          // Extract profile photo
+          // Extract profile photo (only for PDFs)
           let photoUrl: string | null = null;
-          try {
-            photoUrl = await cvParser.extractProfilePhoto(pdfBuffer, candidate.id);
-            if (photoUrl) {
-              await storage.updateCandidate(req.tenant.id, candidate.id, { photoUrl });
-              console.log(`Photo extracted for ${pdfFilename}`);
+          if (fileExt === "pdf") {
+            try {
+              photoUrl = await cvParser.extractProfilePhoto(fileBuffer, candidate.id);
+              if (photoUrl) {
+                await storage.updateCandidate(req.tenant.id, candidate.id, { photoUrl });
+                console.log(`Photo extracted for ${cvFilename}`);
+              }
+            } catch (photoError) {
+              console.warn(`Could not extract photo from ${cvFilename}:`, photoError);
             }
-          } catch (photoError) {
-            console.warn(`Could not extract photo from ${pdfFilename}:`, photoError);
           }
 
           // Update document
@@ -3867,12 +3904,12 @@ Format your response as JSON:
             linkedCandidateId: candidate.id,
           });
 
-          results.push({ filename: pdfFilename, status: "success", candidateId: candidate.id });
-          console.log(`Successfully processed: ${pdfFilename}`);
+          results.push({ filename: cvFilename, status: "success", candidateId: candidate.id });
+          console.log(`Successfully processed: ${cvFilename}`);
         } catch (fileError: unknown) {
           const errorMessage = fileError instanceof Error ? fileError.message : "Unknown error";
-          console.error(`Error processing ${pdfFilename}:`, fileError);
-          results.push({ filename: pdfFilename, status: "failed", error: errorMessage });
+          console.error(`Error processing ${cvFilename}:`, fileError);
+          results.push({ filename: cvFilename, status: "failed", error: errorMessage });
         }
       }
 
@@ -3880,7 +3917,7 @@ Format your response as JSON:
       const successCount = results.filter(r => r.status === "success").length;
       const failCount = results.filter(r => r.status === "failed").length;
       await storage.updateDocumentBatch(req.tenant.id, batch.id, {
-        status: failCount === pdfEntries.length ? "failed" : successCount === pdfEntries.length ? "completed" : "partially_completed",
+        status: failCount === cvEntries.length ? "failed" : successCount === cvEntries.length ? "completed" : "partially_completed",
         processedDocuments: successCount,
         failedDocuments: failCount,
       });
