@@ -568,8 +568,9 @@ export default function IntegrityAgent() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: index * 0.05 }}
                               data-testid={`result-card-${check.id}`}
+                              className="min-w-0"
                             >
-                              <Card className={`bg-white/5 border transition-colors ${
+                              <Card className={`bg-white/5 border transition-colors overflow-hidden ${
                                 check.result === "Flagged" ? "border-yellow-500/30" :
                                 check.result === "Clear" || check.result === "Verified" ? "border-green-500/30" :
                                 "border-white/10"
@@ -629,22 +630,22 @@ export default function IntegrityAgent() {
 
                                               return (
                                                 <div key={checkType} className="space-y-2">
-                                                  <div className="p-2 rounded bg-black/20 border border-white/5">
+                                                  <div className="p-2 rounded bg-black/20 border border-white/5 overflow-hidden">
                                                     <div className="text-[10px] font-semibold text-primary mb-1 uppercase">{checkType} Check:</div>
-                                                    <div className="text-[10px] text-muted-foreground whitespace-pre-wrap">
+                                                    <div className="text-[10px] text-muted-foreground whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>
                                                       {checkData.findings || 'No findings available'}
                                                     </div>
                                                     
                                                     {/* Missing Documents Alert */}
                                                     {checkData.missingDocuments && checkData.missingDocuments.length > 0 && (
-                                                      <div className="mt-2 p-2 rounded bg-yellow-500/10 border border-yellow-500/30">
+                                                      <div className="mt-2 p-2 rounded bg-yellow-500/10 border border-yellow-500/30 overflow-hidden">
                                                         <div className="flex items-center gap-1 text-yellow-500 mb-1">
-                                                          <FileWarning className="w-3 h-3" />
+                                                          <FileWarning className="w-3 h-3 shrink-0" />
                                                           <span className="text-[10px] font-semibold">Missing Documents:</span>
                                                         </div>
-                                                        <ul className="text-[10px] text-yellow-500/80 space-y-0.5 ml-4">
+                                                        <ul className="text-[10px] text-yellow-500/80 space-y-0.5 ml-4 break-words">
                                                           {checkData.missingDocuments.map((doc: string, idx: number) => (
-                                                            <li key={idx} className="list-disc">{doc}</li>
+                                                            <li key={idx} className="list-disc break-words">{doc}</li>
                                                           ))}
                                                         </ul>
                                                       </div>
@@ -652,12 +653,12 @@ export default function IntegrityAgent() {
                                                     
                                                     {/* Follow-Up Required Alert */}
                                                     {checkData.requiresFollowUp && (
-                                                      <div className="mt-2 p-2 rounded bg-orange-500/10 border border-orange-500/30">
+                                                      <div className="mt-2 p-2 rounded bg-orange-500/10 border border-orange-500/30 overflow-hidden">
                                                         <div className="flex items-center gap-1 text-orange-500 mb-1">
-                                                          <Bell className="w-3 h-3" />
+                                                          <Bell className="w-3 h-3 shrink-0" />
                                                           <span className="text-[10px] font-semibold">HR Follow-Up Required:</span>
                                                         </div>
-                                                        <div className="text-[10px] text-orange-500/80">
+                                                        <div className="text-[10px] text-orange-500/80 break-words">
                                                           {checkData.followUpReason || 'Manual verification needed'}
                                                         </div>
                                                       </div>
@@ -669,9 +670,9 @@ export default function IntegrityAgent() {
                                           </>
                                         ) : (
                                           /* Fallback for string-based findings (legacy checks or in-progress status) */
-                                          <div className="p-2 rounded bg-black/20 border border-white/5">
+                                          <div className="p-2 rounded bg-black/20 border border-white/5 overflow-hidden">
                                             <div className="text-[10px] font-semibold text-primary mb-1">Findings:</div>
-                                            <div className="text-[10px] text-muted-foreground whitespace-pre-wrap">
+                                            <div className="text-[10px] text-muted-foreground whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>
                                               {String(parsedFindings)}
                                             </div>
                                           </div>
