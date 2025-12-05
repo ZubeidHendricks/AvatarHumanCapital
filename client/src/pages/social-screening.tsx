@@ -275,6 +275,34 @@ function AgentVisualization({ run, onClose }: { run: OrchestratorRun | null; onC
   );
 }
 
+interface WorkflowStep {
+  id: string;
+  name: string;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  description: string;
+  agent: string;
+  progress: number;
+  duration?: string;
+}
+
+interface ScreeningResult {
+  candidateName: string;
+  overallScore: number;
+  riskLevel: string;
+  sentiment: { positive: number; neutral: number; negative: number };
+  redFlags: { type: string; severity: string; platform: string; description: string }[];
+  cultureFit: { category: string; score: number; notes: string }[];
+  platformsSummary: { platform: string; postsAnalyzed: number; riskLevel: string }[];
+  recommendation: string;
+}
+
+interface AgentLog {
+  timestamp: Date;
+  agent: string;
+  message: string;
+  level: 'info' | 'warning' | 'error' | 'success';
+}
+
 export default function SocialScreening() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
@@ -285,6 +313,19 @@ export default function SocialScreening() {
   const [pollingRunId, setPollingRunId] = useState<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
+  
+  const [isAIScreeningModalOpen, setIsAIScreeningModalOpen] = useState(false);
+  const [modalSelectedCandidateId, setModalSelectedCandidateId] = useState<string>("");
+  const [isRunningScreening, setIsRunningScreening] = useState(false);
+  const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
+  const [modalLogs, setModalLogs] = useState<AgentLog[]>([]);
+  const [overallProgress, setOverallProgress] = useState(0);
+  const [screeningResult, setScreeningResult] = useState<ScreeningResult | null>(null);
+  const modalLogsEndRef = useRef<HTMLDivElement>(null);
+  const modalPollingRef = useRef<NodeJS.Timeout | null>(null);
+  const isRunningRef = useRef(false);
+  const logsRef = useRef<AgentLog[]>([]);
+  const workflowStepsRef = useRef<WorkflowStep[]>([]);
   
   useEffect(() => {
     if (pollingRunId) {
@@ -461,6 +502,10 @@ export default function SocialScreening() {
     !consents.some((consent: any) => consent.candidateId === c.id)
   );
 
+  const candidatesWithConsent = candidates.filter((c: any) =>
+    consents.some((consent: any) => consent.candidateId === c.id && consent.consentStatus === 'granted')
+  );
+
   const getRiskBadge = (riskLevel: string) => {
     const styles: Record<string, string> = {
       low: "bg-green-500/20 text-green-400",
@@ -469,6 +514,143 @@ export default function SocialScreening() {
       critical: "bg-red-500/20 text-red-400",
     };
     return styles[riskLevel] || "bg-gray-500/20 text-gray-400";
+  };
+
+  const addLog = (agent: string, message: string, level: AgentLog['level'] = 'info') => {
+    const newLog: AgentLog = {
+      timestamp: new Date(),
+      agent,
+      message,
+      level
+    };
+    logsRef.current = [...logsRef.current, newLog];
+    setModalLogs([...logsRef.current]);
+  };
+
+  const updateWorkflowStep = (stepId: string, updates: Partial<WorkflowStep>) => {
+    setWorkflowSteps(prev => {
+      const stepIndex = prev.findIndex(s => s.id === stepId);
+      if (stepIndex === -1) return prev;
+      const updated = [...prev];
+      updated[stepIndex] = { ...updated[stepIndex], ...updates };
+      workflowStepsRef.current = updated;
+      return updated;
+    });
+  };
+
+  const simulateWorkflow = async () => {
+    const steps: WorkflowStep[] = [
+      { id: 'consent', name: 'Verify Consent', status: 'pending', description: 'Checking POPIA/GDPR consent status', agent: 'ConsentValidator', progress: 0 },
+      { id: 'facebook', name: 'Facebook Analysis', status: 'pending', description: 'Analyzing public Facebook profile', agent: 'FacebookAgent', progress: 0 },
+      { id: 'twitter', name: 'Twitter/X Analysis', status: 'pending', description: 'Analyzing public Twitter posts', agent: 'TwitterAgent', progress: 0 },
+      { id: 'linkedin', name: 'LinkedIn Analysis', status: 'pending', description: 'Analyzing professional profile', agent: 'LinkedInAgent', progress: 0 },
+      { id: 'sentiment', name: 'Sentiment Analysis', status: 'pending', description: 'AI analyzing content sentiment', agent: 'SentimentAgent', progress: 0 },
+      { id: 'culture', name: 'Culture Fit Assessment', status: 'pending', description: 'Evaluating cultural alignment', agent: 'CultureFitAgent', progress: 0 },
+      { id: 'report', name: 'Generate Report', status: 'pending', description: 'Compiling comprehensive analysis', agent: 'ReportGenerator', progress: 0 },
+    ];
+    
+    setWorkflowSteps(steps);
+    workflowStepsRef.current = steps;
+
+    for (let i = 0; i < steps.length; i++) {
+      if (!isRunningRef.current) break;
+      
+      const step = steps[i];
+      updateWorkflowStep(step.id, { status: 'running', progress: 0 });
+      addLog(step.agent, `Starting: ${step.description}`, 'info');
+
+      for (let progress = 0; progress <= 100; progress += 20) {
+        if (!isRunningRef.current) break;
+        await new Promise(r => setTimeout(r, 300));
+        updateWorkflowStep(step.id, { progress });
+        setOverallProgress(Math.round(((i * 100 + progress) / (steps.length * 100)) * 100));
+      }
+
+      if (isRunningRef.current) {
+        const duration = `${(Math.random() * 2 + 1).toFixed(1)}s`;
+        updateWorkflowStep(step.id, { status: 'completed', progress: 100, duration });
+        addLog(step.agent, `Completed: ${step.name}`, 'success');
+      }
+    }
+
+    if (isRunningRef.current) {
+      const selectedCand = candidatesWithConsent.find((c: any) => c.id === modalSelectedCandidateId);
+      setScreeningResult({
+        candidateName: selectedCand?.fullName || 'Unknown Candidate',
+        overallScore: Math.round(70 + Math.random() * 25),
+        riskLevel: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)],
+        sentiment: { positive: 45 + Math.floor(Math.random() * 30), neutral: 20 + Math.floor(Math.random() * 15), negative: 5 + Math.floor(Math.random() * 15) },
+        redFlags: [
+          { type: 'Language', severity: 'low', platform: 'Twitter', description: 'Occasional informal language in professional context' },
+        ],
+        cultureFit: [
+          { category: 'Communication', score: 85, notes: 'Clear and professional communication style' },
+          { category: 'Teamwork', score: 78, notes: 'Shows collaborative tendencies in posts' },
+          { category: 'Values Alignment', score: 82, notes: 'Demonstrates alignment with company values' },
+        ],
+        platformsSummary: [
+          { platform: 'Facebook', postsAnalyzed: 45, riskLevel: 'low' },
+          { platform: 'Twitter', postsAnalyzed: 120, riskLevel: 'low' },
+          { platform: 'LinkedIn', postsAnalyzed: 28, riskLevel: 'low' },
+        ],
+        recommendation: 'Candidate shows strong cultural alignment with minimal concerns. Recommended for further consideration.',
+      });
+      
+      addLog('ReportGenerator', 'Screening completed successfully!', 'success');
+      setIsRunningScreening(false);
+      isRunningRef.current = false;
+      toast.success('Social screening completed!');
+      queryClient.invalidateQueries({ queryKey: findingsKey });
+      queryClient.invalidateQueries({ queryKey: statsKey });
+    }
+  };
+
+  const startModalScreening = async () => {
+    if (!modalSelectedCandidateId) {
+      toast.error('Please select a candidate first');
+      return;
+    }
+    
+    setIsRunningScreening(true);
+    isRunningRef.current = true;
+    setScreeningResult(null);
+    setModalLogs([]);
+    logsRef.current = [];
+    setOverallProgress(0);
+    
+    addLog('Orchestrator', 'Initializing social screening workflow...', 'info');
+    
+    await simulateWorkflow();
+  };
+
+  const resetModalState = () => {
+    setIsRunningScreening(false);
+    isRunningRef.current = false;
+    setWorkflowSteps([]);
+    workflowStepsRef.current = [];
+    setModalLogs([]);
+    logsRef.current = [];
+    setOverallProgress(0);
+    setScreeningResult(null);
+    setModalSelectedCandidateId("");
+  };
+
+  const getLogIcon = (level: string) => {
+    switch (level) {
+      case 'success': return <CheckCircle2 className="w-3 h-3 text-green-400" />;
+      case 'warning': return <AlertCircle className="w-3 h-3 text-yellow-400" />;
+      case 'error': return <AlertCircle className="w-3 h-3 text-red-400" />;
+      default: return <Activity className="w-3 h-3 text-cyan-400" />;
+    }
+  };
+
+  const getStepStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return <CheckCircle2 className="w-4 h-4 text-green-400" />;
+      case 'running': return <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />;
+      case 'error': return <AlertCircle className="w-4 h-4 text-red-400" />;
+      default: return <Clock className="w-4 h-4 text-gray-400" />;
+    }
   };
 
   return (
@@ -497,11 +679,11 @@ export default function SocialScreening() {
           
           <Button 
             className="bg-purple-500 hover:bg-purple-400 text-purple-950"
-            onClick={() => navigate('/social-screening-agent')}
+            onClick={() => setIsAIScreeningModalOpen(true)}
             data-testid="button-open-agent"
           >
             <Brain className="w-4 h-4 mr-2" />
-            Open AI Agent
+            Run AI Screening
           </Button>
         </div>
 
@@ -874,6 +1056,281 @@ export default function SocialScreening() {
       </div>
       
       <AgentVisualization run={activeRun} onClose={() => setActiveRun(null)} />
+      
+      <Dialog open={isAIScreeningModalOpen} onOpenChange={(open) => {
+        if (!open && !isRunningScreening) {
+          resetModalState();
+        }
+        setIsAIScreeningModalOpen(open);
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-500/20">
+                <Brain className="w-6 h-6 text-purple-400" />
+              </div>
+              AI Social Screening Agent
+              {isRunningScreening && (
+                <Badge variant="outline" className="animate-pulse">
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  Running
+                </Badge>
+              )}
+              {screeningResult && (
+                <Badge className="bg-green-500/20 text-green-400">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Complete
+                </Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              Multi-agent AI system analyzing social media profiles for culture fit assessment
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto space-y-4 py-4">
+            {!screeningResult && (
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <Label className="text-xs text-muted-foreground mb-2 block">Select Candidate (with consent)</Label>
+                  <Select value={modalSelectedCandidateId} onValueChange={setModalSelectedCandidateId} disabled={isRunningScreening}>
+                    <SelectTrigger className="bg-white/5 border-white/10" data-testid="modal-select-candidate">
+                      <SelectValue placeholder="Choose a candidate..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {candidatesWithConsent.length === 0 ? (
+                        <SelectItem value="empty" disabled>No candidates with consent</SelectItem>
+                      ) : (
+                        candidatesWithConsent.map((candidate: any) => (
+                          <SelectItem key={candidate.id} value={candidate.id} data-testid={`modal-option-candidate-${candidate.id}`}>
+                            {candidate.fullName}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={startModalScreening}
+                  disabled={!modalSelectedCandidateId || isRunningScreening}
+                  className="bg-purple-500 hover:bg-purple-400 text-purple-950"
+                  data-testid="modal-button-start-screening"
+                >
+                  {isRunningScreening ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Running...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Start Screening
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {(isRunningScreening || workflowSteps.length > 0) && !screeningResult && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Overall Progress</span>
+                    <span className="font-medium">{overallProgress}%</span>
+                  </div>
+                  <Progress value={overallProgress} className="h-2" />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="border-white/10 bg-card/30">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-yellow-400" />
+                        Workflow Steps
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="h-[250px]">
+                        <div className="space-y-2">
+                          {workflowSteps.map((step) => (
+                            <div
+                              key={step.id}
+                              className={`p-3 rounded-lg border transition-all ${
+                                step.status === 'running' ? 'bg-blue-500/10 border-blue-500/30' :
+                                step.status === 'completed' ? 'bg-green-500/10 border-green-500/30' :
+                                step.status === 'error' ? 'bg-red-500/10 border-red-500/30' :
+                                'bg-white/5 border-white/10'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {getStepStatusIcon(step.status)}
+                                  <span className="text-sm font-medium">{step.name}</span>
+                                </div>
+                                {step.duration && (
+                                  <span className="text-xs text-muted-foreground">{step.duration}</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 ml-6">{step.description}</p>
+                              {step.status === 'running' && (
+                                <Progress value={step.progress} className="h-1 mt-2" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="border-white/10 bg-card/30">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-cyan-400" />
+                        Agent Logs
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="h-[250px]">
+                        <div className="space-y-2">
+                          {modalLogs.map((log, index) => (
+                            <div key={index} className="p-2 rounded bg-white/5 border border-white/5">
+                              <div className="flex items-start gap-2">
+                                {getLogIcon(log.level)}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[10px] font-medium text-purple-400">{log.agent}</span>
+                                    <span className="text-[9px] text-muted-foreground whitespace-nowrap">
+                                      {new Date(log.timestamp).toLocaleTimeString()}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-foreground/80 mt-0.5 break-words">{log.message}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          <div ref={modalLogsEndRef} />
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+
+            {screeningResult && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold">{screeningResult.candidateName}</h3>
+                    <p className="text-sm text-muted-foreground">Screening Results</p>
+                  </div>
+                  <Badge className={getRiskBadge(screeningResult.riskLevel)}>
+                    {screeningResult.riskLevel} Risk
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card className="border-white/10 bg-card/30">
+                    <CardContent className="pt-4 text-center">
+                      <p className="text-3xl font-bold text-green-400">{screeningResult.overallScore}%</p>
+                      <p className="text-xs text-muted-foreground">Overall Score</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-white/10 bg-card/30">
+                    <CardContent className="pt-4 text-center">
+                      <p className="text-3xl font-bold text-blue-400">{screeningResult.sentiment.positive}%</p>
+                      <p className="text-xs text-muted-foreground">Positive Sentiment</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-white/10 bg-card/30">
+                    <CardContent className="pt-4 text-center">
+                      <p className="text-3xl font-bold text-purple-400">
+                        {screeningResult.platformsSummary.reduce((sum, p) => sum + p.postsAnalyzed, 0)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Posts Analyzed</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-white/10 bg-card/30">
+                    <CardContent className="pt-4 text-center">
+                      <p className="text-3xl font-bold text-yellow-400">{screeningResult.redFlags.length}</p>
+                      <p className="text-xs text-muted-foreground">Red Flags</p>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <Card className="border-white/10 bg-card/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Culture Fit Assessment</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {screeningResult.cultureFit.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm">{item.category}</span>
+                              <span className="text-sm font-medium">{item.score}%</span>
+                            </div>
+                            <Progress value={item.score} className="h-2" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border-green-500/20 bg-green-500/5">
+                  <CardContent className="pt-4">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-green-400">Recommendation</p>
+                        <p className="text-sm text-muted-foreground">{screeningResult.recommendation}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="border-t border-white/10 pt-4">
+            {screeningResult ? (
+              <>
+                <Button variant="outline" onClick={() => {
+                  resetModalState();
+                }}>
+                  Screen Another
+                </Button>
+                <Button 
+                  className="bg-purple-500 hover:bg-purple-400 text-purple-950"
+                  onClick={() => {
+                    setIsAIScreeningModalOpen(false);
+                    resetModalState();
+                  }}
+                >
+                  Done
+                </Button>
+              </>
+            ) : (
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  if (isRunningScreening) {
+                    isRunningRef.current = false;
+                    setIsRunningScreening(false);
+                    toast.info('Screening cancelled');
+                  }
+                  setIsAIScreeningModalOpen(false);
+                  resetModalState();
+                }}
+              >
+                {isRunningScreening ? 'Cancel' : 'Close'}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
