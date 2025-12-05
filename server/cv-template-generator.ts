@@ -12,9 +12,13 @@ import {
   ShadingType,
   convertInchesToTwip,
   PageBreak,
+  ImageRun,
+  Header,
 } from "docx";
 import Groq from "groq-sdk";
 import { z } from "zod";
+import * as fs from "fs";
+import * as path from "path";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -185,10 +189,69 @@ Return ONLY the JSON object, no explanations.`;
   }
 
   generateDocument(data: CVTemplateData): Document {
+    // Try to load logo
+    let logoBuffer: Buffer | null = null;
+    try {
+      const logoPath = path.join(process.cwd(), "client", "public", "logos", "main-logo.png");
+      if (fs.existsSync(logoPath)) {
+        logoBuffer = fs.readFileSync(logoPath);
+        console.log("Logo loaded successfully for CV template");
+      } else {
+        console.warn("Logo file not found at:", logoPath);
+      }
+    } catch (error) {
+      console.warn("Could not load logo for CV template:", error);
+    }
+
+    const headerChildren: Paragraph[] = [];
+    
+    // Add logo if available
+    if (logoBuffer) {
+      headerChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new ImageRun({
+              data: logoBuffer,
+              transformation: {
+                width: 200,
+                height: 60,
+              },
+              type: "png",
+            }),
+          ],
+          spacing: { after: 200 },
+        })
+      );
+    }
+
     const doc = new Document({
       sections: [{
         properties: {},
+        headers: {
+          default: new Header({
+            children: headerChildren,
+          }),
+        },
         children: [
+          // Add logo in document body as well for visibility
+          ...(logoBuffer ? [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new ImageRun({
+                  data: logoBuffer,
+                  transformation: {
+                    width: 250,
+                    height: 75,
+                  },
+                  type: "png",
+                }),
+              ],
+              spacing: { after: 300 },
+            }),
+          ] : []),
+          
           new Paragraph({
             text: "Curriculum Vitae",
             heading: HeadingLevel.TITLE,

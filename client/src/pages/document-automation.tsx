@@ -42,7 +42,8 @@ import {
   Calendar,
   Globe,
   Target,
-  Star
+  Star,
+  Download
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -178,6 +179,39 @@ export default function DocumentAutomation() {
       toast.success("Document deleted");
     },
   });
+
+  const [downloadingCvId, setDownloadingCvId] = useState<string | null>(null);
+  
+  const downloadCvTemplate = async (candidateId: string, candidateName: string) => {
+    try {
+      setDownloadingCvId(candidateId);
+      toast.info("Generating CV template...");
+      
+      const res = await fetch(`/api/candidates/${candidateId}/cv-template`);
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to generate CV template");
+      }
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Avatar_Human_Capital_-_CV_${candidateName.replace(/\s+/g, '_')}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success("CV template downloaded successfully!");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to download CV template");
+    } finally {
+      setDownloadingCvId(null);
+    }
+  };
 
   const zipUploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -802,14 +836,33 @@ export default function DocumentAutomation() {
                                   size="sm"
                                   onClick={() => setSelectedDocument(doc)}
                                   className="h-7 px-2 text-zinc-400 hover:text-white"
+                                  title="View Details"
                                 >
                                   <Eye className="h-3.5 w-3.5" />
                                 </Button>
+                                {doc.linkedCandidateId && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => downloadCvTemplate(doc.linkedCandidateId!, extracted?.fullName || "Candidate")}
+                                    disabled={downloadingCvId === doc.linkedCandidateId}
+                                    className="h-7 px-2 text-green-400 hover:text-green-300"
+                                    title="Download CV Template"
+                                    data-testid={`button-download-cv-${doc.id}`}
+                                  >
+                                    {downloadingCvId === doc.linkedCandidateId ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Download className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                )}
                                 <Link href="/hr-dashboard">
                                   <Button 
                                     variant="ghost" 
                                     size="sm"
                                     className="h-7 px-2 text-amber-400 hover:text-amber-300"
+                                    title="View in HR Dashboard"
                                   >
                                     <ArrowRight className="h-3.5 w-3.5" />
                                   </Button>
@@ -819,6 +872,7 @@ export default function DocumentAutomation() {
                                   size="sm"
                                   className="h-7 px-2 text-red-400 hover:text-red-300"
                                   onClick={() => deleteMutation.mutate(doc.id)}
+                                  title="Delete"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
@@ -905,15 +959,32 @@ export default function DocumentAutomation() {
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                   <div className="flex items-center justify-end gap-1">
-                                    <Button variant="ghost" size="sm" onClick={() => setSelectedDocument(doc)} className="h-7 px-2 text-zinc-400">
+                                    <Button variant="ghost" size="sm" onClick={() => setSelectedDocument(doc)} className="h-7 px-2 text-zinc-400" title="View Details">
                                       <Eye className="h-3.5 w-3.5" />
                                     </Button>
+                                    {doc.linkedCandidateId && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => downloadCvTemplate(doc.linkedCandidateId!, extracted?.fullName || "Candidate")}
+                                        disabled={downloadingCvId === doc.linkedCandidateId}
+                                        className="h-7 px-2 text-green-400 hover:text-green-300"
+                                        title="Download CV Template"
+                                        data-testid={`button-download-cv-list-${doc.id}`}
+                                      >
+                                        {downloadingCvId === doc.linkedCandidateId ? (
+                                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                          <Download className="h-3.5 w-3.5" />
+                                        )}
+                                      </Button>
+                                    )}
                                     <Link href="/hr-dashboard">
-                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-amber-400">
+                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-amber-400" title="View in HR Dashboard">
                                         <ArrowRight className="h-3.5 w-3.5" />
                                       </Button>
                                     </Link>
-                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-red-400" onClick={() => deleteMutation.mutate(doc.id)}>
+                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-red-400" onClick={() => deleteMutation.mutate(doc.id)} title="Delete">
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   </div>
