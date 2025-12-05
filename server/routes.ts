@@ -1456,7 +1456,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== CANDIDATE DOCUMENTS ====================
 
-  // Get all documents for a candidate
+  // Get all documents across all candidates (for Document Library)
+  app.get("/api/candidate-documents", async (req, res) => {
+    try {
+      const { documentType, status, candidateId, search } = req.query;
+      
+      // Get all documents (passing undefined to get all)
+      let documents = await storage.getCandidateDocuments(req.tenant.id, candidateId as string | undefined);
+      
+      // Apply filters
+      if (documentType && documentType !== 'all') {
+        documents = documents.filter(doc => doc.documentType === documentType);
+      }
+      if (status && status !== 'all') {
+        documents = documents.filter(doc => doc.status === status);
+      }
+      if (search) {
+        const searchLower = (search as string).toLowerCase();
+        documents = documents.filter(doc => 
+          doc.fileName.toLowerCase().includes(searchLower) ||
+          doc.referenceCode?.toLowerCase().includes(searchLower) ||
+          doc.documentType.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      // Get candidate info for each document
+      const documentsWithCandidates = await Promise.all(documents.map(async (doc) => {
+        if (doc.candidateId) {
+          const candidate = await storage.getCandidateById(req.tenant.id, doc.candidateId);
+          return {
+            ...doc,
+            candidateName: candidate?.fullName || 'Unknown',
+            candidateEmail: candidate?.email || '',
+          };
+        }
+        return { ...doc, candidateName: 'Unknown', candidateEmail: '' };
+      }));
+      
+      res.json(documentsWithCandidates);
+    } catch (error) {
+      console.error("Error fetching all candidate documents:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  // Get all documents for a specific candidate
   app.get("/api/candidates/:candidateId/documents", async (req, res) => {
     try {
       const documents = await storage.getCandidateDocuments(req.tenant.id, req.params.candidateId);
@@ -1464,6 +1508,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching candidate documents:", error);
       res.status(500).json({ message: "Failed to fetch candidate documents" });
+    }
+  });
+
+  // Download document file
+  app.get("/api/candidate-documents/:id/download", async (req, res) => {
+    try {
+      const document = await storage.getCandidateDocument(req.tenant.id, req.params.id);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      const filePath = path.join(process.cwd(), document.fileUrl);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "File not found on server" });
+      }
+      
+      // Set appropriate headers for download
+      res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+      if (document.mimeType) {
+        res.setHeader('Content-Type', document.mimeType);
+      }
+      if (document.fileSize) {
+        res.setHeader('Content-Length', document.fileSize.toString());
+      }
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ message: "Failed to download document" });
     }
   });
 
