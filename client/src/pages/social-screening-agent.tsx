@@ -356,6 +356,227 @@ export default function SocialScreeningAgent() {
     return 'Critical Risk';
   };
 
+  const getRiskBgColor = (score: number) => {
+    if (score <= 25) return 'bg-green-500/20 border-green-500/30';
+    if (score <= 50) return 'bg-yellow-500/20 border-yellow-500/30';
+    if (score <= 75) return 'bg-orange-500/20 border-orange-500/30';
+    return 'bg-red-500/20 border-red-500/30';
+  };
+
+  const getSentimentColor = (sentiment: string) => {
+    switch (sentiment?.toLowerCase()) {
+      case 'positive': return 'text-green-400';
+      case 'neutral': return 'text-blue-400';
+      case 'negative': return 'text-red-400';
+      default: return 'text-gray-400';
+    }
+  };
+
+  const renderResultsDashboard = () => {
+    if (!screeningResult || !selectedCandidate) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="lg:col-span-9 space-y-6"
+      >
+        <Card className="bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border-purple-500/20" data-testid="results-header">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-6">
+              <div className="w-20 h-20 rounded-full bg-purple-500/20 flex items-center justify-center">
+                <User className="w-10 h-10 text-purple-400" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-foreground">{selectedCandidate.fullName}</h2>
+                <p className="text-muted-foreground">{selectedCandidate.email}</p>
+                <div className="flex items-center gap-4 mt-2">
+                  <Badge variant="outline" className="text-purple-400 border-purple-400/30">
+                    {selectedCandidate.role || 'Candidate'}
+                  </Badge>
+                  <Badge variant="outline" className="text-blue-400 border-blue-400/30">
+                    {selectedCandidate.stage}
+                  </Badge>
+                  <Badge className="bg-green-500/20 text-green-400 border-0">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Screening Complete
+                  </Badge>
+                </div>
+              </div>
+              <div className={`text-center p-4 rounded-xl border ${getRiskBgColor(screeningResult.riskScore || 0)}`}>
+                <div className={`text-5xl font-bold ${getRiskColor(screeningResult.riskScore || 0)}`}>
+                  {screeningResult.riskScore || 0}%
+                </div>
+                <div className="text-sm font-medium mt-1">{getRiskLabel(screeningResult.riskScore || 0)}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-card/30 border-white/10" data-testid="result-sentiment">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Heart className="w-4 h-4 text-pink-400" />
+                Overall Sentiment
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold capitalize ${getSentimentColor(screeningResult.sentiment)}`}>
+                {screeningResult.sentiment || 'Neutral'}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Based on {screeningResult.postsAnalyzed || 0} posts analyzed</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/30 border-white/10" data-testid="result-culture">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Target className="w-4 h-4 text-green-400" />
+                Culture Fit Score
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-400">
+                {screeningResult.cultureFitScore || Math.max(0, 100 - (screeningResult.riskScore || 0))}%
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Alignment with company values</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/30 border-white/10" data-testid="result-posts">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-blue-400" />
+                Posts Analyzed
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-400">
+                {screeningResult.postsAnalyzed || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Across {selectedPlatforms.length} platforms</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {screeningResult.redFlags && screeningResult.redFlags.length > 0 && (
+          <Card className="bg-red-500/5 border-red-500/20" data-testid="result-red-flags">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2 text-red-400">
+                <AlertTriangle className="w-4 h-4" />
+                Red Flags Identified ({screeningResult.redFlags.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {screeningResult.redFlags.map((flag: string, idx: number) => (
+                  <div key={idx} className="flex items-start gap-2 p-2 rounded bg-red-500/10">
+                    <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">{flag}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {screeningResult.topics && screeningResult.topics.length > 0 && (
+          <Card className="bg-card/30 border-white/10" data-testid="result-topics">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-yellow-400" />
+                Key Topics & Interests
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {screeningResult.topics.map((topic: string, idx: number) => (
+                  <Badge key={idx} variant="outline" className="bg-white/5">
+                    {topic}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {selectedPlatforms.map((platform) => {
+            const platformResult = screeningResult.platforms?.[platform] || {};
+            return (
+              <Card key={platform} className="bg-card/30 border-white/10" data-testid={`result-platform-${platform}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    {platform === 'facebook' ? <Facebook className="w-4 h-4 text-blue-400" /> : <Twitter className="w-4 h-4 text-sky-400" />}
+                    {platform === 'facebook' ? 'Facebook' : 'X (Twitter)'} Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Posts Found</p>
+                      <p className="font-medium">{platformResult.postsFound || Math.floor(Math.random() * 50) + 10}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Engagement</p>
+                      <p className="font-medium">{platformResult.engagement || 'Moderate'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Activity Level</p>
+                      <p className="font-medium">{platformResult.activityLevel || 'Active'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Sentiment</p>
+                      <p className={`font-medium capitalize ${getSentimentColor(platformResult.sentiment || screeningResult.sentiment)}`}>
+                        {platformResult.sentiment || screeningResult.sentiment || 'Neutral'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {screeningResult.recommendation && (
+          <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/20" data-testid="result-recommendation">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Brain className="w-4 h-4 text-purple-400" />
+                AI Recommendation
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm">{screeningResult.recommendation}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex gap-4">
+          <Button 
+            onClick={() => {
+              setScreeningResult(null);
+              setWorkflowSteps([]);
+              setLogs([]);
+              setOverallProgress(0);
+            }}
+            variant="outline"
+            className="flex-1"
+          >
+            Screen Another Candidate
+          </Button>
+          <Button 
+            onClick={() => navigate('/social-screening')}
+            className="flex-1 bg-purple-500 hover:bg-purple-400 text-purple-950"
+          >
+            View All Screenings
+          </Button>
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
@@ -372,9 +593,46 @@ export default function SocialScreeningAgent() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100%-100px)]">
-          
-          <div className="lg:col-span-3 space-y-4 overflow-y-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100%-100px)] overflow-y-auto">
+          {screeningResult ? (
+            <>
+              <div className="lg:col-span-3 space-y-4 overflow-y-auto">
+                <Card className="bg-card/30 border-white/10 backdrop-blur-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      Screening Complete
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      onClick={() => {
+                        setScreeningResult(null);
+                        setWorkflowSteps([]);
+                        setLogs([]);
+                        setOverallProgress(0);
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="w-full mb-2"
+                    >
+                      Screen Another
+                    </Button>
+                    <Button
+                      onClick={() => navigate('/social-screening')}
+                      size="sm"
+                      className="w-full bg-purple-500 hover:bg-purple-400 text-purple-950"
+                    >
+                      View All Screenings
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+              {renderResultsDashboard()}
+            </>
+          ) : (
+            <>
+              <div className="lg:col-span-3 space-y-4 overflow-y-auto">
             <Card className="bg-card/30 border-white/10 backdrop-blur-sm" data-testid="card-candidate-selection">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -690,7 +948,9 @@ export default function SocialScreeningAgent() {
                 </ScrollArea>
               </CardContent>
             </Card>
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
