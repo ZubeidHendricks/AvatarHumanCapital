@@ -266,35 +266,43 @@ Return ONLY the JSON object, no explanations.`;
           
           this.createSectionHeader("Educational Qualifications"),
           this.createSubHeader("Secondary Education"),
-          this.createEducationRow("School", data.education?.secondary?.school || ""),
-          this.createEducationRow("Grade", data.education?.secondary?.grade || ""),
-          this.createEducationRow("Year", data.education?.secondary?.year || ""),
+          this.createEducationSectionTable([
+            ["School", data.education?.secondary?.school || ""],
+            ["Grade", data.education?.secondary?.grade || ""],
+            ["Year", data.education?.secondary?.year || ""],
+          ]),
           
           new Paragraph({ spacing: { after: 200 } }),
           
           this.createSubHeader("Tertiary Education"),
           ...(data.education?.tertiary || []).flatMap((edu, index) => [
-            this.createEducationRow("Institution", edu.institution || ""),
-            this.createEducationRow("Courses", edu.courses || ""),
-            this.createEducationRow("Year Completed", edu.yearCompleted || ""),
+            this.createEducationSectionTable([
+              ["Institution", edu.institution || ""],
+              ["Courses", edu.courses || ""],
+              ["Year Completed", edu.yearCompleted || ""],
+            ]),
             new Paragraph({ spacing: { after: 150 } }),
           ]),
           
-          this.createEducationRow("Other Courses", data.education?.otherCourses || ""),
+          this.createEducationSectionTable([
+            ["Other Courses", data.education?.otherCourses || ""],
+          ]),
           
           new Paragraph({ spacing: { after: 200 } }),
           
           this.createSubHeader("Computer Literacy"),
-          new Paragraph({
-            children: [new TextRun({ text: data.computerLiteracy || "Ms Word, Ms Excel, Ms Outlook", size: 22 })],
-            spacing: { after: 200 },
-          }),
+          this.createEducationSectionTable([
+            ["Skills", data.computerLiteracy || "Ms Word, Ms Excel, Ms Outlook"],
+          ]),
+          
+          new Paragraph({ spacing: { after: 200 } }),
           
           this.createSubHeader("Attributes, Achievements and Skills"),
-          new Paragraph({
-            children: [new TextRun({ text: data.attributesAchievementsSkills || "", size: 22 })],
-            spacing: { after: 300 },
-          }),
+          this.createEducationSectionTable([
+            ["Skills", data.attributesAchievementsSkills || ""],
+          ]),
+          
+          new Paragraph({ spacing: { after: 300 } }),
           
           this.createSectionHeader("Employment History (Starting with recent position)"),
           ...(data.employmentHistory || []).flatMap((job, index) => this.createEmploymentEntry(job, index)),
@@ -359,6 +367,14 @@ Return ONLY the JSON object, no explanations.`;
 
     return new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+      },
       rows: rows.map(([label, value]) => 
         new TableRow({
           children: [
@@ -367,10 +383,43 @@ Return ONLY the JSON object, no explanations.`;
               children: [new Paragraph({
                 children: [new TextRun({ text: label, bold: true, size: 22 })],
               })],
-              shading: label ? { fill: "F5F5F5", type: ShadingType.CLEAR } : undefined,
+              shading: label ? { fill: "F0F0F0", type: ShadingType.CLEAR } : undefined,
             }),
             new TableCell({
               width: { size: 65, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({
+                children: [new TextRun({ text: value, size: 22 })],
+              })],
+            }),
+          ],
+        })
+      ),
+    });
+  }
+
+  private createEducationSectionTable(rows: [string, string][]): Table {
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+      },
+      rows: rows.map(([label, value]) => 
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 30, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({
+                children: [new TextRun({ text: label, bold: true, size: 22 })],
+              })],
+              shading: { fill: "F0F0F0", type: ShadingType.CLEAR },
+            }),
+            new TableCell({
+              width: { size: 70, type: WidthType.PERCENTAGE },
               children: [new Paragraph({
                 children: [new TextRun({ text: value, size: 22 })],
               })],
@@ -391,48 +440,83 @@ Return ONLY the JSON object, no explanations.`;
     });
   }
 
-  private createEmploymentEntry(job: NonNullable<CVTemplateData["employmentHistory"]>[0], index: number): Paragraph[] {
+  private createEmploymentTable(job: NonNullable<CVTemplateData["employmentHistory"]>[0]): Table {
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+      },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 30, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: "Name of Employer", bold: true, size: 22 })] })],
+              shading: { fill: "F0F0F0", type: ShadingType.CLEAR },
+            }),
+            new TableCell({
+              width: { size: 70, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: job.employer || "", size: 22 })] })],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Period of Service", bold: true, size: 22 })] })],
+              shading: { fill: "F0F0F0", type: ShadingType.CLEAR },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: job.periodOfService || "", size: 22 })] })],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Position", bold: true, size: 22 })] })],
+              shading: { fill: "F0F0F0", type: ShadingType.CLEAR },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: job.position || "", size: 22 })] })],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Main Responsibilities", bold: true, size: 22 })] })],
+              shading: { fill: "F0F0F0", type: ShadingType.CLEAR },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: job.mainResponsibilities || "", size: 22 })] })],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: "Reason for Leaving", bold: true, size: 22 })] })],
+              shading: { fill: "F0F0F0", type: ShadingType.CLEAR },
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: job.reasonForLeaving || "", size: 22 })] })],
+            }),
+          ],
+        }),
+      ],
+    });
+  }
+
+  private createEmploymentEntry(job: NonNullable<CVTemplateData["employmentHistory"]>[0], index: number): (Table | Paragraph)[] {
     return [
-      new Paragraph({
-        children: [
-          new TextRun({ text: "Name of Employer: ", bold: true, size: 22 }),
-          new TextRun({ text: job.employer, size: 22 }),
-        ],
-        spacing: { before: 200, after: 80 },
-      }),
-      new Paragraph({
-        children: [
-          new TextRun({ text: "Period of Service: ", bold: true, size: 22 }),
-          new TextRun({ text: job.periodOfService || "", size: 22 }),
-        ],
-        spacing: { after: 80 },
-      }),
-      new Paragraph({
-        children: [
-          new TextRun({ text: "Position: ", bold: true, size: 22 }),
-          new TextRun({ text: job.position || "", size: 22 }),
-        ],
-        spacing: { after: 80 },
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: "Main Responsibilities:", bold: true, size: 22 })],
-        spacing: { after: 80 },
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: job.mainResponsibilities || "", size: 22 })],
-        spacing: { after: 100 },
-      }),
-      new Paragraph({
-        children: [
-          new TextRun({ text: "Reason for Leaving: ", bold: true, size: 22 }),
-          new TextRun({ text: job.reasonForLeaving || "", size: 22 }),
-        ],
-        spacing: { after: 80 },
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: "_".repeat(100), size: 18, color: "CCCCCC" })],
-        spacing: { after: 200 },
-      }),
+      this.createEmploymentTable(job),
+      new Paragraph({ spacing: { after: 200 } }),
     ];
   }
 
