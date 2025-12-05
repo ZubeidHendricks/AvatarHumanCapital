@@ -5620,11 +5620,11 @@ Format your response as JSON:
       }
       
       // Get candidate info
-      const candidate = await storage.getCandidate(consent.tenantId, consent.candidateId);
+      const candidate = await storage.getCandidate(consent.tenantId!, consent.candidateId);
       
       res.json({ 
         consent,
-        candidate: candidate ? { name: candidate.name, email: candidate.email } : null
+        candidate: candidate ? { name: candidate.fullName, email: candidate.email } : null
       });
     } catch (error) {
       console.error("Error verifying consent token:", error);
@@ -5642,11 +5642,10 @@ Format your response as JSON:
       
       const { granted, platforms, socialHandles, ipAddress, userAgent } = req.body;
       
-      const updated = await storage.updateSocialConsent(consent.tenantId, consent.id, {
-        consentGranted: granted,
-        consentedPlatforms: platforms || [],
-        socialHandles: socialHandles || {},
-        consentGrantedAt: granted ? new Date() : undefined,
+      const updated = await storage.updateSocialConsent(consent.tenantId!, consent.id, {
+        consentStatus: granted ? 'granted' : 'denied',
+        grantedAt: granted ? new Date() : undefined,
+        metadata: { platforms: platforms || [], socialHandles: socialHandles || {} },
         ipAddress,
         userAgent
       });
@@ -5674,9 +5673,8 @@ Format your response as JSON:
       const consent = await storage.createSocialConsent(req.tenant.id, {
         candidateId,
         consentToken,
-        consentGranted: false,
-        consentedPlatforms: [],
-        socialHandles: {}
+        consentStatus: 'pending',
+        metadata: { platforms: [], socialHandles: {} }
       });
       
       res.status(201).json(consent);
@@ -5707,17 +5705,17 @@ Format your response as JSON:
         req.tenant.id,
         candidate.phone,
         waId,
-        candidate.name,
+        candidate.fullName,
         consent.candidateId,
         'social_screening'
       );
       
-      await whatsappService.sendMessage(conversation.id, {
-        type: 'text',
-        text: {
-          body: `Hello ${candidate.name},\n\nAs part of our hiring process, we conduct a culture fit assessment through social media screening. This is done in compliance with POPIA regulations.\n\nPlease review and provide your consent here: ${consentLink}\n\nThis link expires in 24 hours.`
-        }
-      });
+      await whatsappService.sendTextMessage(
+        req.tenant.id,
+        conversation.id,
+        candidate.phone,
+        `Hello ${candidate.fullName},\n\nAs part of our hiring process, we conduct a culture fit assessment through social media screening. This is done in compliance with POPIA regulations.\n\nPlease review and provide your consent here: ${consentLink}\n\nThis link expires in 24 hours.`
+      );
       
       res.json({ success: true, message: "Consent request sent via WhatsApp" });
     } catch (error) {
@@ -5750,15 +5748,17 @@ Format your response as JSON:
 
   app.post("/api/social-screening/profiles", async (req, res) => {
     try {
-      const { candidateId, platform, profileUrl, username } = req.body;
+      const { candidateId, platform, profileUrl, profileUsername } = req.body;
       
       // Verify consent was granted for this platform
       const consent = await storage.getSocialConsentByCandidate(req.tenant.id, candidateId);
-      if (!consent || !consent.consentGranted) {
+      if (!consent || consent.consentStatus !== 'granted') {
         return res.status(403).json({ message: "Candidate has not granted consent for social screening" });
       }
       
-      if (!consent.consentedPlatforms.includes(platform)) {
+      const metadata = consent.metadata as { platforms?: string[] } | null;
+      const consentedPlatforms = metadata?.platforms || [];
+      if (!consentedPlatforms.includes(platform)) {
         return res.status(403).json({ message: `Candidate has not consented to ${platform} screening` });
       }
       
@@ -5766,8 +5766,8 @@ Format your response as JSON:
         candidateId,
         platform,
         profileUrl,
-        username,
-        verificationStatus: 'pending'
+        profileUsername,
+        consentId: consent.id
       });
       
       res.status(201).json(profile);
@@ -5861,7 +5861,7 @@ Format your response as JSON:
       
       // Check consent status
       const consent = await storage.getSocialConsentByCandidate(req.tenant.id, candidateId);
-      if (!consent || !consent.consentGranted) {
+      if (!consent || consent.consentStatus !== 'granted') {
         return res.status(403).json({ message: "Candidate consent required before initiating social screening" });
       }
       
@@ -5869,20 +5869,20 @@ Format your response as JSON:
       const integrityCheck = await storage.createIntegrityCheck(req.tenant.id, {
         candidateId,
         checkType: 'social_screening',
-        status: 'pending',
-        priority: 'medium',
-        initiatedBy: 'system'
+        status: 'pending'
       });
+      
+      const metadata = consent.metadata as { platforms?: string[], socialHandles?: Record<string, string> } | null;
+      const platforms = metadata?.platforms || [];
+      const socialHandles = metadata?.socialHandles || {};
       
       // Create social screening finding record
       const finding = await storage.createSocialScreeningFinding(req.tenant.id, {
         candidateId,
         integrityCheckId: integrityCheck.id,
-        screeningStatus: 'pending',
-        platformsAnalyzed: consent.consentedPlatforms,
-        overallRiskLevel: 'unknown',
-        cultureFitScore: null,
-        humanReviewStatus: 'not_required'
+        riskLevel: 'unknown',
+        topicsIdentified: platforms,
+        humanReviewStatus: 'pending'
       });
       
       // Import and run the social screening agent
@@ -5891,14 +5891,10 @@ Format your response as JSON:
         const agent = new SocialScreeningAgent(storage);
         
         // Run analysis asynchronously
-        agent.runScreening(req.tenant.id, finding.id, consent.consentedPlatforms, consent.socialHandles || {})
-          .catch(err => console.error("Social screening failed:", err));
+        agent.runScreening(req.tenant.id, finding.id, platforms, socialHandles)
+          .catch((err: Error) => console.error("Social screening failed:", err));
       } catch (agentError) {
         console.warn("Social screening agent not available, marking for manual review:", agentError);
-        await storage.updateSocialScreeningFinding(req.tenant.id, finding.id, {
-          screeningStatus: 'failed',
-          humanReviewStatus: 'pending'
-        });
       }
       
       res.status(201).json({ 
@@ -5923,12 +5919,13 @@ Format your response as JSON:
       }
       
       const updated = await storage.updateSocialScreeningFinding(req.tenant.id, req.params.id, {
-        humanReviewStatus: decision, // 'approved' | 'rejected' | 'flagged'
+        humanReviewStatus: decision, // 'approved' | 'rejected' | 'modified' | 'pending'
         humanReviewNotes: reviewerNotes,
         humanReviewedAt: new Date(),
-        humanReviewedBy: 'current_user', // Should come from auth context
-        overallRiskLevel: adjustedRiskLevel || finding.overallRiskLevel,
-        cultureFitScore: adjustedCultureFitScore ?? finding.cultureFitScore
+        riskLevel: adjustedRiskLevel || finding.riskLevel,
+        cultureFitScore: adjustedCultureFitScore ?? finding.cultureFitScore,
+        humanOverrideScore: adjustedCultureFitScore,
+        humanOverrideReason: adjustedCultureFitScore ? reviewerNotes : undefined
       });
       
       // Update related integrity check
@@ -5936,11 +5933,11 @@ Format your response as JSON:
         await storage.updateIntegrityCheck(req.tenant.id, finding.integrityCheckId, {
           status: decision === 'approved' ? 'passed' : decision === 'rejected' ? 'failed' : 'flagged',
           completedAt: new Date(),
-          result: {
+          result: JSON.stringify({
             socialScreeningResult: decision,
-            riskLevel: adjustedRiskLevel || finding.overallRiskLevel,
+            riskLevel: adjustedRiskLevel || finding.riskLevel,
             cultureFitScore: adjustedCultureFitScore ?? finding.cultureFitScore
-          }
+          })
         });
       }
       
@@ -5984,21 +5981,21 @@ Format your response as JSON:
       
       const stats = {
         totalConsentsRequested: consents.length,
-        consentGranted: consents.filter(c => c.consentGranted).length,
-        consentPending: consents.filter(c => !c.consentGranted && !c.consentGrantedAt).length,
-        consentDenied: consents.filter(c => !c.consentGranted && c.consentGrantedAt).length,
+        consentGranted: consents.filter(c => c.consentStatus === 'granted').length,
+        consentPending: consents.filter(c => c.consentStatus === 'pending').length,
+        consentDenied: consents.filter(c => c.consentStatus === 'denied').length,
         totalScreenings: findings.length,
-        screeningsCompleted: findings.filter(f => f.screeningStatus === 'completed').length,
-        screeningsPending: findings.filter(f => f.screeningStatus === 'pending' || f.screeningStatus === 'in_progress').length,
-        screeningsFailed: findings.filter(f => f.screeningStatus === 'failed').length,
+        screeningsCompleted: findings.filter(f => f.humanReviewStatus === 'approved' || f.humanReviewStatus === 'rejected').length,
+        screeningsPending: findings.filter(f => f.humanReviewStatus === 'pending').length,
+        screeningsModified: findings.filter(f => f.humanReviewStatus === 'modified').length,
         pendingHumanReview: pendingReviews.length,
         averageCultureFitScore: findings.filter(f => f.cultureFitScore !== null).reduce((sum, f) => sum + (f.cultureFitScore || 0), 0) / 
           (findings.filter(f => f.cultureFitScore !== null).length || 1),
         riskDistribution: {
-          low: findings.filter(f => f.overallRiskLevel === 'low').length,
-          medium: findings.filter(f => f.overallRiskLevel === 'medium').length,
-          high: findings.filter(f => f.overallRiskLevel === 'high').length,
-          critical: findings.filter(f => f.overallRiskLevel === 'critical').length
+          low: findings.filter(f => f.riskLevel === 'low').length,
+          medium: findings.filter(f => f.riskLevel === 'medium').length,
+          high: findings.filter(f => f.riskLevel === 'high').length,
+          critical: findings.filter(f => f.riskLevel === 'critical').length
         }
       };
       
