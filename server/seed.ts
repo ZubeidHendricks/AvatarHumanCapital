@@ -1,11 +1,13 @@
 import { db } from "./db";
-import { users, jobs, candidates, whatsappConversations, whatsappMessages, whatsappDocumentRequests, whatsappAppointments, tenantConfig, integrityChecks, interviews, recruitmentSessions, interviewAssessments, documents, documentBatches } from "@shared/schema";
+import { users, jobs, candidates, whatsappConversations, whatsappMessages, whatsappDocumentRequests, whatsappAppointments, tenantConfig, integrityChecks, interviews, recruitmentSessions, interviewAssessments, documents, documentBatches, candidateDocuments, integrityDocumentRequirements } from "@shared/schema";
 
 async function seedDatabase() {
   console.log("🌱 Starting database seed...");
 
   try {
     console.log("Clearing existing data...");
+    await db.delete(candidateDocuments);
+    await db.delete(integrityDocumentRequirements);
     await db.delete(whatsappAppointments);
     await db.delete(whatsappDocumentRequests);
     await db.delete(whatsappMessages);
@@ -519,6 +521,255 @@ async function seedDatabase() {
     ]);
 
     console.log("✓ Created appointments");
+
+    console.log("Creating candidate documents...");
+    const nomvulaCandidate = candidateRecords.find(c => c.fullName === "Nomvula Khumalo")!;
+    const zaneleCandidate = candidateRecords.find(c => c.fullName === "Zanele Mthembu")!;
+    const chloeCandidate = candidateRecords.find(c => c.fullName === "Chloe Smith")!;
+    const bonganiCandidate = candidateRecords.find(c => c.fullName === "Bongani Sithole")!;
+    
+    const documentRecords = await db.insert(candidateDocuments).values([
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: siphoCandidate.id,
+        documentType: "cv",
+        fileName: "Sipho_Dlamini_CV.pdf",
+        fileUrl: "uploads/documents/sipho_dlamini_cv.pdf",
+        fileSize: 245760,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-CV-001",
+        collectedVia: "portal",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5),
+        verifiedBy: "manual",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: siphoCandidate.id,
+        documentType: "id_document",
+        fileName: "Sipho_Dlamini_ID.pdf",
+        fileUrl: "uploads/documents/sipho_dlamini_id.pdf",
+        fileSize: 156000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-ID-001",
+        collectedVia: "whatsapp",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4),
+        verifiedBy: "ai",
+        aiVerification: { verified: true, confidence: 0.95, issues: [] },
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: siphoCandidate.id,
+        documentType: "police_clearance",
+        fileName: "Sipho_Dlamini_Police_Clearance.pdf",
+        fileUrl: "uploads/documents/sipho_dlamini_police_clearance.pdf",
+        fileSize: 89000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-PC-001",
+        collectedVia: "whatsapp",
+        status: "received",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: leratoCandidate.id,
+        documentType: "cv",
+        fileName: "Lerato_Molefe_CV.pdf",
+        fileUrl: "uploads/documents/lerato_molefe_cv.pdf",
+        fileSize: 312000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-CV-002",
+        collectedVia: "portal",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
+        verifiedBy: "manual",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: leratoCandidate.id,
+        documentType: "proof_of_address",
+        fileName: "Lerato_Molefe_Proof_of_Address.pdf",
+        fileUrl: "uploads/documents/lerato_molefe_poa.pdf",
+        fileSize: 78000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-POA-001",
+        collectedVia: "whatsapp",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+        verifiedBy: "ai",
+        aiVerification: { verified: true, confidence: 0.88, issues: [] },
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: thandiCandidate.id,
+        documentType: "cv",
+        fileName: "Thandi_Ndlovu_CV.pdf",
+        fileUrl: "uploads/documents/thandi_ndlovu_cv.pdf",
+        fileSize: 198000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-CV-003",
+        collectedVia: "portal",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4),
+        verifiedBy: "manual",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: thandiCandidate.id,
+        documentType: "qualification",
+        fileName: "Thandi_Ndlovu_Degree_Certificate.pdf",
+        fileUrl: "uploads/documents/thandi_ndlovu_degree.pdf",
+        fileSize: 450000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-QUAL-001",
+        collectedVia: "email",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
+        verifiedBy: "manual",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: nomvulaCandidate.id,
+        documentType: "cv",
+        fileName: "Nomvula_Khumalo_CV.pdf",
+        fileUrl: "uploads/documents/nomvula_khumalo_cv.pdf",
+        fileSize: 285000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-CV-004",
+        collectedVia: "portal",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+        verifiedBy: "manual",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: nomvulaCandidate.id,
+        documentType: "police_clearance",
+        fileName: "Nomvula_Khumalo_Police_Clearance.pdf",
+        fileUrl: "uploads/documents/nomvula_khumalo_police.pdf",
+        fileSize: 95000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-PC-002",
+        collectedVia: "whatsapp",
+        status: "received",
+        candidateNote: "This is my police clearance certificate from SAPS",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: zaneleCandidate.id,
+        documentType: "cv",
+        fileName: "Zanele_Mthembu_CV.pdf",
+        fileUrl: "uploads/documents/zanele_mthembu_cv.pdf",
+        fileSize: 340000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-CV-005",
+        collectedVia: "portal",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
+        verifiedBy: "manual",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: zaneleCandidate.id,
+        documentType: "id_document",
+        fileName: "Zanele_Mthembu_ID.pdf",
+        fileUrl: "uploads/documents/zanele_mthembu_id.pdf",
+        fileSize: 142000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-ID-002",
+        collectedVia: "whatsapp",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 12),
+        verifiedBy: "ai",
+        aiVerification: { verified: true, confidence: 0.92, issues: [] },
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: chloeCandidate.id,
+        documentType: "cv",
+        fileName: "Chloe_Smith_CV.pdf",
+        fileUrl: "uploads/documents/chloe_smith_cv.pdf",
+        fileSize: 390000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-CV-006",
+        collectedVia: "portal",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+        verifiedBy: "manual",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: chloeCandidate.id,
+        documentType: "bank_confirmation",
+        fileName: "Chloe_Smith_Bank_Confirmation.pdf",
+        fileUrl: "uploads/documents/chloe_smith_bank.pdf",
+        fileSize: 67000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-BANK-001",
+        collectedVia: "email",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
+        verifiedBy: "manual",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: chloeCandidate.id,
+        documentType: "police_clearance",
+        fileName: "Chloe_Smith_Police_Clearance.pdf",
+        fileUrl: "uploads/documents/chloe_smith_police.pdf",
+        fileSize: 102000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-PC-003",
+        collectedVia: "portal",
+        status: "verified",
+        verifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
+        verifiedBy: "ai",
+        aiVerification: { verified: true, confidence: 0.97, issues: [] },
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: bonganiCandidate.id,
+        documentType: "cv",
+        fileName: "Bongani_Sithole_CV.pdf",
+        fileUrl: "uploads/documents/bongani_sithole_cv.pdf",
+        fileSize: 275000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-CV-007",
+        collectedVia: "portal",
+        status: "received",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1)
+      },
+      {
+        tenantId: tenantRecord[0].id,
+        candidateId: bonganiCandidate.id,
+        documentType: "qualification",
+        fileName: "Bongani_Sithole_HR_Certificate.pdf",
+        fileUrl: "uploads/documents/bongani_sithole_cert.pdf",
+        fileSize: 520000,
+        mimeType: "application/pdf",
+        referenceCode: "DOC-QUAL-002",
+        collectedVia: "whatsapp",
+        status: "received",
+        candidateNote: "My HR professional certification from SABPP",
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12)
+      }
+    ]).returning();
+
+    console.log(`✓ Created ${documentRecords.length} candidate documents`);
 
     console.log("\n✅ Database seeded successfully!");
     console.log("\nSummary:");
