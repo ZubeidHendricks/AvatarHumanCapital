@@ -541,8 +541,8 @@ export default function IntegrityAgent() {
                 </CardTitle>
                 <CardDescription>Background check findings and evidence</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full pr-4">
+              <CardContent className="flex-1 overflow-hidden p-3">
+                <ScrollArea className="h-full pr-3">
                   {!selectedCandidateId ? (
                     <div className="text-center py-16 text-muted-foreground">
                       <Lock className="w-16 h-16 mx-auto mb-4 opacity-20" />
