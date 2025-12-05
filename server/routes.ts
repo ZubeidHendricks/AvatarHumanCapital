@@ -316,43 +316,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Candidate not found" });
       }
 
+      // Build template data from candidate record
+      // Note: CV parser stores experience with {title, company, duration, location, responsibilities}
+      // and education with {degree, institution, year, location}
+      const experienceArray = Array.isArray(candidate.experience) ? candidate.experience : [];
+      const educationArray = Array.isArray(candidate.education) ? candidate.education : [];
+      const skillsArray = Array.isArray(candidate.skills) ? candidate.skills : [];
+      const certsArray = Array.isArray(candidate.certifications) ? candidate.certifications : [];
+      
+      console.log("Building template for candidate:", candidate.fullName);
+      console.log("Experience data:", JSON.stringify(experienceArray.slice(0, 2)));
+      console.log("Education data:", JSON.stringify(educationArray.slice(0, 2)));
+
       const templateData = {
         personalProfile: {
           jobApplication: candidate.role || "",
           employmentEquityStatus: null,
-          nationality: null,
+          nationality: "South African",
           fullName: candidate.fullName,
           idNumber: null,
           residentialLocation: candidate.location || "",
-          currentCompany: (candidate.experience as any[])?.[0]?.company || "",
-          currentPosition: (candidate.experience as any[])?.[0]?.title || candidate.role || "",
+          currentCompany: (experienceArray[0] as any)?.company || "",
+          currentPosition: (experienceArray[0] as any)?.title || candidate.role || "",
           currentRemuneration: null,
           expectedRemuneration: null,
           noticePeriod: null,
         },
         education: {
           secondary: null,
-          tertiary: ((candidate.education as any[]) || []).map((edu: any) => ({
-            institution: edu.institution || "",
-            courses: edu.degree || edu.field || "",
-            yearCompleted: edu.endDate || edu.year || "",
+          tertiary: educationArray.map((edu: any) => ({
+            institution: edu?.institution || "",
+            courses: edu?.degree || edu?.field || "",
+            yearCompleted: edu?.year || edu?.endDate || "",
           })),
-          otherCourses: candidate.certifications?.join(", ") || null,
+          otherCourses: certsArray.length > 0 ? certsArray.join(", ") : null,
         },
-        computerLiteracy: candidate.skills?.filter((s: string) => 
-          s.toLowerCase().includes('excel') || 
-          s.toLowerCase().includes('word') ||
-          s.toLowerCase().includes('office') ||
-          s.toLowerCase().includes('computer') ||
-          s.toLowerCase().includes('software')
+        computerLiteracy: skillsArray.filter((s: string) => 
+          typeof s === 'string' && (
+            s.toLowerCase().includes('excel') || 
+            s.toLowerCase().includes('word') ||
+            s.toLowerCase().includes('office') ||
+            s.toLowerCase().includes('computer') ||
+            s.toLowerCase().includes('software') ||
+            s.toLowerCase().includes('sharepoint')
+          )
         ).join(", ") || "MS Word, MS Excel",
-        attributesAchievementsSkills: candidate.skills?.join(", ") || "",
-        employmentHistory: ((candidate.experience as any[]) || []).map((exp: any) => ({
-          employer: exp.company || "",
-          periodOfService: `${exp.startDate || ""} - ${exp.endDate || "Present"}`,
-          position: exp.title || "",
-          mainResponsibilities: exp.description || "",
-          reasonForLeaving: exp.endDate ? "Career advancement" : "Currently Employed",
+        attributesAchievementsSkills: skillsArray.join(", ") || "",
+        employmentHistory: experienceArray.map((exp: any) => ({
+          employer: exp?.company || "",
+          periodOfService: exp?.duration || `${exp?.startDate || ""} - ${exp?.endDate || "Present"}`,
+          position: exp?.title || "",
+          mainResponsibilities: Array.isArray(exp?.responsibilities) 
+            ? exp.responsibilities.join("; ") 
+            : (exp?.description || exp?.responsibilities || ""),
+          reasonForLeaving: (exp?.duration || "").toLowerCase().includes("present") ? "Currently Employed" : "Career advancement",
         })),
         otherEmployment: [],
       };
@@ -383,50 +400,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const results: Array<{ candidateId: string; fullName: string; status: string; error?: string }> = [];
       const successfulDocs: Array<{ buffer: Buffer; filename: string }> = [];
 
-      const buildTemplateData = (candidate: any) => ({
-        personalProfile: {
-          jobApplication: candidate.role || "",
-          employmentEquityStatus: null,
-          nationality: null,
-          fullName: candidate.fullName || "Unknown",
-          idNumber: null,
-          residentialLocation: candidate.location || "",
-          currentCompany: Array.isArray(candidate.experience) && candidate.experience[0]?.company || "",
-          currentPosition: (Array.isArray(candidate.experience) && candidate.experience[0]?.title) || candidate.role || "",
-          currentRemuneration: null,
-          expectedRemuneration: null,
-          noticePeriod: null,
-        },
-        education: {
-          secondary: null,
-          tertiary: (Array.isArray(candidate.education) ? candidate.education : []).map((edu: any) => ({
-            institution: edu?.institution || "",
-            courses: edu?.degree || edu?.field || "",
-            yearCompleted: edu?.endDate || edu?.year || "",
+      // Build template data from candidate record
+      // Note: CV parser stores experience with {title, company, duration, location, responsibilities}
+      // and education with {degree, institution, year, location}
+      const buildTemplateData = (candidate: any) => {
+        const experienceArray = Array.isArray(candidate.experience) ? candidate.experience : [];
+        const educationArray = Array.isArray(candidate.education) ? candidate.education : [];
+        const skillsArray = Array.isArray(candidate.skills) ? candidate.skills : [];
+        const certsArray = Array.isArray(candidate.certifications) ? candidate.certifications : [];
+        
+        return {
+          personalProfile: {
+            jobApplication: candidate.role || "",
+            employmentEquityStatus: null,
+            nationality: "South African",
+            fullName: candidate.fullName || "Unknown",
+            idNumber: null,
+            residentialLocation: candidate.location || "",
+            currentCompany: (experienceArray[0] as any)?.company || "",
+            currentPosition: (experienceArray[0] as any)?.title || candidate.role || "",
+            currentRemuneration: null,
+            expectedRemuneration: null,
+            noticePeriod: null,
+          },
+          education: {
+            secondary: null,
+            tertiary: educationArray.map((edu: any) => ({
+              institution: edu?.institution || "",
+              courses: edu?.degree || edu?.field || "",
+              yearCompleted: edu?.year || edu?.endDate || "",
+            })),
+            otherCourses: certsArray.length > 0 ? certsArray.join(", ") : null,
+          },
+          computerLiteracy: skillsArray.filter((s: string) => 
+            typeof s === 'string' && (
+              s.toLowerCase().includes('excel') || 
+              s.toLowerCase().includes('word') ||
+              s.toLowerCase().includes('office') ||
+              s.toLowerCase().includes('computer') ||
+              s.toLowerCase().includes('software') ||
+              s.toLowerCase().includes('sharepoint')
+            )
+          ).join(", ") || "MS Word, MS Excel",
+          attributesAchievementsSkills: skillsArray.join(", ") || "",
+          employmentHistory: experienceArray.map((exp: any) => ({
+            employer: exp?.company || "",
+            periodOfService: exp?.duration || `${exp?.startDate || ""} - ${exp?.endDate || "Present"}`,
+            position: exp?.title || "",
+            mainResponsibilities: Array.isArray(exp?.responsibilities) 
+              ? exp.responsibilities.join("; ") 
+              : (exp?.description || exp?.responsibilities || ""),
+            reasonForLeaving: (exp?.duration || "").toLowerCase().includes("present") ? "Currently Employed" : "Career advancement",
           })),
-          otherCourses: Array.isArray(candidate.certifications) ? candidate.certifications.join(", ") : null,
-        },
-        computerLiteracy: Array.isArray(candidate.skills) 
-          ? candidate.skills.filter((s: string) => 
-              typeof s === 'string' && (
-                s.toLowerCase().includes('excel') || 
-                s.toLowerCase().includes('word') ||
-                s.toLowerCase().includes('office') ||
-                s.toLowerCase().includes('computer') ||
-                s.toLowerCase().includes('software')
-              )
-            ).join(", ") || "MS Word, MS Excel"
-          : "MS Word, MS Excel",
-        attributesAchievementsSkills: Array.isArray(candidate.skills) ? candidate.skills.join(", ") : "",
-        employmentHistory: (Array.isArray(candidate.experience) ? candidate.experience : []).map((exp: any) => ({
-          employer: exp?.company || "",
-          periodOfService: `${exp?.startDate || ""} - ${exp?.endDate || "Present"}`,
-          position: exp?.title || "",
-          mainResponsibilities: exp?.description || "",
-          reasonForLeaving: exp?.endDate ? "Career advancement" : "Currently Employed",
-        })),
-        otherEmployment: [],
-      });
+          otherEmployment: [],
+        };
+      };
 
       for (const candidateId of candidateIds) {
         try {

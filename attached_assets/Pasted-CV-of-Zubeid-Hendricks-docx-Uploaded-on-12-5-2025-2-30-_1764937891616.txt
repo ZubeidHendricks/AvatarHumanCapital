@@ -1,0 +1,178 @@
+CV of Zubeid Hendricks.docx
+Uploaded on 12/5/2025, 2:30:30 PM
+
+processed
+26.4 KB
+Candidate Created
+Personal Information
+Full Name
+
+Zubeid Hendricks
+
+Role/Title
+
+Senior Software Developer | AI & Web Solutions Architect
+
+Email
+
+zubeidhendricks@gmail.com
+
+Phone
+
++27 63 220 5343
+
+Location
+
+Cape Town, South Africa
+
+Experience
+
+11 years
+
+Professional Summary
+Experienced Senior Software Developer and Webmaster with over a decade of experience designing, developing, and maintaining dynamic websites and digital platforms. Highly proficient in SharePoint, WordPress, and Umbraco, with a strong background in HTML, CSS, JavaScript, Angular, React, and C#. Skilled in SEO optimization, metadata systems, analytics, and web governance.Combines hands-on development expertise with leadership in AI integration, GitHub automation, and cloud technologies to enhance web functionality, accessibility, and security.
+
+Skills (33)
+SharePoint
+WordPress
+Umbraco
+HTML5
+CSS3
+JavaScript
+Angular
+React
+C#
+ASP.NET MVC
+Adobe Photoshop
+Illustrator
+Dreamweaver
+SEO optimization
+metadata systems
+analytics
+web governance
+AI integration
+GitHub automation
+cloud technologies
+Magento
+Shopify
+Node.js
+SQL Server
+MongoDB
+SQLite
+Azure
+AWS
+Docker
+CI/CD
+Google Analytics
+Tag Manager
+Ahrefs
+Experience (5)
+Chief Analyst Developer
+
+Western Cape Government – Communications & Digital Transformation Directorate
+
+Nov 2024 – Present
+
+Cape Town
+
+•
+Lead architecture and front-end development of scalable web applications using Angular and Blazor.
+•
+Manage SharePoint portals, taxonomies, and metadata systems for departmental websites.
+•
+Oversee accessibility compliance, user training, and digital asset management.
++1 more responsibilities
+Software Engineer | DevOps Specialist
+
+BNP Paribas Personal Finance (RCS Group)
+
+Feb 2023 – Feb 2024
+
+Cape Town
+
+•
+Managed and optimized SharePoint web infrastructure and content workflows.
+•
+Conducted CMS updates, metadata tagging, and performance audits.
+•
+Automated development pipelines and bug tracking through GitHub Actions.
+Senior Software Engineer
+
+Apex Group Ltd
+
+Oct 2021 – Nov 2022
+
+Remote
+
+•
+Developed responsive applications using ASP.NET MVC and Angular.
+•
+Enhanced user interface and digital experience through design and SEO improvements.
+•
+Integrated analytics dashboards and conducted site performance monitoring.
+Analyst Programmer | Full Stack Developer
+
+Nelson Mandela Bay Municipality
+
+Jan 2018 – Sep 2021
+
+Eastern Cape
+
+•
+Maintained and enhanced the municipality’s website and intranet platforms.
+•
+Managed SharePoint Term Store, permissions, and document libraries.
+•
+Designed HTML newsletters, templates, and UAT-ready web parts.
++1 more responsibilities
+Software Developer
+
+Mars Technologies (Coega Development Corporation)
+
+Jun 2013 – Feb 2014
+
+Eastern Cape
+
+•
+Managed Coega’s corporate website and intranet, ensuring stability and accuracy.
+•
+Developed over 40 internal web applications in ASP.NET and SQL Server.
+•
+Supported digital branding and document governance processes.
+Education (1)
+National Diploma in Information Technology – Software Development
+
+Nelson Mandela University
+
+• Port Elizabeth
+Certifications
+Artificial Intelligence & Machine Learning
+Agentforce Unlocked: Salesforce AI Platform
+Building AI Applications with Amazon Bedrock
+Responsible AI on AWS
+Microsoft Azure AI Essentials
+Prompt Engineering with LangChain
+Agentic AI: Building Data-First AI Agents
+Advanced AI Governance & Responsible AI Operations
+Integrating Generative AI into Business Strategy
+edX Verified Certificate – Use AI for Everyday Tasks
+Practical GitHub Copilot
+Practical GitHub Actions & Code Search
+Practical GitHub Project Management & Collaboration
+Agile Project Management with Jira Cloud
+Project Management: Government Projects
+MCSD: Web Applications
+Developing ASP.NET MVC 4 Web Applications
+Developing Windows Azure and Web Services
+Programming in HTML5 with JavaScript and CSS3
+Microsoft Certified Educator
+Adobe Certified Associate – Photoshop, Dreamweaver, Flash, Visual Communication
+CIW Advanced HTML5 & CSS3 Specialist
+CIW Web Design Specialist & E-commerce Specialist
+CIW Web Foundations Associate
+Cisco CCNA – Networking Basics & Intermediate Routing
+CompTIA Network+
+EC-Council Certified Secure Computer User
+ITIL 4 Fundamentals – Essentials of IT Service Management
+PMBOK & CAPM – Project Management Foundations
+PRINCE2 Practitioner
