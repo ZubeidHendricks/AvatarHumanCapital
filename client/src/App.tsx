@@ -47,6 +47,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/onboarding" component={CustomerOnboarding} />
+      <Route path="/hr" component={HRDashboard} />
       <Route path="/hr-dashboard" component={HRDashboard} />
       <Route path="/executive-dashboard" component={ExecutiveDashboard} />
       <Route path="/recruitment-dashboard" component={RecruitmentDashboard} />
