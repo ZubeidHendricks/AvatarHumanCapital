@@ -91,6 +91,22 @@ export class CVParser {
     // Pre-extract LinkedIn URL as fallback
     const fallbackLinkedIn = this.extractLinkedInUrl(text);
 
+    // Truncate text if too long to avoid token limits (Groq has 12000 TPM limit)
+    // Average ~4 chars per token, so 8000 chars leaves room for prompt + response
+    const MAX_CV_CHARS = 8000;
+    let processedText = text;
+    if (text.length > MAX_CV_CHARS) {
+      console.log(`CV text too long (${text.length} chars), truncating to ${MAX_CV_CHARS} chars`);
+      // Try to keep the most important parts: beginning (contact info) and structure
+      // Split at a sensible point to avoid cutting mid-word
+      processedText = text.substring(0, MAX_CV_CHARS);
+      const lastSpace = processedText.lastIndexOf(' ');
+      if (lastSpace > MAX_CV_CHARS - 200) {
+        processedText = processedText.substring(0, lastSpace);
+      }
+      processedText += "\n\n[CV truncated due to length - extract what information is available]";
+    }
+
     const prompt = `Extract structured information from this CV/Resume. This may be a LinkedIn profile export. Return ONLY valid JSON matching this exact schema:
 
 {
@@ -131,7 +147,7 @@ IMPORTANT:
 - Duration should be the actual date range shown
 
 CV Text:
-${text}
+${processedText}
 
 Return ONLY the JSON object, no explanations.`;
 

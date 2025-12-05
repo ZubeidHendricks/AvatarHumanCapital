@@ -67,6 +67,19 @@ export type CVTemplateData = z.infer<typeof CVTemplateDataSchema>;
 
 export class CVTemplateGenerator {
   async extractTemplateData(cvText: string, jobTitle?: string): Promise<CVTemplateData> {
+    // Truncate text if too long to avoid token limits (Groq has 12000 TPM limit)
+    const MAX_CV_CHARS = 8000;
+    let processedText = cvText;
+    if (cvText.length > MAX_CV_CHARS) {
+      console.log(`CV text too long (${cvText.length} chars), truncating to ${MAX_CV_CHARS} chars`);
+      processedText = cvText.substring(0, MAX_CV_CHARS);
+      const lastSpace = processedText.lastIndexOf(' ');
+      if (lastSpace > MAX_CV_CHARS - 200) {
+        processedText = processedText.substring(0, lastSpace);
+      }
+      processedText += "\n\n[CV truncated due to length - extract what information is available]";
+    }
+
     const prompt = `Extract information from this CV/Resume to fill the Avatar Human Capital CV template. Return ONLY valid JSON matching this exact structure:
 
 {
@@ -126,7 +139,7 @@ IMPORTANT:
 - Notice period is common in SA CVs
 
 CV Text:
-${cvText}
+${processedText}
 
 Return ONLY the JSON object, no explanations.`;
 
