@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { Navbar } from "@/components/layout/navbar";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { useTenantQueryKey } from "@/hooks/useTenant";
 import {
@@ -38,16 +39,292 @@ import {
   ExternalLink,
   Facebook,
   Twitter,
-  Undo2
+  Undo2,
+  Bot,
+  Zap,
+  Activity,
+  Sparkles,
+  X as XIcon,
+  Play
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+
+interface AgentStatus {
+  agentName: string;
+  status: 'idle' | 'running' | 'completed' | 'error';
+  progress: number;
+  currentStep: string;
+  platform?: string;
+  postsAnalyzed?: number;
+  findings?: string[];
+}
+
+interface OrchestratorRun {
+  runId: string;
+  candidateId: string;
+  tenantId: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  progress: number;
+  currentStep: string;
+  agents: AgentStatus[];
+  logs: { timestamp: Date; agent: string; message: string; level: string }[];
+  startedAt: Date;
+  completedAt?: Date;
+  result?: any;
+}
+
+function AgentVisualization({ run, onClose }: { run: OrchestratorRun | null; onClose: () => void }) {
+  if (!run) return null;
+  
+  const getAgentIcon = (agentName: string) => {
+    if (agentName.toLowerCase().includes('facebook')) return Facebook;
+    if (agentName.toLowerCase().includes('twitter') || agentName.toLowerCase().includes('x')) return Twitter;
+    if (agentName.toLowerCase().includes('orchestrator')) return Brain;
+    return Bot;
+  };
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'running': return 'text-blue-400 animate-pulse';
+      case 'completed': return 'text-green-400';
+      case 'error': return 'text-red-400';
+      default: return 'text-gray-400';
+    }
+  };
+  
+  const getStatusBg = (status: string) => {
+    switch (status) {
+      case 'running': return 'bg-blue-500/20 border-blue-500/30';
+      case 'completed': return 'bg-green-500/20 border-green-500/30';
+      case 'error': return 'bg-red-500/20 border-red-500/30';
+      default: return 'bg-gray-500/20 border-gray-500/30';
+    }
+  };
+
+  return (
+    <Dialog open={!!run} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-500/20">
+              <Brain className="w-6 h-6 text-purple-400" />
+            </div>
+            Social Intelligence Agents
+            <Badge variant={run.status === 'completed' ? 'default' : 'outline'} 
+                   className={run.status === 'in_progress' ? 'animate-pulse' : ''}>
+              {run.status}
+            </Badge>
+          </DialogTitle>
+          <DialogDescription>
+            AI agents analyzing social media profiles for culture fit assessment
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Overall Progress</span>
+              <span className="font-medium">{run.progress}%</span>
+            </div>
+            <Progress value={run.progress} className="h-2" />
+            <p className="text-sm text-muted-foreground">{run.currentStep}</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AnimatePresence>
+              {run.agents.map((agent, index) => {
+                const IconComponent = getAgentIcon(agent.agentName);
+                return (
+                  <motion.div
+                    key={agent.agentName}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className={`p-4 rounded-xl border ${getStatusBg(agent.status)}`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${getStatusBg(agent.status)}`}>
+                          <IconComponent className={`w-5 h-5 ${getStatusColor(agent.status)}`} />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">{agent.agentName}</h4>
+                          {agent.platform && (
+                            <p className="text-xs text-muted-foreground capitalize">{agent.platform}</p>
+                          )}
+                        </div>
+                      </div>
+                      {agent.status === 'running' && (
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                      )}
+                      {agent.status === 'completed' && (
+                        <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      )}
+                      {agent.status === 'error' && (
+                        <AlertCircle className="w-4 h-4 text-red-400" />
+                      )}
+                    </div>
+                    
+                    <Progress value={agent.progress} className="h-1 mb-2" />
+                    <p className="text-xs text-muted-foreground truncate">{agent.currentStep}</p>
+                    
+                    {agent.postsAnalyzed !== undefined && agent.postsAnalyzed > 0 && (
+                      <div className="mt-2 flex items-center gap-2 text-xs">
+                        <Activity className="w-3 h-3" />
+                        <span>{agent.postsAnalyzed} posts analyzed</span>
+                      </div>
+                    )}
+                    
+                    {agent.findings && agent.findings.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {agent.findings.slice(0, 3).map((finding, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {finding}
+                          </Badge>
+                        ))}
+                        {agent.findings.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{agent.findings.length - 3} more
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+          
+          <div className="border rounded-lg p-4 bg-black/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="w-4 h-4 text-yellow-400" />
+              <h4 className="font-medium">Agent Activity Log</h4>
+            </div>
+            <ScrollArea className="h-40">
+              <div className="space-y-2 font-mono text-xs">
+                {run.logs.slice(-20).map((log, index) => (
+                  <motion.div 
+                    key={index}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className={`flex gap-2 ${
+                      log.level === 'error' ? 'text-red-400' :
+                      log.level === 'warn' ? 'text-yellow-400' :
+                      log.level === 'success' ? 'text-green-400' :
+                      'text-muted-foreground'
+                    }`}
+                  >
+                    <span className="text-gray-500 shrink-0">
+                      {new Date(log.timestamp).toLocaleTimeString()}
+                    </span>
+                    <span className="text-purple-400 shrink-0">[{log.agent}]</span>
+                    <span>{log.message}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+          
+          {run.status === 'completed' && run.result && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-4 rounded-lg bg-green-500/10 border border-green-500/30"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-5 h-5 text-green-400" />
+                <h4 className="font-semibold text-green-400">Analysis Complete</h4>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-2xl font-bold">{run.result.overallScore || '-'}</p>
+                  <p className="text-xs text-muted-foreground">Culture Fit Score</p>
+                </div>
+                <div>
+                  <Badge className={
+                    run.result.riskLevel === 'low' ? 'bg-green-500/20 text-green-400' :
+                    run.result.riskLevel === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                    run.result.riskLevel === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                    'bg-red-500/20 text-red-400'
+                  }>
+                    {run.result.riskLevel || 'Unknown'} Risk
+                  </Badge>
+                  <p className="text-xs text-muted-foreground mt-1">Risk Level</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{run.result.postsAnalyzed || 0}</p>
+                  <p className="text-xs text-muted-foreground">Posts Analyzed</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+          {run.status === 'completed' && (
+            <Button className="bg-purple-500 hover:bg-purple-400">
+              View Full Report
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function SocialScreening() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [isRequestConsentOpen, setIsRequestConsentOpen] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [activeRun, setActiveRun] = useState<OrchestratorRun | null>(null);
+  const [pollingRunId, setPollingRunId] = useState<string | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
+  
+  useEffect(() => {
+    if (pollingRunId) {
+      const pollStatus = async () => {
+        try {
+          const res = await fetch(`/api/social-screening/orchestrator/status/${pollingRunId}`);
+          if (res.ok) {
+            const runData = await res.json();
+            setActiveRun(runData);
+            
+            if (runData.status === 'completed' || runData.status === 'failed') {
+              if (pollingRef.current) {
+                clearInterval(pollingRef.current);
+                pollingRef.current = null;
+              }
+              setPollingRunId(null);
+              queryClient.invalidateQueries({ queryKey: ['socialFindings'] });
+              queryClient.invalidateQueries({ queryKey: ['socialScreeningStats'] });
+              
+              if (runData.status === 'completed') {
+                toast.success("Social screening analysis complete!");
+              } else {
+                toast.error("Social screening encountered an error");
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Failed to poll orchestrator status:", error);
+        }
+      };
+      
+      pollStatus();
+      pollingRef.current = setInterval(pollStatus, 1500);
+      
+      return () => {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+        }
+      };
+    }
+  }, [pollingRunId, queryClient]);
 
   const statsKey = useTenantQueryKey(['socialScreeningStats']);
   const consentsKey = useTenantQueryKey(['socialConsents']);
@@ -138,16 +415,15 @@ export default function SocialScreening() {
 
   const initiateScreeningMutation = useMutation({
     mutationFn: async (candidateId: string) => {
-      const res = await fetch(`/api/social-screening/initiate/${candidateId}`, {
+      const res = await fetch(`/api/social-screening/orchestrator/start/${candidateId}`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to initiate screening");
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: findingsKey });
-      queryClient.invalidateQueries({ queryKey: statsKey });
-      toast.success("Social screening initiated");
+    onSuccess: (data) => {
+      toast.success("AI agents starting social screening analysis...");
+      setPollingRunId(data.runId);
     },
     onError: () => {
       toast.error("Failed to initiate screening");
@@ -656,6 +932,8 @@ export default function SocialScreening() {
           </TabsContent>
         </Tabs>
       </div>
+      
+      <AgentVisualization run={activeRun} onClose={() => setActiveRun(null)} />
     </div>
   );
 }
