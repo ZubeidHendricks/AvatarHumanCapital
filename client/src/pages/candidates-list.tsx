@@ -66,6 +66,7 @@ export default function CandidatesList() {
   const [location] = useLocation();
   const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const jobId = urlParams.get('jobId');
+  const candidateIdFromUrl = urlParams.get('candidateId');
 
   const [activeTab, setActiveTab] = useState("candidates");
   const [activeCriteria, setActiveCriteria] = useState<string[]>([]);
@@ -75,6 +76,10 @@ export default function CandidatesList() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
   const [inviteLink, setInviteLink] = useState("");
+  
+  // Profile Dialog State
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileCandidate, setProfileCandidate] = useState<any>(null);
 
   const queryClient = useQueryClient();
   const candidatesKey = useTenantQueryKey(['candidates']);
@@ -109,6 +114,17 @@ export default function CandidatesList() {
       queryClient.invalidateQueries({ queryKey: candidatesKey });
     },
   });
+
+  // Open profile dialog when candidateId is in URL
+  useEffect(() => {
+    if (candidateIdFromUrl && candidates && candidates.length > 0) {
+      const targetCandidate = candidates.find((c: any) => c.id === candidateIdFromUrl);
+      if (targetCandidate) {
+        setProfileCandidate(targetCandidate);
+        setProfileOpen(true);
+      }
+    }
+  }, [candidateIdFromUrl, candidates]);
 
   // Find the current job if jobId is present
   const currentJob = useMemo(() => {
@@ -736,6 +752,138 @@ AHC Recruiting Team`}
                     <Send className="h-4 w-4" /> Send Invitation
                 </Button>
             </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Candidate Profile Dialog */}
+      <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden bg-[#0a0a0a] border-zinc-800 text-white" data-testid="dialog-candidate-profile">
+          <DialogHeader className="border-b border-zinc-800 pb-4">
+            <DialogTitle className="text-xl flex items-center gap-3">
+              <Avatar className="h-12 w-12 bg-gradient-to-br from-purple-500 to-blue-500">
+                <AvatarFallback className="text-white text-lg font-bold bg-transparent">
+                  {profileCandidate?.fullName?.split(' ').map((n: string) => n[0]).join('') || '?'}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <span data-testid="text-profile-name">{profileCandidate?.fullName || 'Candidate'}</span>
+                <p className="text-sm text-zinc-400 font-normal" data-testid="text-profile-role">{profileCandidate?.role || 'No role specified'}</p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="max-h-[65vh] pr-4">
+            <div className="space-y-6 py-4">
+              {/* Match Score */}
+              {profileCandidate?.match && (
+                <div className="flex items-center gap-4 p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                  <div className="text-3xl font-bold text-purple-400" data-testid="text-profile-match">
+                    {profileCandidate.match}%
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-purple-300">AI Match Score</p>
+                    <p className="text-xs text-zinc-400">Based on job requirements and skill matching</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Contact Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                  <p className="text-xs text-zinc-500 mb-1">Email</p>
+                  <p className="text-sm flex items-center gap-2" data-testid="text-profile-email">
+                    <Mail className="h-4 w-4 text-zinc-400" />
+                    {profileCandidate?.email || 'Not provided'}
+                  </p>
+                </div>
+                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                  <p className="text-xs text-zinc-500 mb-1">Phone</p>
+                  <p className="text-sm flex items-center gap-2" data-testid="text-profile-phone">
+                    <Phone className="h-4 w-4 text-zinc-400" />
+                    {profileCandidate?.phone || (profileCandidate?.metadata as any)?.phone || 'Not provided'}
+                  </p>
+                </div>
+                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                  <p className="text-xs text-zinc-500 mb-1">Location</p>
+                  <p className="text-sm flex items-center gap-2" data-testid="text-profile-location">
+                    <MapPin className="h-4 w-4 text-zinc-400" />
+                    {profileCandidate?.location || (profileCandidate?.metadata as any)?.location || 'Not specified'}
+                  </p>
+                </div>
+                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                  <p className="text-xs text-zinc-500 mb-1">Stage</p>
+                  <p className="text-sm" data-testid="text-profile-stage">
+                    <Badge className={
+                      profileCandidate?.stage === 'Shortlisted' ? 'bg-green-500/20 text-green-400' :
+                      profileCandidate?.stage === 'Interview' ? 'bg-blue-500/20 text-blue-400' :
+                      'bg-zinc-500/20 text-zinc-400'
+                    }>
+                      {profileCandidate?.stage || 'New'}
+                    </Badge>
+                  </p>
+                </div>
+              </div>
+
+              {/* Skills */}
+              {profileCandidate?.skills && (profileCandidate.skills as string[]).length > 0 && (
+                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                  <p className="text-xs text-zinc-500 mb-3">Skills</p>
+                  <div className="flex flex-wrap gap-2" data-testid="container-profile-skills">
+                    {(profileCandidate.skills as string[]).map((skill: string, i: number) => (
+                      <Badge key={i} variant="outline" className="bg-zinc-800 border-zinc-700">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Experience */}
+              {(profileCandidate?.metadata as any)?.experience && (
+                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                  <p className="text-xs text-zinc-500 mb-2">Experience</p>
+                  <p className="text-sm text-zinc-300" data-testid="text-profile-experience">
+                    {(profileCandidate.metadata as any).experience}
+                  </p>
+                </div>
+              )}
+
+              {/* AI Reasoning */}
+              {(profileCandidate?.metadata as any)?.aiReasoning && (
+                <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                  <p className="text-xs text-purple-400 mb-2">AI Analysis</p>
+                  <p className="text-sm text-zinc-300" data-testid="text-profile-ai-reasoning">
+                    {(profileCandidate.metadata as any).aiReasoning}
+                  </p>
+                </div>
+              )}
+
+              {/* Source */}
+              {profileCandidate?.source && (
+                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                  <span>Source:</span>
+                  <Badge className={getSourceColor(profileCandidate.source)} data-testid="badge-profile-source">
+                    {profileCandidate.source}
+                  </Badge>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="border-t border-zinc-800 pt-4">
+            <Button variant="outline" onClick={() => setProfileOpen(false)} className="border-zinc-700 hover:bg-zinc-800">
+              Close
+            </Button>
+            <Button 
+              onClick={() => {
+                handleAIContact(profileCandidate);
+                setProfileOpen(false);
+              }} 
+              className="bg-indigo-600 hover:bg-indigo-500 gap-2"
+            >
+              <Bot className="h-4 w-4" /> Invite to Interview
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
