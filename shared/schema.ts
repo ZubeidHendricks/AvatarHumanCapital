@@ -1437,6 +1437,85 @@ export type InsertModelTrainingEvent = z.infer<typeof insertModelTrainingEventSc
 export type ModelTrainingEvent = typeof modelTrainingEvents.$inferSelect;
 
 // ============================================================================
+// DATA SOURCES - External systems for KPI data collection
+// ============================================================================
+
+export const dataSources = pgTable("data_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // 'api', 'database', 'spreadsheet', 'crm', 'erp', 'hr_system', 'custom', 'manual'
+  category: text("category"), // 'Sales', 'Finance', 'HR', 'Operations', 'Customer Service', 'IT', 'Marketing'
+  
+  // Connection configuration
+  connectionType: text("connection_type"), // 'rest_api', 'graphql', 'postgresql', 'mysql', 'mssql', 'google_sheets', 'excel', 'webhook'
+  connectionUrl: text("connection_url"), // Base URL or connection string (encrypted in production)
+  authType: text("auth_type"), // 'none', 'api_key', 'oauth2', 'basic', 'bearer_token'
+  authConfig: jsonb("auth_config"), // { apiKeyHeader, apiKey, clientId, clientSecret, etc. } - encrypted in production
+  
+  // Data extraction settings
+  dataEndpoint: text("data_endpoint"), // Specific endpoint or table/view name
+  dataMapping: jsonb("data_mapping"), // Field mapping: { sourceField: 'target_kpi_field' }
+  refreshSchedule: text("refresh_schedule"), // 'realtime', 'hourly', 'daily', 'weekly', 'monthly', 'manual'
+  
+  // Status & health
+  status: text("status").notNull().default("pending"), // 'pending', 'active', 'error', 'disabled'
+  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncStatus: text("last_sync_status"), // 'success', 'partial', 'failed'
+  lastSyncMessage: text("last_sync_message"),
+  healthScore: integer("health_score").default(100), // 0-100 health score based on recent syncs
+  
+  // Metadata
+  iconUrl: text("icon_url"),
+  color: text("color"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("data_sources_tenant_id_idx").on(table.tenantId),
+  typeIdx: index("data_sources_type_idx").on(table.type),
+  statusIdx: index("data_sources_status_idx").on(table.status),
+}));
+
+// Data Source Sync History - Log of all sync attempts
+export const dataSourceSyncHistory = pgTable("data_source_sync_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  dataSourceId: varchar("data_source_id").notNull().references(() => dataSources.id),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  status: text("status").notNull().default("running"), // 'running', 'success', 'partial', 'failed'
+  recordsProcessed: integer("records_processed").default(0),
+  recordsCreated: integer("records_created").default(0),
+  recordsUpdated: integer("records_updated").default(0),
+  recordsFailed: integer("records_failed").default(0),
+  errorMessage: text("error_message"),
+  errorDetails: jsonb("error_details"),
+}, (table) => ({
+  tenantIdIdx: index("data_source_sync_history_tenant_id_idx").on(table.tenantId),
+  dataSourceIdIdx: index("data_source_sync_history_data_source_id_idx").on(table.dataSourceId),
+  startedAtIdx: index("data_source_sync_history_started_at_idx").on(table.startedAt),
+}));
+
+// Data Source Field Definitions - Available fields from each data source
+export const dataSourceFields = pgTable("data_source_fields", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  dataSourceId: varchar("data_source_id").notNull().references(() => dataSources.id),
+  fieldName: text("field_name").notNull(),
+  fieldType: text("field_type").notNull(), // 'string', 'number', 'date', 'boolean', 'array', 'object'
+  displayName: text("display_name"),
+  description: text("description"),
+  sampleValue: text("sample_value"),
+  isRequired: integer("is_required").default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("data_source_fields_tenant_id_idx").on(table.tenantId),
+  dataSourceIdIdx: index("data_source_fields_data_source_id_idx").on(table.dataSourceId),
+}));
+
+// ============================================================================
 // KPI & PERFORMANCE REVIEW SYSTEM
 // ============================================================================
 
@@ -1451,7 +1530,8 @@ export const kpiTemplates = pgTable("kpi_templates", {
   targetValue: integer("target_value"), // Target to achieve
   targetTimePeriod: text("target_time_period"), // 'monthly', 'quarterly', 'annually' - time period for target
   weight: integer("weight").default(1), // Weight in overall score calculation
-  dataSource: text("data_source"), // Source for measurement data (e.g., "CRM System", "Sales Reports", "Customer Surveys")
+  dataSource: text("data_source"), // Legacy: text description of data source
+  dataSourceId: varchar("data_source_id").references(() => dataSources.id), // Link to actual data source
   frequency: text("frequency").default("quarterly"), // 'monthly', 'quarterly', 'annually' - how often KPI is measured
   ownerId: varchar("owner_id").references(() => users.id), // Person responsible for this KPI
   ownerType: text("owner_type"), // 'person', 'department', 'division' - type of owner
@@ -1787,6 +1867,38 @@ export type SocialScreeningFinding = typeof socialScreeningFindings.$inferSelect
 
 export type InsertSocialScreeningPost = z.infer<typeof insertSocialScreeningPostSchema>;
 export type SocialScreeningPost = typeof socialScreeningPosts.$inferSelect;
+
+// Insert schemas for Data Sources
+export const insertDataSourceSchema = createInsertSchema(dataSources).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateDataSourceSchema = insertDataSourceSchema.partial();
+
+export const insertDataSourceSyncHistorySchema = createInsertSchema(dataSourceSyncHistory).omit({
+  id: true,
+  tenantId: true,
+});
+
+export const insertDataSourceFieldSchema = createInsertSchema(dataSourceFields).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+});
+
+// Types for Data Sources
+export type InsertDataSource = z.infer<typeof insertDataSourceSchema>;
+export type UpdateDataSource = z.infer<typeof updateDataSourceSchema>;
+export type DataSource = typeof dataSources.$inferSelect;
+
+export type InsertDataSourceSyncHistory = z.infer<typeof insertDataSourceSyncHistorySchema>;
+export type DataSourceSyncHistory = typeof dataSourceSyncHistory.$inferSelect;
+
+export type InsertDataSourceField = z.infer<typeof insertDataSourceFieldSchema>;
+export type DataSourceField = typeof dataSourceFields.$inferSelect;
 
 // Insert schemas for KPI system
 export const insertKpiTemplateSchema = createInsertSchema(kpiTemplates).omit({

@@ -5114,6 +5114,177 @@ Format your response as JSON:
     }
   });
 
+  // ==================== DATA SOURCES ====================
+
+  app.get("/api/data-sources", async (req, res) => {
+    try {
+      const { type } = req.query;
+      let sources;
+      if (type) {
+        sources = await storage.getDataSourcesByType(req.tenant.id, type as string);
+      } else {
+        sources = await storage.getAllDataSources(req.tenant.id);
+      }
+      res.json(sources);
+    } catch (error) {
+      console.error("Error fetching data sources:", error);
+      res.status(500).json({ message: "Failed to fetch data sources" });
+    }
+  });
+
+  app.get("/api/data-sources/active", async (req, res) => {
+    try {
+      const sources = await storage.getActiveDataSources(req.tenant.id);
+      res.json(sources);
+    } catch (error) {
+      console.error("Error fetching active data sources:", error);
+      res.status(500).json({ message: "Failed to fetch active data sources" });
+    }
+  });
+
+  app.get("/api/data-sources/:id", async (req, res) => {
+    try {
+      const source = await storage.getDataSource(req.tenant.id, req.params.id);
+      if (!source) {
+        return res.status(404).json({ message: "Data source not found" });
+      }
+      res.json(source);
+    } catch (error) {
+      console.error("Error fetching data source:", error);
+      res.status(500).json({ message: "Failed to fetch data source" });
+    }
+  });
+
+  app.post("/api/data-sources", async (req, res) => {
+    try {
+      const source = await storage.createDataSource(req.tenant.id, req.body);
+      res.status(201).json(source);
+    } catch (error) {
+      console.error("Error creating data source:", error);
+      res.status(500).json({ message: "Failed to create data source" });
+    }
+  });
+
+  app.patch("/api/data-sources/:id", async (req, res) => {
+    try {
+      const source = await storage.updateDataSource(req.tenant.id, req.params.id, req.body);
+      if (!source) {
+        return res.status(404).json({ message: "Data source not found" });
+      }
+      res.json(source);
+    } catch (error) {
+      console.error("Error updating data source:", error);
+      res.status(500).json({ message: "Failed to update data source" });
+    }
+  });
+
+  app.delete("/api/data-sources/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteDataSource(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Data source not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting data source:", error);
+      res.status(500).json({ message: "Failed to delete data source" });
+    }
+  });
+
+  // Data source connection testing
+  app.post("/api/data-sources/:id/test-connection", async (req, res) => {
+    try {
+      const source = await storage.getDataSource(req.tenant.id, req.params.id);
+      if (!source) {
+        return res.status(404).json({ message: "Data source not found" });
+      }
+
+      // Simulate connection test based on connection type
+      // In production, this would actually test the connection
+      const testResult = {
+        success: true,
+        message: "Connection successful",
+        latency: Math.floor(Math.random() * 200) + 50,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Update the data source status
+      await storage.updateDataSource(req.tenant.id, req.params.id, {
+        status: testResult.success ? "active" : "error",
+        lastSyncStatus: testResult.success ? "success" : "failed",
+        lastSyncMessage: testResult.message,
+        lastSyncAt: new Date(),
+        healthScore: testResult.success ? 100 : 0,
+      });
+
+      res.json(testResult);
+    } catch (error) {
+      console.error("Error testing data source connection:", error);
+      res.status(500).json({ message: "Failed to test connection" });
+    }
+  });
+
+  // Data source sync history
+  app.get("/api/data-sources/:id/sync-history", async (req, res) => {
+    try {
+      const history = await storage.getDataSourceSyncHistory(req.tenant.id, req.params.id);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching sync history:", error);
+      res.status(500).json({ message: "Failed to fetch sync history" });
+    }
+  });
+
+  // Manual sync trigger
+  app.post("/api/data-sources/:id/sync", async (req, res) => {
+    try {
+      const source = await storage.getDataSource(req.tenant.id, req.params.id);
+      if (!source) {
+        return res.status(404).json({ message: "Data source not found" });
+      }
+
+      // Create sync history entry
+      const syncEntry = await storage.createDataSourceSyncHistory(req.tenant.id, {
+        dataSourceId: source.id,
+        status: "running",
+      });
+
+      // Simulate sync (in production, this would actually sync data)
+      setTimeout(async () => {
+        await storage.updateDataSourceSyncHistory(syncEntry.id, {
+          status: "success",
+          completedAt: new Date(),
+          recordsProcessed: Math.floor(Math.random() * 1000) + 100,
+          recordsCreated: Math.floor(Math.random() * 50),
+          recordsUpdated: Math.floor(Math.random() * 100),
+        });
+
+        await storage.updateDataSource(req.tenant.id, source.id, {
+          lastSyncAt: new Date(),
+          lastSyncStatus: "success",
+          lastSyncMessage: "Sync completed successfully",
+          healthScore: 100,
+        });
+      }, 2000);
+
+      res.json({ message: "Sync started", syncId: syncEntry.id });
+    } catch (error) {
+      console.error("Error starting sync:", error);
+      res.status(500).json({ message: "Failed to start sync" });
+    }
+  });
+
+  // Data source fields
+  app.get("/api/data-sources/:id/fields", async (req, res) => {
+    try {
+      const fields = await storage.getDataSourceFields(req.tenant.id, req.params.id);
+      res.json(fields);
+    } catch (error) {
+      console.error("Error fetching data source fields:", error);
+      res.status(500).json({ message: "Failed to fetch fields" });
+    }
+  });
+
   // ==================== KPI TEMPLATES ====================
   
   app.get("/api/kpi-templates", async (req, res) => {

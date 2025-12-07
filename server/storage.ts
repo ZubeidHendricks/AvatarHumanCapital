@@ -114,6 +114,16 @@ import {
   interviewFeedback,
   candidateRecommendations,
   modelTrainingEvents,
+  dataSources,
+  dataSourceSyncHistory,
+  dataSourceFields,
+  type DataSource,
+  type InsertDataSource,
+  type UpdateDataSource,
+  type DataSourceSyncHistory,
+  type InsertDataSourceSyncHistory,
+  type DataSourceField,
+  type InsertDataSourceField,
   kpiTemplates,
   reviewCycles,
   kpiAssignments,
@@ -421,6 +431,25 @@ export interface IStorage {
   updateWhatsappDocumentSession(tenantId: string, id: string, updates: UpdateWhatsappDocumentSession): Promise<WhatsappDocumentSession | undefined>;
   deleteWhatsappDocumentSession(tenantId: string, id: string): Promise<boolean>;
   
+  // Data Sources
+  getAllDataSources(tenantId: string): Promise<DataSource[]>;
+  getDataSource(tenantId: string, id: string): Promise<DataSource | undefined>;
+  getDataSourcesByType(tenantId: string, type: string): Promise<DataSource[]>;
+  getActiveDataSources(tenantId: string): Promise<DataSource[]>;
+  createDataSource(tenantId: string, source: InsertDataSource): Promise<DataSource>;
+  updateDataSource(tenantId: string, id: string, updates: UpdateDataSource): Promise<DataSource | undefined>;
+  deleteDataSource(tenantId: string, id: string): Promise<boolean>;
+  
+  // Data Source Sync History
+  getDataSourceSyncHistory(tenantId: string, dataSourceId: string): Promise<DataSourceSyncHistory[]>;
+  createDataSourceSyncHistory(tenantId: string, history: InsertDataSourceSyncHistory): Promise<DataSourceSyncHistory>;
+  updateDataSourceSyncHistory(id: string, updates: Partial<InsertDataSourceSyncHistory>): Promise<DataSourceSyncHistory | undefined>;
+  
+  // Data Source Fields
+  getDataSourceFields(tenantId: string, dataSourceId: string): Promise<DataSourceField[]>;
+  createDataSourceField(tenantId: string, field: InsertDataSourceField): Promise<DataSourceField>;
+  deleteDataSourceFields(tenantId: string, dataSourceId: string): Promise<boolean>;
+
   // KPI Templates
   getAllKpiTemplates(tenantId: string): Promise<KpiTemplate[]>;
   getKpiTemplate(tenantId: string, id: string): Promise<KpiTemplate | undefined>;
@@ -2079,6 +2108,97 @@ export class DatabaseStorage implements IStorage {
   async deleteWhatsappDocumentSession(tenantId: string, id: string): Promise<boolean> {
     const result = await db.delete(whatsappDocumentSessions)
       .where(and(eq(whatsappDocumentSessions.id, id), eq(whatsappDocumentSessions.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Data Sources Implementation
+  async getAllDataSources(tenantId: string): Promise<DataSource[]> {
+    return await db.select().from(dataSources)
+      .where(eq(dataSources.tenantId, tenantId))
+      .orderBy(desc(dataSources.createdAt));
+  }
+
+  async getDataSource(tenantId: string, id: string): Promise<DataSource | undefined> {
+    const [source] = await db.select().from(dataSources)
+      .where(and(eq(dataSources.id, id), eq(dataSources.tenantId, tenantId)));
+    return source || undefined;
+  }
+
+  async getDataSourcesByType(tenantId: string, type: string): Promise<DataSource[]> {
+    return await db.select().from(dataSources)
+      .where(and(eq(dataSources.tenantId, tenantId), eq(dataSources.type, type)))
+      .orderBy(dataSources.name);
+  }
+
+  async getActiveDataSources(tenantId: string): Promise<DataSource[]> {
+    return await db.select().from(dataSources)
+      .where(and(eq(dataSources.tenantId, tenantId), eq(dataSources.status, "active")))
+      .orderBy(dataSources.name);
+  }
+
+  async createDataSource(tenantId: string, source: InsertDataSource): Promise<DataSource> {
+    const [newSource] = await db.insert(dataSources).values({ ...source, tenantId }).returning();
+    return newSource;
+  }
+
+  async updateDataSource(tenantId: string, id: string, updates: UpdateDataSource): Promise<DataSource | undefined> {
+    const [source] = await db.update(dataSources)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(dataSources.id, id), eq(dataSources.tenantId, tenantId)))
+      .returning();
+    return source || undefined;
+  }
+
+  async deleteDataSource(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(dataSources)
+      .where(and(eq(dataSources.id, id), eq(dataSources.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Data Source Sync History Implementation
+  async getDataSourceSyncHistory(tenantId: string, dataSourceId: string): Promise<DataSourceSyncHistory[]> {
+    return await db.select().from(dataSourceSyncHistory)
+      .where(and(
+        eq(dataSourceSyncHistory.tenantId, tenantId),
+        eq(dataSourceSyncHistory.dataSourceId, dataSourceId)
+      ))
+      .orderBy(desc(dataSourceSyncHistory.startedAt));
+  }
+
+  async createDataSourceSyncHistory(tenantId: string, history: InsertDataSourceSyncHistory): Promise<DataSourceSyncHistory> {
+    const [newHistory] = await db.insert(dataSourceSyncHistory).values({ ...history, tenantId }).returning();
+    return newHistory;
+  }
+
+  async updateDataSourceSyncHistory(id: string, updates: Partial<InsertDataSourceSyncHistory>): Promise<DataSourceSyncHistory | undefined> {
+    const [history] = await db.update(dataSourceSyncHistory)
+      .set(updates)
+      .where(eq(dataSourceSyncHistory.id, id))
+      .returning();
+    return history || undefined;
+  }
+
+  // Data Source Fields Implementation
+  async getDataSourceFields(tenantId: string, dataSourceId: string): Promise<DataSourceField[]> {
+    return await db.select().from(dataSourceFields)
+      .where(and(
+        eq(dataSourceFields.tenantId, tenantId),
+        eq(dataSourceFields.dataSourceId, dataSourceId)
+      ))
+      .orderBy(dataSourceFields.fieldName);
+  }
+
+  async createDataSourceField(tenantId: string, field: InsertDataSourceField): Promise<DataSourceField> {
+    const [newField] = await db.insert(dataSourceFields).values({ ...field, tenantId }).returning();
+    return newField;
+  }
+
+  async deleteDataSourceFields(tenantId: string, dataSourceId: string): Promise<boolean> {
+    const result = await db.delete(dataSourceFields)
+      .where(and(
+        eq(dataSourceFields.tenantId, tenantId),
+        eq(dataSourceFields.dataSourceId, dataSourceId)
+      ));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
