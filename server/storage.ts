@@ -160,9 +160,10 @@ import { db } from "./db";
 import { eq, desc, and, lte, sql, isNull, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUser(tenantId: string, id: string): Promise<User | undefined>;
+  getUserByUsername(tenantId: string, username: string): Promise<User | undefined>;
+  createUser(tenantId: string, user: InsertUser): Promise<User>;
+  updateUser(tenantId: string, id: string, user: Partial<InsertUser>): Promise<User | undefined>;
   
   getAllJobs(tenantId: string, includeArchived?: boolean): Promise<Job[]>;
   getArchivedJobs(tenantId: string): Promise<Job[]>;
@@ -178,6 +179,7 @@ export interface IStorage {
   createCandidate(tenantId: string, candidate: InsertCandidate): Promise<Candidate>;
   updateCandidate(tenantId: string, id: string, candidate: Partial<InsertCandidate>): Promise<Candidate | undefined>;
   deleteCandidate(tenantId: string, id: string): Promise<boolean>;
+  searchCandidatesByEmbedding(tenantId: string, embedding: number[], limit?: number): Promise<Array<Candidate & { similarity: number }>>;
   
   getAllIntegrityChecks(tenantId: string): Promise<IntegrityCheck[]>;
   getIntegrityCheck(tenantId: string, id: string): Promise<IntegrityCheck | undefined>;
@@ -510,22 +512,37 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+  async getUser(tenantId: string, id: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, id), eq(users.tenantId, tenantId)));
     return user || undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+  async getUserByUsername(tenantId: string, username: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.username, username), eq(users.tenantId, tenantId)));
     return user || undefined;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createUser(tenantId: string, insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values(insertUser)
+      .values({ ...insertUser, tenantId })
       .returning();
     return user;
+  }
+
+  async updateUser(tenantId: string, id: string, updateData: Partial<InsertUser>): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(and(eq(users.id, id), eq(users.tenantId, tenantId)))
+      .returning();
+    return user || undefined;
   }
 
   async getAllJobs(tenantId: string, includeArchived: boolean = false): Promise<Job[]> {
@@ -641,6 +658,34 @@ export class DatabaseStorage implements IStorage {
   async deleteCandidate(tenantId: string, id: string): Promise<boolean> {
     const result = await db.delete(candidates).where(and(eq(candidates.id, id), eq(candidates.tenantId, tenantId)));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  /**
+   * Search candidates by embedding similarity (RAG)
+   * Uses pgvector's cosine similarity operator (<=>)
+   */
+  async searchCandidatesByEmbedding(
+    tenantId: string,
+    queryEmbedding: number[],
+    limit: number = 10
+  ): Promise<Array<Candidate & { similarity: number }>> {
+    // Convert embedding array to pgvector format
+    const embeddingStr = `[${queryEmbedding.join(",")}]`;
+
+    // Use raw SQL for vector similarity search
+    // Cosine similarity: 1 - (embedding <=> query) gives us similarity score (0-1)
+    const results = await db.execute(sql`
+      SELECT 
+        *,
+        1 - (resume_embedding <=> ${embeddingStr}::vector) AS similarity
+      FROM ${candidates}
+      WHERE tenant_id = ${tenantId}
+        AND resume_embedding IS NOT NULL
+      ORDER BY resume_embedding <=> ${embeddingStr}::vector
+      LIMIT ${limit}
+    `);
+
+    return results.rows as Array<Candidate & { similarity: number }>;
   }
 
   async getAllIntegrityChecks(tenantId: string): Promise<IntegrityCheck[]> {

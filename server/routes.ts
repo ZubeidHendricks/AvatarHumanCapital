@@ -17,6 +17,8 @@ import { Packer } from "docx";
 import { embeddingService } from "./embedding-service";
 import { getOrCreateConversation, deleteConversation } from "./job-creation-agent";
 import { requireAdmin } from "./admin-middleware";
+import { authService } from "./auth-service";
+import { authenticate, optionalAuth, authorize, requireSuperAdmin } from "./auth-middleware";
 import multer from "multer";
 import { PDFParse } from "pdf-parse";
 import AdmZip from "adm-zip";
@@ -54,6 +56,164 @@ function inferDepartmentFromTitle(title: string): string {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // ============================================
+  // AUTHENTICATION ROUTES
+  // ============================================
+
+  /**
+   * POST /api/auth/register
+   * Register a new user
+   */
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, password, role } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+
+      const result = await authService.register(
+        req.tenant.id,
+        username,
+        password,
+        role || "user"
+      );
+
+      const { password: _, ...userWithoutPassword } = result.user;
+
+      res.status(201).json({
+        message: "User registered successfully",
+        user: userWithoutPassword,
+        token: result.token,
+      });
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      if (error.message === "Username already exists") {
+        return res.status(409).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
+  /**
+   * POST /api/auth/login
+   * Login user and get JWT token
+   */
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+
+      const result = await authService.login(req.tenant.id, username, password);
+
+      if (!result) {
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+
+      const { password: _, ...userWithoutPassword } = result.user;
+
+      res.json({
+        message: "Login successful",
+        user: userWithoutPassword,
+        token: result.token,
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  /**
+   * GET /api/auth/me
+   * Get current user info from token
+   */
+  app.get("/api/auth/me", authenticate, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { password: _, ...userWithoutPassword } = req.user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Get user error:", error);
+      res.status(500).json({ message: "Failed to get user info" });
+    }
+  });
+
+  /**
+   * POST /api/auth/refresh
+   * Refresh JWT token
+   */
+  app.post("/api/auth/refresh", authenticate, async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+
+      const token = authHeader.substring(7);
+      const newToken = await authService.refreshToken(token);
+
+      if (!newToken) {
+        return res.status(401).json({ message: "Token refresh failed" });
+      }
+
+      res.json({ token: newToken });
+    } catch (error) {
+      console.error("Token refresh error:", error);
+      res.status(500).json({ message: "Token refresh failed" });
+    }
+  });
+
+  /**
+   * POST /api/auth/change-password
+   * Change user password
+   */
+  app.post("/api/auth/change-password", authenticate, async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current and new password are required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters" });
+      }
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      // Verify current password
+      const isValid = await authService.verifyPassword(currentPassword, req.user.password);
+      if (!isValid) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      // Hash and update new password
+      const hashedPassword = await authService.hashPassword(newPassword);
+      await storage.updateUser(req.tenant.id, req.user.id, { password: hashedPassword });
+
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Change password error:", error);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  // ============================================
+  // CANDIDATE ROUTES
+  // ============================================
+
   app.get("/api/candidates", async (req, res) => {
     try {
       const candidates = await storage.getAllCandidates(req.tenant.id);
@@ -122,6 +282,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting candidate:", error);
       res.status(500).json({ message: "Failed to delete candidate" });
+    }
+  });
+
+  /**
+   * POST /api/candidates/semantic-search
+   * Find candidates using semantic search (RAG)
+   * Body: { query: string, limit?: number }
+   */
+  app.post("/api/candidates/semantic-search", async (req, res) => {
+    try {
+      const { query, limit = 10 } = req.body;
+
+      if (!query) {
+        return res.status(400).json({ message: "Query is required" });
+      }
+
+      // Generate embedding for search query
+      const queryEmbedding = await embeddingService.generateEmbedding(query);
+
+      // Search for similar candidates using vector similarity
+      const candidates = await storage.searchCandidatesByEmbedding(
+        req.tenant.id,
+        queryEmbedding,
+        limit
+      );
+
+      res.json({
+        query,
+        results: candidates,
+        count: candidates.length,
+      });
+    } catch (error) {
+      console.error("Error in semantic candidate search:", error);
+      res.status(500).json({ message: "Search failed" });
+    }
+  });
+
+  /**
+   * POST /api/jobs/:id/find-matches
+   * Find best matching candidates for a job using RAG
+   */
+  app.post("/api/jobs/:id/find-matches", async (req, res) => {
+    try {
+      const { limit = 10 } = req.body;
+      const job = await storage.getJob(req.tenant.id, req.params.id);
+
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      // Use job's existing embedding or generate if not exists
+      let jobEmbedding = job.requirementsEmbedding;
+
+      if (!jobEmbedding || jobEmbedding.every((v: number) => v === 0)) {
+        console.log("Generating embedding for job:", job.title);
+        jobEmbedding = await embeddingService.generateJobEmbedding(job);
+        
+        // Update job with new embedding
+        await storage.updateJob(req.tenant.id, job.id, {
+          requirementsEmbedding: jobEmbedding,
+        });
+      }
+
+      // Find matching candidates
+      const candidates = await storage.searchCandidatesByEmbedding(
+        req.tenant.id,
+        jobEmbedding,
+        limit
+      );
+
+      res.json({
+        job: {
+          id: job.id,
+          title: job.title,
+          department: job.department,
+        },
+        matches: candidates,
+        count: candidates.length,
+      });
+    } catch (error) {
+      console.error("Error finding job matches:", error);
+      res.status(500).json({ message: "Failed to find matches" });
     }
   });
 
@@ -885,6 +1127,48 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
 
   app.get("/api/interview/voice/config", async (req, res) => {
     try {
+      const { candidateId, jobId } = req.query;
+
+      if (!candidateId || !jobId) {
+        return res.status(400).json({ 
+          message: "candidateId and jobId query parameters are required" 
+        });
+      }
+
+      // Create interview session
+      const job = await storage.getJob(req.tenant.id, jobId as string);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      const session = await interviewOrchestrator.createInterviewSession(
+        req.tenant.id,
+        candidateId as string,
+        job.title,
+        'voice'
+      );
+
+      // Get Hume access token
+      const accessToken = await interviewOrchestrator.getHumeAccessToken(session.id);
+
+      if (!accessToken) {
+        return res.status(503).json({ 
+          message: "Hume AI service is not configured or unavailable",
+          configured: false
+        });
+      }
+
+      res.json({
+        sessionId: session.id,
+        accessToken,
+        expiresAt: session.expiresAt,
+        configured: true
+      });
+    } catch (error) {
+      console.error("Error creating voice interview config:", error);
+      res.status(500).json({ message: "Failed to create interview configuration" });
+    }
+  });
       const HUMAI_API_KEY = process.env.HUMAI_API_KEY;
       const HUMAI_SECRET_KEY = process.env.HUMAI_SECRET_KEY;
 
