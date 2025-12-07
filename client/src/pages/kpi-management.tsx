@@ -43,7 +43,7 @@ export default function KpiManagement() {
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<KpiTemplate | null>(null);
   const [editingCycle, setEditingCycle] = useState<ReviewCycle | null>(null);
-  const [selectedCycle, setSelectedCycle] = useState<string | null>(null);
+  const [selectedCycle, setSelectedCycle] = useState<string>("all");
   const [selectedSubmission, setSelectedSubmission] = useState<ReviewSubmission | null>(null);
   
   const queryClient = useQueryClient();
@@ -73,7 +73,7 @@ export default function KpiManagement() {
   const { data: assignments = [] } = useQuery<KpiAssignment[]>({
     queryKey: [...assignmentsKey, selectedCycle],
     queryFn: async () => {
-      const params = selectedCycle ? `?reviewCycleId=${selectedCycle}` : '';
+      const params = selectedCycle && selectedCycle !== "all" ? `?reviewCycleId=${selectedCycle}` : '';
       const response = await api.get(`/kpi-assignments${params}`);
       return response.data;
     },
@@ -83,7 +83,7 @@ export default function KpiManagement() {
   const { data: submissions = [] } = useQuery<ReviewSubmission[]>({
     queryKey: [...submissionsKey, selectedCycle],
     queryFn: async () => {
-      const params = selectedCycle ? `?reviewCycleId=${selectedCycle}` : '';
+      const params = selectedCycle && selectedCycle !== "all" ? `?reviewCycleId=${selectedCycle}` : '';
       const response = await api.get(`/review-submissions${params}`);
       return response.data;
     },
@@ -409,12 +409,12 @@ export default function KpiManagement() {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-4">
                 <h2 className="text-lg font-semibold text-white">KPI Assignments</h2>
-                <Select value={selectedCycle || ""} onValueChange={setSelectedCycle}>
+                <Select value={selectedCycle} onValueChange={setSelectedCycle}>
                   <SelectTrigger className="w-64 bg-gray-800 border-gray-700 text-white" data-testid="select-cycle-filter">
                     <SelectValue placeholder="Filter by cycle" />
                   </SelectTrigger>
                   <SelectContent className="bg-gray-800 border-gray-700">
-                    <SelectItem value="">All Cycles</SelectItem>
+                    <SelectItem value="all">All Cycles</SelectItem>
                     {cycles.map((cycle) => (
                       <SelectItem key={cycle.id} value={cycle.id}>{cycle.name}</SelectItem>
                     ))}
@@ -480,12 +480,12 @@ export default function KpiManagement() {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-4">
                 <h2 className="text-lg font-semibold text-white">Review Submissions</h2>
-                <Select value={selectedCycle || ""} onValueChange={setSelectedCycle}>
+                <Select value={selectedCycle} onValueChange={setSelectedCycle}>
                   <SelectTrigger className="w-64 bg-gray-800 border-gray-700 text-white" data-testid="select-cycle-reviews">
                     <SelectValue placeholder="Filter by cycle" />
                   </SelectTrigger>
                   <SelectContent className="bg-gray-800 border-gray-700">
-                    <SelectItem value="">All Cycles</SelectItem>
+                    <SelectItem value="all">All Cycles</SelectItem>
                     {cycles.map((cycle) => (
                       <SelectItem key={cycle.id} value={cycle.id}>{cycle.name}</SelectItem>
                     ))}
