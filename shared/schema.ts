@@ -1581,11 +1581,11 @@ export const kpiAssignments = pgTable("kpi_assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id"),
   reviewCycleId: varchar("review_cycle_id").notNull().references(() => reviewCycles.id),
-  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
   kpiTemplateId: varchar("kpi_template_id").notNull().references(() => kpiTemplates.id),
   customTarget: integer("custom_target"), // Override template target
   customWeight: integer("custom_weight"), // Override template weight
-  managerId: varchar("manager_id").references(() => users.id), // Direct manager for approval
+  managerId: varchar("manager_id").references(() => employees.id), // Direct manager for approval
   status: text("status").notNull().default("pending"), // 'pending', 'self_scored', 'manager_reviewed', 'finalized'
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
