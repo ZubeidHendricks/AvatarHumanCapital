@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { format } from "date-fns";
+import { DataSourceForm } from "@/components/data-source-form";
 import type { KpiTemplate, ReviewCycle, KpiAssignment, ReviewSubmission, Employee } from "@shared/schema";
 
 const CATEGORIES = [
@@ -691,14 +692,9 @@ function TemplateDialog({
   const [ownerDivision, setOwnerDivision] = useState(template?.ownerDivision || "");
   const [sourceFieldMapping, setSourceFieldMapping] = useState<string>(template?.sourceFieldMapping?.toString() || "");
   const [aggregationMethod, setAggregationMethod] = useState(template?.aggregationMethod || "sum");
-  
-  const [sourceName, setSourceName] = useState("");
-  const [sourceDescription, setSourceDescription] = useState("");
-  const [sourceType, setSourceType] = useState("manual");
-  const [creatingSource, setCreatingSource] = useState(false);
 
   const dataSourcesKey = useTenantQueryKey(["data-sources-active"]);
-  const { data: activeSources = [], refetch: refetchSources } = useQuery<{ id: string; name: string; type: string }[]>({
+  const { data: activeSources = [] } = useQuery<{ id: string; name: string; type: string }[]>({
     queryKey: dataSourcesKey,
     queryFn: async () => {
       const response = await api.get("/data-sources/active");
@@ -708,28 +704,6 @@ function TemplateDialog({
   });
 
   const selectedSource = activeSources.find(s => s.id === dataSourceId);
-
-  const handleCreateDataSource = async () => {
-    if (!sourceName.trim()) return;
-    setCreatingSource(true);
-    try {
-      const response = await api.post("/data-sources", {
-        name: sourceName,
-        description: sourceDescription || `Data source for KPI tracking`,
-        type: sourceType,
-        status: "active",
-        refreshSchedule: sourceType === "manual" ? "manual" : "daily"
-      });
-      const newSource = response.data;
-      await refetchSources();
-      setDataSourceId(newSource.id);
-      setStep(3);
-    } catch (error) {
-      console.error("Failed to create data source:", error);
-    } finally {
-      setCreatingSource(false);
-    }
-  };
 
   const handleSubmit = () => {
     onSubmit({
@@ -753,7 +727,6 @@ function TemplateDialog({
   };
 
   const canProceedStep1 = name.trim().length > 0;
-  const canProceedStep2 = dataSourceId.length > 0 || sourceName.trim().length > 0;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
@@ -950,87 +923,16 @@ function TemplateDialog({
         )}
 
         {step === 2 && (
-          <div className="space-y-4">
-            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-              <p className="text-sm text-gray-300">
-                Choose an existing data source or create a new one. Data sources define where KPI measurements come from.
-              </p>
-            </div>
-            
-            {activeSources.length > 0 && (
-              <div>
-                <Label className="text-base font-medium mb-3 block">Select Existing Data Source</Label>
-                <div className="space-y-2">
-                  {activeSources.map((source) => (
-                    <div
-                      key={source.id}
-                      onClick={() => setDataSourceId(source.id)}
-                      className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                        dataSourceId === source.id 
-                          ? 'border-blue-500 bg-blue-500/10' 
-                          : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
-                      }`}
-                      data-testid={`card-source-${source.id}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Database className="h-5 w-5 text-gray-400" />
-                          <div>
-                            <p className="font-medium text-white">{source.name}</p>
-                            <Badge variant="secondary" className="text-xs mt-1">{source.type}</Badge>
-                          </div>
-                        </div>
-                        {dataSourceId === source.id && (
-                          <CheckCircle className="h-5 w-5 text-blue-500" />
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            <div className="border-t border-gray-700 pt-4">
-              <Label className="text-base font-medium mb-3 block">Or Create New Data Source</Label>
-              <div className="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                <div>
-                  <Label>Source Name *</Label>
-                  <Input
-                    value={sourceName}
-                    onChange={(e) => setSourceName(e.target.value)}
-                    placeholder="e.g., Sales Team Manual KPIs"
-                    className="bg-gray-800 border-gray-700"
-                    data-testid="input-source-name"
-                  />
-                </div>
-                <div>
-                  <Label>Description</Label>
-                  <Textarea
-                    value={sourceDescription}
-                    onChange={(e) => setSourceDescription(e.target.value)}
-                    placeholder="Describe this data source..."
-                    className="bg-gray-800 border-gray-700"
-                    rows={2}
-                    data-testid="input-source-description"
-                  />
-                </div>
-                <div>
-                  <Label>Source Type</Label>
-                  <Select value={sourceType} onValueChange={setSourceType}>
-                    <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-source-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="manual">Manual Entry</SelectItem>
-                      <SelectItem value="api">API Integration</SelectItem>
-                      <SelectItem value="database">Database Connection</SelectItem>
-                      <SelectItem value="spreadsheet">Spreadsheet Import</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </div>
+          <DataSourceForm
+            existingSources={activeSources}
+            selectedSourceId={dataSourceId}
+            onSelectSource={setDataSourceId}
+            onSourceCreated={(sourceId) => {
+              setDataSourceId(sourceId);
+              setStep(3);
+            }}
+            embedded={true}
+          />
         )}
 
         {step === 3 && (
@@ -1069,7 +971,7 @@ function TemplateDialog({
               <div className="flex justify-between py-2 border-b border-gray-800">
                 <span className="text-gray-400">Data Source</span>
                 <span className="text-white">
-                  {selectedSource?.name || sourceName || "Not configured"}
+                  {selectedSource?.name || "Not configured"}
                 </span>
               </div>
               {description && (
@@ -1092,27 +994,26 @@ function TemplateDialog({
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            {step < 3 ? (
+            {step === 1 && (
               <Button 
-                onClick={() => {
-                  if (step === 2 && sourceName.trim() && !dataSourceId) {
-                    handleCreateDataSource();
-                  } else {
-                    setStep(step + 1);
-                  }
-                }}
-                disabled={
-                  (step === 1 && !canProceedStep1) || 
-                  (step === 2 && !canProceedStep2) ||
-                  creatingSource
-                }
+                onClick={() => setStep(2)}
+                disabled={!canProceedStep1}
                 data-testid="button-next"
               >
-                {creatingSource && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {step === 2 && sourceName.trim() && !dataSourceId ? "Create Source & Continue" : "Next"}
+                Next: Data Source
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
-            ) : (
+            )}
+            {step === 2 && dataSourceId && (
+              <Button 
+                onClick={() => setStep(3)}
+                data-testid="button-next"
+              >
+                Next: Review
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            )}
+            {step === 3 && (
               <Button onClick={handleSubmit} disabled={isLoading} data-testid="button-create-kpi">
                 {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {template ? "Update KPI" : "Create KPI"}
