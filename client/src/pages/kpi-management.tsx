@@ -99,14 +99,36 @@ export default function KpiManagement() {
   });
 
   const createTemplateMutation = useMutation({
-    mutationFn: async (data: Partial<KpiTemplate>) => {
+    mutationFn: async ({ templateData, assignmentData }: { 
+      templateData: Partial<KpiTemplate>; 
+      assignmentData?: { reviewCycleId: string; employeeIds: string[] } 
+    }) => {
+      let template;
       if (editingTemplate) {
-        return api.patch(`/kpi-templates/${editingTemplate.id}`, data);
+        const response = await api.patch(`/kpi-templates/${editingTemplate.id}`, templateData);
+        template = response.data;
+      } else {
+        const response = await api.post("/kpi-templates", templateData);
+        template = response.data;
       }
-      return api.post("/kpi-templates", data);
+      
+      // If assignment data is provided, create assignments for each employee
+      if (assignmentData && assignmentData.reviewCycleId && assignmentData.employeeIds.length > 0) {
+        const assignments = assignmentData.employeeIds.map(employeeId => ({
+          reviewCycleId: assignmentData.reviewCycleId,
+          kpiTemplateId: template.id,
+          employeeId,
+          customTarget: templateData.targetValue || null,
+          status: 'pending'
+        }));
+        await api.post("/kpi-assignments/batch", { assignments });
+      }
+      
+      return template;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: templatesKey });
+      queryClient.invalidateQueries({ queryKey: assignmentsKey });
       setShowTemplateDialog(false);
       setEditingTemplate(null);
     }
@@ -590,9 +612,10 @@ export default function KpiManagement() {
         open={showTemplateDialog}
         onOpenChange={setShowTemplateDialog}
         template={editingTemplate}
-        onSubmit={(data) => createTemplateMutation.mutate(data)}
+        onSubmit={(data, assignmentData) => createTemplateMutation.mutate({ templateData: data, assignmentData })}
         isLoading={createTemplateMutation.isPending}
         employees={employees}
+        cycles={cycles}
       />
 
       <CycleDialog
@@ -664,14 +687,16 @@ function TemplateDialog({
   template,
   onSubmit,
   isLoading,
-  employees = []
+  employees = [],
+  cycles = []
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   template: KpiTemplate | null;
-  onSubmit: (data: Partial<KpiTemplate>) => void;
+  onSubmit: (data: Partial<KpiTemplate>, assignmentData?: { reviewCycleId: string; employeeIds: string[] }) => void;
   isLoading: boolean;
   employees?: Employee[];
+  cycles?: ReviewCycle[];
 }) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState(template?.name || "");
@@ -689,6 +714,10 @@ function TemplateDialog({
   const [ownerDivision, setOwnerDivision] = useState(template?.ownerDivision || "");
   const [sourceFieldMapping, setSourceFieldMapping] = useState<string>(template?.sourceFieldMapping?.toString() || "");
   const [aggregationMethod, setAggregationMethod] = useState(template?.aggregationMethod || "sum");
+  
+  // Assignment step state (step 3)
+  const [assignReviewCycleId, setAssignReviewCycleId] = useState("");
+  const [assignEmployeeIds, setAssignEmployeeIds] = useState<string[]>([]);
 
   // Reset form state when template changes (for edit mode)
   useEffect(() => {
@@ -709,6 +738,8 @@ function TemplateDialog({
       setOwnerDivision(template?.ownerDivision || "");
       setSourceFieldMapping(template?.sourceFieldMapping?.toString() || "");
       setAggregationMethod(template?.aggregationMethod || "sum");
+      setAssignReviewCycleId("");
+      setAssignEmployeeIds([]);
     }
   }, [open, template]);
 
@@ -725,7 +756,7 @@ function TemplateDialog({
   const selectedSource = activeSources.find(s => s.id === dataSourceId);
 
   const handleSubmit = () => {
-    onSubmit({
+    const templateData = {
       name,
       description,
       category,
@@ -742,8 +773,16 @@ function TemplateDialog({
       isActive: 1,
       sourceFieldMapping: sourceFieldMapping || null,
       aggregationMethod: aggregationMethod || null
-    });
+    };
+    
+    const assignmentData = assignReviewCycleId && assignEmployeeIds.length > 0
+      ? { reviewCycleId: assignReviewCycleId, employeeIds: assignEmployeeIds }
+      : undefined;
+    
+    onSubmit(templateData, assignmentData);
   };
+  
+  const activeCycles = cycles.filter(c => c.status !== 'completed');
 
   const canProceedStep1 = name.trim().length > 0;
 
@@ -756,9 +795,10 @@ function TemplateDialog({
         <DialogHeader>
           <DialogTitle>{template ? "Edit" : "Create"} KPI Template</DialogTitle>
           <DialogDescription className="text-gray-400">
-            {step === 1 && "Step 1 of 3: Define KPI details"}
-            {step === 2 && "Step 2 of 3: Configure data source"}
-            {step === 3 && "Step 3 of 3: Review and create"}
+            {step === 1 && "Step 1 of 4: Define KPI details"}
+            {step === 2 && "Step 2 of 4: Configure data source"}
+            {step === 3 && "Step 3 of 4: Assign to review cycle"}
+            {step === 4 && "Step 4 of 4: Review and create"}
           </DialogDescription>
         </DialogHeader>
         
@@ -768,6 +808,8 @@ function TemplateDialog({
           <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${step >= 2 ? 'bg-blue-600' : 'bg-gray-700'}`}>2</div>
           <div className={`flex-1 h-1 ${step >= 3 ? 'bg-blue-600' : 'bg-gray-700'}`} />
           <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${step >= 3 ? 'bg-blue-600' : 'bg-gray-700'}`}>3</div>
+          <div className={`flex-1 h-1 ${step >= 4 ? 'bg-blue-600' : 'bg-gray-700'}`} />
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${step >= 4 ? 'bg-blue-600' : 'bg-gray-700'}`}>4</div>
         </div>
 
         {step === 1 && (
@@ -941,6 +983,60 @@ function TemplateDialog({
 
         {step === 3 && (
           <div className="space-y-4">
+            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <p className="text-sm text-gray-300">
+                Assign this KPI to a review cycle and select employees. You can skip this step and assign later.
+              </p>
+            </div>
+            
+            <div>
+              <Label>Review Cycle</Label>
+              <Select value={assignReviewCycleId} onValueChange={setAssignReviewCycleId}>
+                <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-assign-cycle">
+                  <SelectValue placeholder="Select a review cycle (optional)" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-700">
+                  {activeCycles.map((cycle) => (
+                    <SelectItem key={cycle.id} value={cycle.id}>{cycle.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {assignReviewCycleId && (
+              <div>
+                <Label>Select Employees to Assign</Label>
+                <div className="mt-2 max-h-48 overflow-y-auto space-y-2 border border-gray-700 rounded-lg p-3">
+                  {employees.map((employee) => (
+                    <label key={employee.id} className="flex items-center gap-3 cursor-pointer hover:bg-gray-800/50 p-2 rounded">
+                      <input
+                        type="checkbox"
+                        checked={assignEmployeeIds.includes(employee.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setAssignEmployeeIds([...assignEmployeeIds, employee.id]);
+                          } else {
+                            setAssignEmployeeIds(assignEmployeeIds.filter(id => id !== employee.id));
+                          }
+                        }}
+                        className="rounded border-gray-600"
+                        data-testid={`checkbox-assign-employee-${employee.id}`}
+                      />
+                      <div className="h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center">
+                        <User className="h-4 w-4 text-blue-400" />
+                      </div>
+                      <span className="text-white">{employee.fullName}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{assignEmployeeIds.length} employee(s) selected</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-4">
             <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
               <p className="text-sm text-gray-300">
                 Review your KPI configuration before creating.
@@ -978,6 +1074,20 @@ function TemplateDialog({
                   {selectedSource?.name || "Not configured"}
                 </span>
               </div>
+              {assignReviewCycleId && (
+                <div className="flex justify-between py-2 border-b border-gray-800">
+                  <span className="text-gray-400">Review Cycle</span>
+                  <span className="text-white">
+                    {activeCycles.find(c => c.id === assignReviewCycleId)?.name}
+                  </span>
+                </div>
+              )}
+              {assignEmployeeIds.length > 0 && (
+                <div className="flex justify-between py-2 border-b border-gray-800">
+                  <span className="text-gray-400">Assigned Employees</span>
+                  <span className="text-white">{assignEmployeeIds.length} employee(s)</span>
+                </div>
+              )}
               {description && (
                 <div className="py-2">
                   <span className="text-gray-400 block mb-1">Description</span>
@@ -1013,11 +1123,20 @@ function TemplateDialog({
                 onClick={() => setStep(3)}
                 data-testid="button-next"
               >
-                Next: Review
+                Next: Assign
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             )}
             {step === 3 && (
+              <Button 
+                onClick={() => setStep(4)}
+                data-testid="button-next"
+              >
+                Next: Review
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            )}
+            {step === 4 && (
               <Button onClick={handleSubmit} disabled={isLoading} data-testid="button-create-kpi">
                 {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {template ? "Update KPI" : "Create KPI"}
@@ -1185,10 +1304,10 @@ function AssignDialog({
     mutationFn: async () => {
       const assignments = selectedEmployees.map(employeeId => ({
         reviewCycleId: selectedCycle,
-        templateId: selectedTemplate,
+        kpiTemplateId: selectedTemplate,
         employeeId,
-        targetValue: parseFloat(targetValue) || templates.find(t => t.id === selectedTemplate)?.targetValue || 0,
-        status: 'active'
+        customTarget: parseFloat(targetValue) || null,
+        status: 'pending'
       }));
       return api.post("/kpi-assignments/batch", { assignments });
     },
