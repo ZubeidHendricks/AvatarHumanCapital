@@ -717,7 +717,7 @@ function TemplateDialog({
       dataSource: dataSourceId,
       frequency,
       ownerType,
-      ownerId: ownerType === "person" ? ownerId : null,
+      ownerId: null,
       ownerDepartment: ownerType === "department" ? ownerDepartment : null,
       ownerDivision: ownerType === "division" ? ownerDivision : null,
       isActive: 1,
