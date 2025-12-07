@@ -675,6 +675,7 @@ function TemplateDialog({
   isLoading: boolean;
   employees?: Employee[];
 }) {
+  const [step, setStep] = useState(1);
   const [name, setName] = useState(template?.name || "");
   const [description, setDescription] = useState(template?.description || "");
   const [category, setCategory] = useState(template?.category || "Performance");
@@ -682,7 +683,7 @@ function TemplateDialog({
   const [targetValue, setTargetValue] = useState(template?.targetValue?.toString() || "");
   const [targetTimePeriod, setTargetTimePeriod] = useState(template?.targetTimePeriod || "quarterly");
   const [measurementType, setMeasurementType] = useState(template?.measurementType || "scale");
-  const [dataSource, setDataSource] = useState(template?.dataSource || "");
+  const [dataSourceId, setDataSourceId] = useState(template?.dataSource || "");
   const [frequency, setFrequency] = useState(template?.frequency || "quarterly");
   const [ownerType, setOwnerType] = useState(template?.ownerType || "person");
   const [ownerId, setOwnerId] = useState(template?.ownerId || "");
@@ -691,9 +692,9 @@ function TemplateDialog({
   const [sourceFieldMapping, setSourceFieldMapping] = useState<string>(template?.sourceFieldMapping?.toString() || "");
   const [aggregationMethod, setAggregationMethod] = useState(template?.aggregationMethod || "sum");
   
-  const [showQuickSourceDialog, setShowQuickSourceDialog] = useState(false);
-  const [quickSourceName, setQuickSourceName] = useState("");
-  const [quickSourceDescription, setQuickSourceDescription] = useState("");
+  const [sourceName, setSourceName] = useState("");
+  const [sourceDescription, setSourceDescription] = useState("");
+  const [sourceType, setSourceType] = useState("manual");
   const [creatingSource, setCreatingSource] = useState(false);
 
   const dataSourcesKey = useTenantQueryKey(["data-sources-active"]);
@@ -706,25 +707,23 @@ function TemplateDialog({
     enabled: open
   });
 
-  const selectedSource = activeSources.find(s => s.id === dataSource);
+  const selectedSource = activeSources.find(s => s.id === dataSourceId);
 
-  const handleCreateQuickSource = async () => {
-    if (!quickSourceName.trim()) return;
+  const handleCreateDataSource = async () => {
+    if (!sourceName.trim()) return;
     setCreatingSource(true);
     try {
       const response = await api.post("/data-sources", {
-        name: quickSourceName,
-        description: quickSourceDescription || `Manual data entry source for KPIs`,
-        type: "manual",
+        name: sourceName,
+        description: sourceDescription || `Data source for KPI tracking`,
+        type: sourceType,
         status: "active",
-        refreshSchedule: "manual"
+        refreshSchedule: sourceType === "manual" ? "manual" : "daily"
       });
       const newSource = response.data;
       await refetchSources();
-      setDataSource(newSource.id);
-      setShowQuickSourceDialog(false);
-      setQuickSourceName("");
-      setQuickSourceDescription("");
+      setDataSourceId(newSource.id);
+      setStep(3);
     } catch (error) {
       console.error("Failed to create data source:", error);
     } finally {
@@ -741,162 +740,134 @@ function TemplateDialog({
       targetValue: parseFloat(targetValue) || 0,
       targetTimePeriod,
       measurementType,
-      dataSource,
+      dataSource: dataSourceId,
       frequency,
       ownerType,
       ownerId: ownerType === "person" ? ownerId : null,
       ownerDepartment: ownerType === "department" ? ownerDepartment : null,
       ownerDivision: ownerType === "division" ? ownerDivision : null,
-      isActive: 1
+      isActive: 1,
+      sourceFieldMapping: sourceFieldMapping || null,
+      aggregationMethod: aggregationMethod || null
     });
   };
 
+  const canProceedStep1 = name.trim().length > 0;
+  const canProceedStep2 = dataSourceId.length > 0 || sourceName.trim().length > 0;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) setStep(1);
+      onOpenChange(isOpen);
+    }}>
       <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{template ? "Edit" : "Create"} KPI Template</DialogTitle>
           <DialogDescription className="text-gray-400">
-            Define a KPI metric that can be assigned to employees
+            {step === 1 && "Step 1 of 3: Define KPI details"}
+            {step === 2 && "Step 2 of 3: Configure data source"}
+            {step === 3 && "Step 3 of 3: Review and create"}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label>Name</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Customer Satisfaction Score"
-              className="bg-gray-800 border-gray-700"
-              data-testid="input-template-name"
-            />
-          </div>
-          <div>
-            <Label>Description</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe what this KPI measures..."
-              className="bg-gray-800 border-gray-700"
-              data-testid="input-template-description"
-            />
-          </div>
-          <div>
-            <Label>Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-category">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-700">
-                {CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Weight ({weight}%)</Label>
-            <Slider
-              value={[weight]}
-              onValueChange={([v]) => setWeight(v)}
-              min={5}
-              max={100}
-              step={5}
-              className="mt-2"
-              data-testid="slider-template-weight"
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
+        
+        <div className="flex items-center gap-2 mb-4">
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${step >= 1 ? 'bg-blue-600' : 'bg-gray-700'}`}>1</div>
+          <div className={`flex-1 h-1 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-700'}`} />
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${step >= 2 ? 'bg-blue-600' : 'bg-gray-700'}`}>2</div>
+          <div className={`flex-1 h-1 ${step >= 3 ? 'bg-blue-600' : 'bg-gray-700'}`} />
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${step >= 3 ? 'bg-blue-600' : 'bg-gray-700'}`}>3</div>
+        </div>
+
+        {step === 1 && (
+          <div className="space-y-4">
             <div>
-              <Label>Target Value</Label>
+              <Label>Name *</Label>
               <Input
-                type="number"
-                value={targetValue}
-                onChange={(e) => setTargetValue(e.target.value)}
-                placeholder="e.g., 90"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Customer Satisfaction Score"
                 className="bg-gray-800 border-gray-700"
-                data-testid="input-template-target"
+                data-testid="input-template-name"
               />
             </div>
             <div>
-              <Label>Target Time Period</Label>
-              <Select value={targetTimePeriod} onValueChange={setTargetTimePeriod}>
-                <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-target-period">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-700">
-                  {FREQUENCIES.map((f) => (
-                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Description</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe what this KPI measures..."
+                className="bg-gray-800 border-gray-700"
+                data-testid="input-template-description"
+              />
             </div>
-            <div>
-              <Label>Measurement Type</Label>
-              <Select value={measurementType} onValueChange={setMeasurementType}>
-                <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-measurement">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-700">
-                  <SelectItem value="scale">Scale (1-5)</SelectItem>
-                  <SelectItem value="percentage">Percentage</SelectItem>
-                  <SelectItem value="number">Number</SelectItem>
-                  <SelectItem value="boolean">Yes/No</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="border-t border-gray-700 pt-4">
-            <Label className="text-base font-medium flex items-center gap-2">
-              <Database className="h-4 w-4 text-blue-400" />
-              Data Collection
-            </Label>
-            <p className="text-sm text-gray-400 mb-3">Configure how KPI data is collected</p>
-            
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Data Source</Label>
-                <div className="flex gap-2">
-                  <Select value={dataSource} onValueChange={setDataSource}>
-                    <SelectTrigger className="bg-gray-800 border-gray-700 flex-1" data-testid="select-template-data-source">
-                      <SelectValue placeholder="Select data source" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      {LEGACY_DATA_SOURCES.map((source) => (
-                        <SelectItem key={source} value={source}>{source}</SelectItem>
-                      ))}
-                      {activeSources.length > 0 && (
-                        <>
-                          <div className="px-2 py-1 text-xs text-gray-500 font-medium border-t border-gray-700 mt-1">
-                            Connected Sources
-                          </div>
-                          {activeSources.map((source) => (
-                            <SelectItem key={source.id} value={source.id}>
-                              <div className="flex items-center gap-2">
-                                <span>{source.name}</span>
-                                <Badge variant="secondary" className="text-xs">{source.type}</Badge>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setShowQuickSourceDialog(true)}
-                    className="border-gray-700 hover:bg-gray-800"
-                    title="Create new manual data source"
-                    data-testid="button-create-quick-source"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Label>Category</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-700">
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <Label>Measurement Frequency</Label>
+                <Label>Measurement Type</Label>
+                <Select value={measurementType} onValueChange={setMeasurementType}>
+                  <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-measurement">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-700">
+                    <SelectItem value="scale">Scale (1-5)</SelectItem>
+                    <SelectItem value="percentage">Percentage</SelectItem>
+                    <SelectItem value="number">Number</SelectItem>
+                    <SelectItem value="boolean">Yes/No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>Weight ({weight}%)</Label>
+              <Slider
+                value={[weight]}
+                onValueChange={([v]) => setWeight(v)}
+                min={5}
+                max={100}
+                step={5}
+                className="mt-2"
+                data-testid="slider-template-weight"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>Target Value</Label>
+                <Input
+                  type="number"
+                  value={targetValue}
+                  onChange={(e) => setTargetValue(e.target.value)}
+                  placeholder="e.g., 90"
+                  className="bg-gray-800 border-gray-700"
+                  data-testid="input-template-target"
+                />
+              </div>
+              <div>
+                <Label>Target Period</Label>
+                <Select value={targetTimePeriod} onValueChange={setTargetTimePeriod}>
+                  <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-target-period">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-700">
+                    {FREQUENCIES.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Frequency</Label>
                 <Select value={frequency} onValueChange={setFrequency}>
                   <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-frequency">
                     <SelectValue />
@@ -909,173 +880,247 @@ function TemplateDialog({
                 </Select>
               </div>
             </div>
-
-            {selectedSource && (
-              <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg space-y-4">
-                <div className="flex items-center gap-2">
-                  <Link className="h-4 w-4 text-blue-400" />
-                  <span className="font-medium text-blue-400">Field Mapping - {selectedSource.name}</span>
+            <div className="border-t border-gray-700 pt-4">
+              <Label className="text-base font-medium">Owner</Label>
+              <p className="text-sm text-gray-400 mb-3">Who is responsible for this KPI?</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Owner Type</Label>
+                  <Select value={ownerType} onValueChange={setOwnerType}>
+                    <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-owner-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      {OWNER_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <p className="text-sm text-gray-400">
-                  Configure how data from this source maps to the KPI value
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Source Field / Query</Label>
-                    <Input
-                      value={sourceFieldMapping}
-                      onChange={(e) => setSourceFieldMapping(e.target.value)}
-                      placeholder="e.g., total_sales, revenue_amount"
-                      className="bg-gray-800 border-gray-700"
-                      data-testid="input-field-mapping"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Field name or query to extract from the data source
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Aggregation Method</Label>
-                    <Select value={aggregationMethod} onValueChange={setAggregationMethod}>
-                      <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-aggregation">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-700">
-                        <SelectItem value="sum">Sum</SelectItem>
-                        <SelectItem value="average">Average</SelectItem>
-                        <SelectItem value="count">Count</SelectItem>
-                        <SelectItem value="latest">Latest Value</SelectItem>
-                        <SelectItem value="min">Minimum</SelectItem>
-                        <SelectItem value="max">Maximum</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      How to aggregate multiple records
-                    </p>
-                  </div>
+                <div>
+                  {ownerType === "person" && (
+                    <>
+                      <Label>Owner</Label>
+                      <Select value={ownerId} onValueChange={setOwnerId}>
+                        <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-owner-person">
+                          <SelectValue placeholder="Select person" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-800 border-gray-700">
+                          {employees.map((emp) => (
+                            <SelectItem key={emp.id} value={emp.id}>{emp.fullName}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
+                  {ownerType === "department" && (
+                    <>
+                      <Label>Department</Label>
+                      <Select value={ownerDepartment} onValueChange={setOwnerDepartment}>
+                        <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-owner-department">
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-800 border-gray-700">
+                          {DEPARTMENTS.map((dept) => (
+                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
+                  {ownerType === "division" && (
+                    <>
+                      <Label>Division</Label>
+                      <Select value={ownerDivision} onValueChange={setOwnerDivision}>
+                        <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-owner-division">
+                          <SelectValue placeholder="Select division" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-800 border-gray-700">
+                          {DIVISIONS.map((div) => (
+                            <SelectItem key={div} value={div}>{div}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <p className="text-sm text-gray-300">
+                Choose an existing data source or create a new one. Data sources define where KPI measurements come from.
+              </p>
+            </div>
+            
+            {activeSources.length > 0 && (
+              <div>
+                <Label className="text-base font-medium mb-3 block">Select Existing Data Source</Label>
+                <div className="space-y-2">
+                  {activeSources.map((source) => (
+                    <div
+                      key={source.id}
+                      onClick={() => setDataSourceId(source.id)}
+                      className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                        dataSourceId === source.id 
+                          ? 'border-blue-500 bg-blue-500/10' 
+                          : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                      }`}
+                      data-testid={`card-source-${source.id}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Database className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="font-medium text-white">{source.name}</p>
+                            <Badge variant="secondary" className="text-xs mt-1">{source.type}</Badge>
+                          </div>
+                        </div>
+                        {dataSourceId === source.id && (
+                          <CheckCircle className="h-5 w-5 text-blue-500" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
-          </div>
-          <div className="border-t border-gray-700 pt-4">
-            <Label className="text-base font-medium">Owner</Label>
-            <p className="text-sm text-gray-400 mb-3">Who is responsible for this KPI?</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Owner Type</Label>
-                <Select value={ownerType} onValueChange={setOwnerType}>
-                  <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-owner-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
-                    {OWNER_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                {ownerType === "person" && (
-                  <>
-                    <Label>Owner (Person)</Label>
-                    <Select value={ownerId} onValueChange={setOwnerId}>
-                      <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-owner-person">
-                        <SelectValue placeholder="Select person" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-700">
-                        {employees.map((emp) => (
-                          <SelectItem key={emp.id} value={emp.id}>{emp.fullName}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </>
-                )}
-                {ownerType === "department" && (
-                  <>
-                    <Label>Owner (Department)</Label>
-                    <Select value={ownerDepartment} onValueChange={setOwnerDepartment}>
-                      <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-owner-department">
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-700">
-                        {DEPARTMENTS.map((dept) => (
-                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </>
-                )}
-                {ownerType === "division" && (
-                  <>
-                    <Label>Owner (Division)</Label>
-                    <Select value={ownerDivision} onValueChange={setOwnerDivision}>
-                      <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-owner-division">
-                        <SelectValue placeholder="Select division" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-700">
-                        {DIVISIONS.map((div) => (
-                          <SelectItem key={div} value={div}>{div}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </>
-                )}
+            
+            <div className="border-t border-gray-700 pt-4">
+              <Label className="text-base font-medium mb-3 block">Or Create New Data Source</Label>
+              <div className="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                <div>
+                  <Label>Source Name *</Label>
+                  <Input
+                    value={sourceName}
+                    onChange={(e) => setSourceName(e.target.value)}
+                    placeholder="e.g., Sales Team Manual KPIs"
+                    className="bg-gray-800 border-gray-700"
+                    data-testid="input-source-name"
+                  />
+                </div>
+                <div>
+                  <Label>Description</Label>
+                  <Textarea
+                    value={sourceDescription}
+                    onChange={(e) => setSourceDescription(e.target.value)}
+                    placeholder="Describe this data source..."
+                    className="bg-gray-800 border-gray-700"
+                    rows={2}
+                    data-testid="input-source-description"
+                  />
+                </div>
+                <div>
+                  <Label>Source Type</Label>
+                  <Select value={sourceType} onValueChange={setSourceType}>
+                    <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-source-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="manual">Manual Entry</SelectItem>
+                      <SelectItem value="api">API Integration</SelectItem>
+                      <SelectItem value="database">Database Connection</SelectItem>
+                      <SelectItem value="spreadsheet">Spreadsheet Import</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!name || isLoading} data-testid="button-save-template">
-            {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {template ? "Update" : "Create"}
-          </Button>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-4">
+            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <p className="text-sm text-gray-300">
+                Review your KPI configuration before creating.
+              </p>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between py-2 border-b border-gray-800">
+                <span className="text-gray-400">Name</span>
+                <span className="text-white font-medium">{name}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-gray-800">
+                <span className="text-gray-400">Category</span>
+                <span className="text-white">{category}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-gray-800">
+                <span className="text-gray-400">Measurement Type</span>
+                <span className="text-white capitalize">{measurementType}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-gray-800">
+                <span className="text-gray-400">Weight</span>
+                <span className="text-white">{weight}%</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-gray-800">
+                <span className="text-gray-400">Target Value</span>
+                <span className="text-white">{targetValue || "Not set"}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-gray-800">
+                <span className="text-gray-400">Frequency</span>
+                <span className="text-white capitalize">{frequency}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-gray-800">
+                <span className="text-gray-400">Data Source</span>
+                <span className="text-white">
+                  {selectedSource?.name || sourceName || "Not configured"}
+                </span>
+              </div>
+              {description && (
+                <div className="py-2">
+                  <span className="text-gray-400 block mb-1">Description</span>
+                  <span className="text-gray-300 text-sm">{description}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="flex justify-between">
+          <div>
+            {step > 1 && (
+              <Button variant="ghost" onClick={() => setStep(step - 1)} data-testid="button-back">
+                Back
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            {step < 3 ? (
+              <Button 
+                onClick={() => {
+                  if (step === 2 && sourceName.trim() && !dataSourceId) {
+                    handleCreateDataSource();
+                  } else {
+                    setStep(step + 1);
+                  }
+                }}
+                disabled={
+                  (step === 1 && !canProceedStep1) || 
+                  (step === 2 && !canProceedStep2) ||
+                  creatingSource
+                }
+                data-testid="button-next"
+              >
+                {creatingSource && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {step === 2 && sourceName.trim() && !dataSourceId ? "Create Source & Continue" : "Next"}
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            ) : (
+              <Button onClick={handleSubmit} disabled={isLoading} data-testid="button-create-kpi">
+                {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {template ? "Update KPI" : "Create KPI"}
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
-
-      <Dialog open={showQuickSourceDialog} onOpenChange={setShowQuickSourceDialog}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create Manual Data Source</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Create a new data source for manual KPI data entry
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Source Name</Label>
-              <Input
-                value={quickSourceName}
-                onChange={(e) => setQuickSourceName(e.target.value)}
-                placeholder="e.g., Sales Team Manual KPIs"
-                className="bg-gray-800 border-gray-700"
-                data-testid="input-quick-source-name"
-              />
-            </div>
-            <div>
-              <Label>Description (Optional)</Label>
-              <Textarea
-                value={quickSourceDescription}
-                onChange={(e) => setQuickSourceDescription(e.target.value)}
-                placeholder="Describe what data will be entered here"
-                className="bg-gray-800 border-gray-700"
-                rows={2}
-                data-testid="input-quick-source-description"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowQuickSourceDialog(false)}>Cancel</Button>
-            <Button 
-              onClick={handleCreateQuickSource} 
-              disabled={!quickSourceName.trim() || creatingSource}
-              data-testid="button-create-source"
-            >
-              {creatingSource && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Create Source
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Dialog>
   );
 }
