@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTenantQueryKey } from "@/hooks/useTenant";
 import { Navbar } from "@/components/layout/navbar";
@@ -247,10 +247,8 @@ export default function KpiManagement() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredTemplates.map((template) => {
-                  const ownerDisplay = template.ownerType === "person" 
-                    ? employees.find(e => e.id === template.ownerId)?.fullName || "Not assigned"
-                    : template.ownerType === "department" 
-                      ? template.ownerDepartment || "Not assigned"
+                  const ownerDisplay = template.ownerType === "department" 
+                    ? template.ownerDepartment || "Not assigned"
                       : template.ownerDivision || "Not assigned";
                   return (
                   <Card key={template.id} className="bg-gray-800/50 border-gray-700 hover:border-blue-500/50 transition-colors" data-testid={`card-template-${template.id}`}>
@@ -634,7 +632,6 @@ const FREQUENCIES = [
 ];
 
 const OWNER_TYPES = [
-  { value: "person", label: "Person" },
   { value: "department", label: "Department" },
   { value: "division", label: "Division" }
 ];
@@ -686,12 +683,34 @@ function TemplateDialog({
   const [measurementType, setMeasurementType] = useState(template?.measurementType || "scale");
   const [dataSourceId, setDataSourceId] = useState(template?.dataSource || "");
   const [frequency, setFrequency] = useState(template?.frequency || "quarterly");
-  const [ownerType, setOwnerType] = useState(template?.ownerType || "person");
+  const [ownerType, setOwnerType] = useState(template?.ownerType || "department");
   const [ownerId, setOwnerId] = useState(template?.ownerId || "");
   const [ownerDepartment, setOwnerDepartment] = useState(template?.ownerDepartment || "");
   const [ownerDivision, setOwnerDivision] = useState(template?.ownerDivision || "");
   const [sourceFieldMapping, setSourceFieldMapping] = useState<string>(template?.sourceFieldMapping?.toString() || "");
   const [aggregationMethod, setAggregationMethod] = useState(template?.aggregationMethod || "sum");
+
+  // Reset form state when template changes (for edit mode)
+  useEffect(() => {
+    if (open) {
+      setStep(1);
+      setName(template?.name || "");
+      setDescription(template?.description || "");
+      setCategory(template?.category || "Performance");
+      setWeight(template?.weight || 20);
+      setTargetValue(template?.targetValue?.toString() || "");
+      setTargetTimePeriod(template?.targetTimePeriod || "quarterly");
+      setMeasurementType(template?.measurementType || "scale");
+      setDataSourceId(template?.dataSource || "");
+      setFrequency(template?.frequency || "quarterly");
+      setOwnerType(template?.ownerType || "department");
+      setOwnerId(template?.ownerId || "");
+      setOwnerDepartment(template?.ownerDepartment || "");
+      setOwnerDivision(template?.ownerDivision || "");
+      setSourceFieldMapping(template?.sourceFieldMapping?.toString() || "");
+      setAggregationMethod(template?.aggregationMethod || "sum");
+    }
+  }, [open, template]);
 
   const dataSourcesKey = useTenantQueryKey(["data-sources-active"]);
   const { data: activeSources = [] } = useQuery<{ id: string; name: string; type: string }[]>({
@@ -871,21 +890,6 @@ function TemplateDialog({
                   </Select>
                 </div>
                 <div>
-                  {ownerType === "person" && (
-                    <>
-                      <Label>Owner</Label>
-                      <Select value={ownerId} onValueChange={setOwnerId}>
-                        <SelectTrigger className="bg-gray-800 border-gray-700" data-testid="select-template-owner-person">
-                          <SelectValue placeholder="Select person" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-700">
-                          {employees.map((emp) => (
-                            <SelectItem key={emp.id} value={emp.id}>{emp.fullName}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </>
-                  )}
                   {ownerType === "department" && (
                     <>
                       <Label>Department</Label>
