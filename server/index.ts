@@ -7,6 +7,7 @@ import { seedDefaultTenant } from "./seed-default-tenant";
 import { storage } from "./storage";
 import { insertTenantRequestSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
+import { dataCollectionService } from "./data-collection-service";
 
 const app = express();
 
@@ -246,5 +247,9 @@ app.use((req, res, next) => {
     }, REMINDER_CHECK_INTERVAL);
     
     log("Background reminder checker started (runs every hour)");
+    
+    // Start background data collection service for KPI data sources
+    dataCollectionService.start();
+    log("Background data collection service started (checks every minute)");
   });
 })();

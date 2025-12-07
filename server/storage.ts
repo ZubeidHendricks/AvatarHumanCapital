@@ -450,6 +450,10 @@ export interface IStorage {
   createDataSourceField(tenantId: string, field: InsertDataSourceField): Promise<DataSourceField>;
   deleteDataSourceFields(tenantId: string, dataSourceId: string): Promise<boolean>;
 
+  // Data Sources - additional sync helpers
+  getDataSourcesNeedingSync(): Promise<DataSource[]>;
+  getKpiTemplatesByDataSource(tenantId: string, dataSourceId: string): Promise<KpiTemplate[]>;
+  
   // KPI Templates
   getAllKpiTemplates(tenantId: string): Promise<KpiTemplate[]>;
   getKpiTemplate(tenantId: string, id: string): Promise<KpiTemplate | undefined>;
@@ -457,6 +461,7 @@ export interface IStorage {
   createKpiTemplate(tenantId: string, template: InsertKpiTemplate): Promise<KpiTemplate>;
   updateKpiTemplate(tenantId: string, id: string, updates: UpdateKpiTemplate): Promise<KpiTemplate | undefined>;
   deleteKpiTemplate(tenantId: string, id: string): Promise<boolean>;
+  updateKpiTemplateCurrentValue(tenantId: string, id: string, currentValue: number): Promise<KpiTemplate | undefined>;
   
   // Review Cycles
   getAllReviewCycles(tenantId: string): Promise<ReviewCycle[]>;
@@ -2238,6 +2243,55 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(kpiTemplates)
       .where(and(eq(kpiTemplates.id, id), eq(kpiTemplates.tenantId, tenantId)));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async updateKpiTemplateCurrentValue(tenantId: string, id: string, currentValue: number): Promise<KpiTemplate | undefined> {
+    const [template] = await db.update(kpiTemplates)
+      .set({ currentValue, updatedAt: new Date() })
+      .where(and(eq(kpiTemplates.id, id), eq(kpiTemplates.tenantId, tenantId)))
+      .returning();
+    return template || undefined;
+  }
+
+  async getDataSourcesNeedingSync(): Promise<DataSource[]> {
+    const now = new Date();
+    const sources = await db.select().from(dataSources)
+      .where(and(
+        eq(dataSources.status, "active"),
+        sql`${dataSources.refreshSchedule} IS NOT NULL`
+      ));
+    
+    return sources.filter(source => {
+      if (!source.refreshSchedule || !source.lastSyncAt || source.refreshSchedule === 'manual') {
+        return source.refreshSchedule !== 'manual' && !source.lastSyncAt;
+      }
+      
+      const lastSync = new Date(source.lastSyncAt);
+      const frequencyMinutes = this.refreshScheduleToMinutes(source.refreshSchedule);
+      const nextSyncTime = new Date(lastSync.getTime() + frequencyMinutes * 60 * 1000);
+      
+      return now >= nextSyncTime;
+    });
+  }
+
+  private refreshScheduleToMinutes(schedule: string): number {
+    switch (schedule) {
+      case "realtime": return 1;
+      case "hourly": return 60;
+      case "daily": return 60 * 24;
+      case "weekly": return 60 * 24 * 7;
+      case "monthly": return 60 * 24 * 30;
+      default: return 60 * 24;
+    }
+  }
+
+  async getKpiTemplatesByDataSource(tenantId: string, dataSourceId: string): Promise<KpiTemplate[]> {
+    return await db.select().from(kpiTemplates)
+      .where(and(
+        eq(kpiTemplates.tenantId, tenantId),
+        eq(kpiTemplates.dataSourceId, dataSourceId)
+      ))
+      .orderBy(kpiTemplates.name);
   }
 
   // Review Cycles Implementation

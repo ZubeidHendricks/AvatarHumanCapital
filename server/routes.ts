@@ -5285,6 +5285,36 @@ Format your response as JSON:
     }
   });
 
+  // Sync all active data sources for the tenant
+  app.post("/api/data-sources/sync-all", async (req, res) => {
+    try {
+      const { dataCollectionService } = await import("./data-collection-service");
+      const results = await dataCollectionService.syncAllForTenant(req.tenant.id);
+      
+      const successful = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+      
+      res.json({
+        message: `Synced ${successful} data sources, ${failed} failed`,
+        results
+      });
+    } catch (error) {
+      console.error("Error syncing all data sources:", error);
+      res.status(500).json({ message: "Failed to sync data sources" });
+    }
+  });
+
+  // Get KPI templates linked to a specific data source
+  app.get("/api/data-sources/:id/kpis", async (req, res) => {
+    try {
+      const kpis = await storage.getKpiTemplatesByDataSource(req.tenant.id, req.params.id);
+      res.json(kpis);
+    } catch (error) {
+      console.error("Error fetching linked KPIs:", error);
+      res.status(500).json({ message: "Failed to fetch linked KPIs" });
+    }
+  });
+
   // ==================== KPI TEMPLATES ====================
   
   app.get("/api/kpi-templates", async (req, res) => {
