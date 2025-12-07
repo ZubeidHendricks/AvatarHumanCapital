@@ -391,12 +391,14 @@ export default function DataSourcesPage() {
                             <div className="p-2 bg-blue-500/10 rounded-lg">
                               <TypeIcon className="h-5 w-5 text-blue-400" />
                             </div>
-                            <div>
-                              <CardTitle className="text-white text-lg">{source.name}</CardTitle>
-                              <CardDescription className="text-gray-500 capitalize">
-                                {source.type.replace(/_/g, " ")}
-                              </CardDescription>
-                            </div>
+                            <RouterLink href={`/data-sources/${source.id}`}>
+                              <div className="cursor-pointer hover:opacity-80">
+                                <CardTitle className="text-white text-lg">{source.name}</CardTitle>
+                                <CardDescription className="text-gray-500 capitalize">
+                                  {source.type.replace(/_/g, " ")}
+                                </CardDescription>
+                              </div>
+                            </RouterLink>
                           </div>
                           {getStatusBadge(source.status)}
                         </div>
