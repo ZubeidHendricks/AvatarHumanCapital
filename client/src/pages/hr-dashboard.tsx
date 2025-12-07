@@ -547,6 +547,39 @@ BENEFITS:
     retry: 1,
   });
 
+  const employeesKey = useTenantQueryKey(['employees']);
+  const { data: employees = [] } = useQuery({
+    queryKey: employeesKey,
+    queryFn: async () => {
+      const res = await fetch("/api/workforce/employees");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    retry: 1,
+  });
+
+  const kpiTemplatesKey = useTenantQueryKey(['kpiTemplates']);
+  const { data: kpiTemplates = [] } = useQuery({
+    queryKey: kpiTemplatesKey,
+    queryFn: async () => {
+      const res = await fetch("/api/kpi-templates");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    retry: 1,
+  });
+
+  // Helper function to get employee name by ID
+  const getEmployeeName = (employeeId: string) => {
+    const employee = employees.find((e: any) => e.id === employeeId);
+    return employee?.fullName || 'Unknown Employee';
+  };
+
+  // Helper function to get template info by ID
+  const getTemplateInfo = (templateId: string) => {
+    return kpiTemplates.find((t: any) => t.id === templateId);
+  };
+
   // Calculate KPI statistics
   const activeReviewCycles = reviewCycles.filter((c: any) => c.status === 'active');
   const pendingAssignments = kpiAssignments.filter((a: any) => a.status === 'pending' || a.status === 'in_progress');
@@ -2272,11 +2305,11 @@ BENEFITS:
                         <div className="flex items-center gap-4 flex-1">
                           <Avatar className="h-10 w-10">
                             <AvatarFallback className="bg-primary/20 text-primary">
-                              {submission.employeeId?.toString().slice(0, 2) || 'E'}
+                              {getEmployeeName(submission.employeeId).slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
-                            <p className="font-medium">Employee #{submission.employeeId}</p>
+                            <p className="font-medium">{getEmployeeName(submission.employeeId)}</p>
                             <p className="text-sm text-muted-foreground">
                               Self: {submission.selfAssessmentStatus || 'pending'} | Manager: {submission.managerReviewStatus || 'pending'}
                             </p>
@@ -2343,12 +2376,12 @@ BENEFITS:
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                                {assignment.employeeId?.toString().slice(0, 2) || 'E'}
+                                {getEmployeeName(assignment.employeeId).slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium text-sm">Employee #{assignment.employeeId}</p>
-                              <p className="text-xs text-muted-foreground">{assignment.notes || 'KPI Assignment'}</p>
+                              <p className="font-medium text-sm">{getEmployeeName(assignment.employeeId)}</p>
+                              <p className="text-xs text-muted-foreground">{getTemplateInfo(assignment.kpiTemplateId)?.name || 'KPI Assignment'}</p>
                             </div>
                           </div>
                           <Badge 
@@ -2364,7 +2397,7 @@ BENEFITS:
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Target</span>
-                            <span className="font-medium">{assignment.targetValue || 'N/A'}</span>
+                            <span className="font-medium">{assignment.customTarget || getTemplateInfo(assignment.kpiTemplateId)?.targetValue || 'N/A'}</span>
                           </div>
                           <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
                             <div 
