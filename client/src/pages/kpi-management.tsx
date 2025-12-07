@@ -1200,7 +1200,7 @@ function CycleDialog({
   const [endDate, setEndDate] = useState(
     cycle?.endDate ? format(new Date(cycle.endDate), "yyyy-MM-dd") : ""
   );
-  const [status, setStatus] = useState(cycle?.status || "draft");
+  const [status, setStatus] = useState(cycle?.status || "active");
 
   const handleSubmit = () => {
     onSubmit({

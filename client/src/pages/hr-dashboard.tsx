@@ -2269,7 +2269,7 @@ BENEFITS:
                     <div className="text-center py-8 text-muted-foreground">
                       <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       <p>No active review cycles</p>
-                      <Link href="/kpi-management">
+                      <Link href="/kpi-management?tab=cycles&action=new-cycle">
                         <Button variant="link" className="text-primary mt-2">Create a review cycle</Button>
                       </Link>
                     </div>
