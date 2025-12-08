@@ -2081,3 +2081,186 @@ export const insertTenantSubscriptionHistorySchema = createInsertSchema(tenantSu
 
 export type InsertTenantSubscriptionHistory = z.infer<typeof insertTenantSubscriptionHistorySchema>;
 export type TenantSubscriptionHistory = typeof tenantSubscriptionHistory.$inferSelect;
+
+// ================================
+// LMS (Learning Management System)
+// ================================
+
+export const courses = pgTable("courses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category"), // compliance, technical, soft_skills, leadership
+  difficulty: text("difficulty").default("beginner"), // beginner, intermediate, advanced
+  duration: integer("duration"), // in minutes
+  thumbnailUrl: text("thumbnail_url"),
+  videoUrl: text("video_url"),
+  aiLecturerId: varchar("ai_lecturer_id"),
+  modules: jsonb("modules"), // [{id, title, lessons: [{id, title, content, videoUrl}]}]
+  learningObjectives: text("learning_objectives").array(),
+  prerequisites: text("prerequisites").array(),
+  tags: text("tags").array(),
+  status: text("status").default("draft"), // draft, published, archived
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  tenantIdIdx: index("courses_tenant_id_idx").on(table.tenantId),
+  statusIdx: index("courses_status_idx").on(table.status),
+}));
+
+export const assessments = pgTable("assessments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  courseId: varchar("course_id").references(() => courses.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // quiz, exam, assignment, practical
+  questions: jsonb("questions").notNull(), // [{id, question, type, options, correctAnswer, points}]
+  passingScore: integer("passing_score").default(70),
+  timeLimit: integer("time_limit"), // in minutes
+  attempts: integer("attempts").default(3),
+  deliveryMethod: text("delivery_method").array(), // ['email', 'whatsapp', 'platform']
+  scheduleType: text("schedule_type").default("manual"), // manual, scheduled, on_completion
+  scheduledAt: timestamp("scheduled_at"),
+  status: text("status").default("draft"),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  tenantIdIdx: index("assessments_tenant_id_idx").on(table.tenantId),
+  courseIdIdx: index("assessments_course_id_idx").on(table.courseId),
+}));
+
+export const learnerProgress = pgTable("learner_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  courseId: varchar("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
+  status: text("status").default("not_started"), // not_started, in_progress, completed
+  progress: integer("progress").default(0), // percentage 0-100
+  currentModule: integer("current_module").default(0),
+  currentLesson: integer("current_lesson").default(0),
+  completedLessons: text("completed_lessons").array().default(sql`ARRAY[]::text[]`),
+  timeSpent: integer("time_spent").default(0), // in minutes
+  lastAccessedAt: timestamp("last_accessed_at"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  tenantIdIdx: index("learner_progress_tenant_id_idx").on(table.tenantId),
+  userIdIdx: index("learner_progress_user_id_idx").on(table.userId),
+  courseIdIdx: index("learner_progress_course_id_idx").on(table.courseId),
+}));
+
+export const assessmentAttempts = pgTable("assessment_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  assessmentId: varchar("assessment_id").notNull().references(() => assessments.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  answers: jsonb("answers"), // {questionId: answer}
+  score: integer("score"),
+  passed: integer("passed").default(0), // 0 or 1
+  timeSpent: integer("time_spent"), // in seconds
+  attemptNumber: integer("attempt_number").default(1),
+  feedback: text("feedback"),
+  startedAt: timestamp("started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  tenantIdIdx: index("assessment_attempts_tenant_id_idx").on(table.tenantId),
+  userIdIdx: index("assessment_attempts_user_id_idx").on(table.userId),
+  assessmentIdIdx: index("assessment_attempts_assessment_id_idx").on(table.assessmentId),
+}));
+
+export const gamificationBadges = pgTable("gamification_badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  criteria: jsonb("criteria").notNull(), // {type: 'course_completion', value: 5}
+  points: integer("points").default(0),
+  rarity: text("rarity").default("common"), // common, rare, epic, legendary
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  tenantIdIdx: index("gamification_badges_tenant_id_idx").on(table.tenantId),
+}));
+
+export const learnerBadges = pgTable("learner_badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  badgeId: varchar("badge_id").notNull().references(() => gamificationBadges.id, { onDelete: "cascade" }),
+  earnedAt: timestamp("earned_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  tenantIdIdx: index("learner_badges_tenant_id_idx").on(table.tenantId),
+  userIdIdx: index("learner_badges_user_id_idx").on(table.userId),
+}));
+
+export const learnerPoints = pgTable("learner_points", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  points: integer("points").notNull().default(0),
+  level: integer("level").default(1),
+  rank: integer("rank"),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  tenantIdIdx: index("learner_points_tenant_id_idx").on(table.tenantId),
+  userIdIdx: index("learner_points_user_id_idx").on(table.userId),
+}));
+
+export const aiLecturers = pgTable("ai_lecturers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  name: text("name").notNull(),
+  avatarUrl: text("avatar_url"),
+  voiceId: text("voice_id"), // for text-to-speech
+  personality: text("personality"), // professional, friendly, authoritative
+  specialization: text("specialization"), // compliance, technical, soft_skills
+  tavusPersonaId: text("tavus_persona_id"), // Tavus API persona ID
+  active: integer("active").default(1),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  tenantIdIdx: index("ai_lecturers_tenant_id_idx").on(table.tenantId),
+}));
+
+// LMS Schemas
+export const insertCourseSchema = createInsertSchema(courses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateCourseSchema = insertCourseSchema.partial();
+export type InsertCourse = z.infer<typeof insertCourseSchema>;
+export type UpdateCourse = z.infer<typeof updateCourseSchema>;
+export type Course = typeof courses.$inferSelect;
+
+export const insertAssessmentSchema = createInsertSchema(assessments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateAssessmentSchema = insertAssessmentSchema.partial();
+export type InsertAssessment = z.infer<typeof insertAssessmentSchema>;
+export type UpdateAssessment = z.infer<typeof updateAssessmentSchema>;
+export type Assessment = typeof assessments.$inferSelect;
+
+export const insertLearnerProgressSchema = createInsertSchema(learnerProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateLearnerProgressSchema = insertLearnerProgressSchema.partial();
+export type InsertLearnerProgress = z.infer<typeof insertLearnerProgressSchema>;
+export type UpdateLearnerProgress = z.infer<typeof updateLearnerProgressSchema>;
+export type LearnerProgress = typeof learnerProgress.$inferSelect;
+
+export type AssessmentAttempt = typeof assessmentAttempts.$inferSelect;
+export type GamificationBadge = typeof gamificationBadges.$inferSelect;
+export type LearnerBadge = typeof learnerBadges.$inferSelect;
+export type LearnerPoints = typeof learnerPoints.$inferSelect;
+export type AILecturer = typeof aiLecturers.$inferSelect;
