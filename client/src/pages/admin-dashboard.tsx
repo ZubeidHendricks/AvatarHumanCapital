@@ -15,7 +15,9 @@ import type { SystemSetting } from "@shared/schema";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { TenantSelector } from "@/components/admin/TenantSelector";
+import { TenantManagement } from "@/components/admin/TenantManagement";
 import { useTenant } from "@/contexts/TenantContext";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EnvSecret {
   key: string;
@@ -595,6 +597,21 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
         </div>
+
+        <Tabs defaultValue="features" className="w-full mt-6">
+          <TabsList className="bg-black/40 border-white/10">
+            <TabsTrigger value="features">System Features</TabsTrigger>
+            <TabsTrigger value="tenants">Tenant Management</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="tenants" className="mt-4">
+            <TenantManagement />
+          </TabsContent>
+
+          <TabsContent value="features" className="mt-4">
+            <div className="text-white">Feature configuration is shown in the cards above</div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

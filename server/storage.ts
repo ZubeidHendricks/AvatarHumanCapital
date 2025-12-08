@@ -169,7 +169,21 @@ import {
   subscriptionPlans,
   type TenantPayment,
   type InsertTenantPayment,
-  type SubscriptionPlan
+  type SubscriptionPlan,
+  courses,
+  assessments,
+  learnerProgress,
+  assessmentAttempts,
+  gamificationBadges,
+  learnerBadges,
+  learnerPoints,
+  aiLecturers,
+  certificateTemplates,
+  issuedCertificates,
+  type CertificateTemplate,
+  type InsertCertificateTemplate,
+  type IssuedCertificate,
+  type InsertIssuedCertificate
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte, sql, isNull, isNotNull } from "drizzle-orm";
@@ -2778,6 +2792,423 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(subscriptionPlans)
       .where(eq(subscriptionPlans.isActive, 1))
       .orderBy(subscriptionPlans.sortOrder);
+  }
+
+  // ================================
+  // LMS Methods
+  // ================================
+
+  async getCourses(tenantId: string) {
+    return await db.select().from(courses)
+      .where(and(eq(courses.tenantId, tenantId), eq(courses.status, "published")))
+      .orderBy(desc(courses.createdAt));
+  }
+
+  async getCourse(courseId: string, tenantId: string) {
+    const [course] = await db.select().from(courses)
+      .where(and(eq(courses.id, courseId), eq(courses.tenantId, tenantId)))
+      .limit(1);
+    return course;
+  }
+
+  async createCourse(data: any) {
+    const [course] = await db.insert(courses).values(data).returning();
+    return course;
+  }
+
+  async updateCourse(courseId: string, tenantId: string, updates: any) {
+    const [course] = await db.update(courses)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(courses.id, courseId), eq(courses.tenantId, tenantId)))
+      .returning();
+    return course;
+  }
+
+  async deleteCourse(courseId: string, tenantId: string) {
+    await db.delete(courses)
+      .where(and(eq(courses.id, courseId), eq(courses.tenantId, tenantId)));
+  }
+
+  async getLearnerProgress(userId: string, tenantId: string) {
+    return await db.select({
+      progress: learnerProgress,
+      course: courses,
+    })
+      .from(learnerProgress)
+      .leftJoin(courses, eq(learnerProgress.courseId, courses.id))
+      .where(and(eq(learnerProgress.userId, userId), eq(learnerProgress.tenantId, tenantId)))
+      .orderBy(desc(learnerProgress.lastAccessedAt));
+  }
+
+  async getCourseProgress(userId: string, courseId: string, tenantId: string) {
+    const [progress] = await db.select().from(learnerProgress)
+      .where(and(
+        eq(learnerProgress.userId, userId),
+        eq(learnerProgress.courseId, courseId),
+        eq(learnerProgress.tenantId, tenantId)
+      ))
+      .limit(1);
+    return progress;
+  }
+
+  async updateLearnerProgress(userId: string, courseId: string, tenantId: string, updates: any) {
+    const existing = await this.getCourseProgress(userId, courseId, tenantId);
+    
+    if (existing) {
+      const [updated] = await db.update(learnerProgress)
+        .set({ ...updates, lastAccessedAt: new Date(), updatedAt: new Date() })
+        .where(eq(learnerProgress.id, existing.id))
+        .returning();
+      
+      if (updates.progress === 100 || updates.status === "completed") {
+        await this.awardPoints(userId, tenantId, 100, "course_completion");
+      }
+      
+      return updated;
+    } else {
+      const [created] = await db.insert(learnerProgress).values({
+        userId,
+        courseId,
+        tenantId,
+        ...updates,
+        startedAt: new Date(),
+        lastAccessedAt: new Date(),
+      }).returning();
+      return created;
+    }
+  }
+
+  async getCourseAssessments(courseId: string, tenantId: string) {
+    return await db.select().from(assessments)
+      .where(and(
+        eq(assessments.courseId, courseId),
+        eq(assessments.tenantId, tenantId)
+      ));
+  }
+
+  async submitAssessmentAttempt(assessmentId: string, userId: string, tenantId: string, answers: any) {
+    const [assessment] = await db.select().from(assessments)
+      .where(eq(assessments.id, assessmentId))
+      .limit(1);
+    
+    if (!assessment) {
+      throw new Error("Assessment not found");
+    }
+
+    const questions = assessment.questions as any[];
+    let score = 0;
+    let totalPoints = 0;
+    
+    questions.forEach((q: any) => {
+      totalPoints += q.points || 1;
+      if (answers[q.id] === q.correctAnswer) {
+        score += q.points || 1;
+      }
+    });
+    
+    const percentage = Math.round((score / totalPoints) * 100);
+    const passed = percentage >= (assessment.passingScore || 70);
+    
+    const previousAttempts = await db.select().from(assessmentAttempts)
+      .where(and(
+        eq(assessmentAttempts.assessmentId, assessmentId),
+        eq(assessmentAttempts.userId, userId)
+      ));
+    
+    const [attempt] = await db.insert(assessmentAttempts).values({
+      tenantId,
+      assessmentId,
+      userId,
+      answers,
+      score: percentage,
+      passed: passed ? 1 : 0,
+      attemptNumber: previousAttempts.length + 1,
+      completedAt: new Date(),
+    }).returning();
+    
+    if (passed) {
+      await this.awardPoints(userId, tenantId, 50, "assessment_completion");
+      if (percentage === 100) {
+        await this.checkAndAwardBadge(userId, tenantId, "assessment_score", 100);
+      }
+    }
+    
+    return { ...attempt, percentage, passed };
+  }
+
+  async getAssessmentAttempts(assessmentId: string, userId: string, tenantId: string) {
+    return await db.select().from(assessmentAttempts)
+      .where(and(
+        eq(assessmentAttempts.assessmentId, assessmentId),
+        eq(assessmentAttempts.userId, userId),
+        eq(assessmentAttempts.tenantId, tenantId)
+      ))
+      .orderBy(desc(assessmentAttempts.createdAt));
+  }
+
+  async getLearnerPoints(userId: string, tenantId: string) {
+    const [points] = await db.select().from(learnerPoints)
+      .where(and(
+        eq(learnerPoints.userId, userId),
+        eq(learnerPoints.tenantId, tenantId)
+      ))
+      .limit(1);
+    return points;
+  }
+
+  async getLearnerBadges(userId: string, tenantId: string) {
+    return await db.select({
+      badge: gamificationBadges,
+      earnedAt: learnerBadges.earnedAt,
+    })
+      .from(learnerBadges)
+      .leftJoin(gamificationBadges, eq(learnerBadges.badgeId, gamificationBadges.id))
+      .where(and(
+        eq(learnerBadges.userId, userId),
+        eq(learnerBadges.tenantId, tenantId)
+      ))
+      .orderBy(desc(learnerBadges.earnedAt));
+  }
+
+  async getLeaderboard(tenantId: string, limit: number = 50) {
+    return await db.select().from(learnerPoints)
+      .where(eq(learnerPoints.tenantId, tenantId))
+      .orderBy(desc(learnerPoints.points))
+      .limit(limit);
+  }
+
+  async getAllBadges(tenantId: string) {
+    return await db.select().from(gamificationBadges)
+      .where(eq(gamificationBadges.tenantId, tenantId));
+  }
+
+  async getAILecturers(tenantId: string) {
+    return await db.select().from(aiLecturers)
+      .where(and(
+        eq(aiLecturers.tenantId, tenantId),
+        eq(aiLecturers.active, 1)
+      ));
+  }
+
+  async awardPoints(userId: string, tenantId: string, points: number, reason: string) {
+    const existing = await this.getLearnerPoints(userId, tenantId);
+    
+    if (existing) {
+      const newPoints = existing.points + points;
+      const newLevel = Math.floor(newPoints / 500) + 1;
+      
+      await db.update(learnerPoints)
+        .set({
+          points: newPoints,
+          level: newLevel,
+          updatedAt: new Date(),
+        })
+        .where(eq(learnerPoints.id, existing.id));
+    } else {
+      await db.insert(learnerPoints).values({
+        userId,
+        tenantId,
+        points,
+        level: 1,
+      });
+    }
+  }
+
+  async checkAndAwardBadge(userId: string, tenantId: string, criteriaType: string, criteriaValue: number) {
+    const badges = await this.getAllBadges(tenantId);
+    
+    for (const badge of badges) {
+      const criteria = badge.criteria as any;
+      if (criteria.type === criteriaType && criteria.value === criteriaValue) {
+        const [existing] = await db.select().from(learnerBadges)
+          .where(and(
+            eq(learnerBadges.userId, userId),
+            eq(learnerBadges.badgeId, badge.id)
+          ))
+          .limit(1);
+        
+        if (!existing) {
+          await db.insert(learnerBadges).values({
+            userId,
+            tenantId,
+            badgeId: badge.id,
+          });
+          await this.awardPoints(userId, tenantId, badge.points, "badge_earned");
+        }
+      }
+    }
+  }
+
+  // ================================
+  // Certificate Methods
+  // ================================
+
+  async getCertificateTemplates(tenantId: string) {
+    return await db.select().from(certificateTemplates)
+      .where(and(eq(certificateTemplates.tenantId, tenantId), eq(certificateTemplates.isActive, 1)))
+      .orderBy(desc(certificateTemplates.createdAt));
+  }
+
+  async getCertificateTemplate(templateId: string, tenantId: string) {
+    const [template] = await db.select().from(certificateTemplates)
+      .where(and(eq(certificateTemplates.id, templateId), eq(certificateTemplates.tenantId, tenantId)))
+      .limit(1);
+    return template;
+  }
+
+  async createCertificateTemplate(data: InsertCertificateTemplate) {
+    const [template] = await db.insert(certificateTemplates).values(data).returning();
+    return template;
+  }
+
+  async updateCertificateTemplate(templateId: string, tenantId: string, updates: Partial<CertificateTemplate>) {
+    const [template] = await db.update(certificateTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(certificateTemplates.id, templateId), eq(certificateTemplates.tenantId, tenantId)))
+      .returning();
+    return template;
+  }
+
+  async issueCertificate(data: InsertIssuedCertificate) {
+    const certNumber = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    const [certificate] = await db.insert(issuedCertificates).values({
+      ...data,
+      certificateNumber: certNumber,
+    }).returning();
+    return certificate;
+  }
+
+  async getUserCertificates(userId: string, tenantId: string) {
+    return await db.select({
+      certificate: issuedCertificates,
+      template: certificateTemplates,
+      course: courses,
+    })
+      .from(issuedCertificates)
+      .leftJoin(certificateTemplates, eq(issuedCertificates.templateId, certificateTemplates.id))
+      .leftJoin(courses, eq(issuedCertificates.courseId, courses.id))
+      .where(and(eq(issuedCertificates.userId, userId), eq(issuedCertificates.tenantId, tenantId)))
+      .orderBy(desc(issuedCertificates.issuedAt));
+  }
+
+  async verifyCertificate(certificateNumber: string) {
+    const [certificate] = await db.select({
+      certificate: issuedCertificates,
+      template: certificateTemplates,
+      user: users,
+      course: courses,
+    })
+      .from(issuedCertificates)
+      .leftJoin(certificateTemplates, eq(issuedCertificates.templateId, certificateTemplates.id))
+      .leftJoin(users, eq(issuedCertificates.userId, users.id))
+      .leftJoin(courses, eq(issuedCertificates.courseId, courses.id))
+      .where(eq(issuedCertificates.certificateNumber, certificateNumber))
+      .limit(1);
+    return certificate;
+  }
+
+  // ================================
+  // Admin: Tenant Management
+  // ================================
+
+  async getAllTenants() {
+    return await db.select().from(tenantConfig).orderBy(desc(tenantConfig.createdAt));
+  }
+
+  async getTenant(tenantId: number) {
+    const [tenant] = await db.select().from(tenantConfig)
+      .where(eq(tenantConfig.id, tenantId))
+      .limit(1);
+    return tenant;
+  }
+
+  async updateTenantModules(tenantId: number, modules: any) {
+    const [tenant] = await db.update(tenantConfig)
+      .set({ ...modules, updatedAt: new Date() })
+      .where(eq(tenantConfig.id, tenantId))
+      .returning();
+    return tenant;
+  }
+
+  // ================================
+  // LMS: Courses (Placeholder - needs schema)
+  // ================================
+
+  async getAllCourses(tenantId: number) {
+    // Placeholder - needs courses table implementation
+    return [];
+  }
+
+  async createCourse(tenantId: number, data: any) {
+    // Placeholder - needs courses table implementation
+    return data;
+  }
+
+  async updateCourse(tenantId: number, courseId: number, data: any) {
+    // Placeholder - needs courses table implementation
+    return data;
+  }
+
+  async enrollInCourse(tenantId: number, courseId: number, userId: number) {
+    // Placeholder - needs enrollments table implementation
+    return { courseId, userId };
+  }
+
+  // ================================
+  // LMS: Assessments (Placeholder)
+  // ================================
+
+  async getAllAssessments(tenantId: number) {
+    // Placeholder - needs assessments table implementation
+    return [];
+  }
+
+  async createAssessment(tenantId: number, data: any) {
+    // Placeholder - needs assessments table implementation
+    return data;
+  }
+
+  async submitAssessment(tenantId: number, assessmentId: number, userId: number, answers: any) {
+    // Placeholder - needs assessment_attempts table implementation
+    return { passed: true, score: 85 };
+  }
+
+  // ================================
+  // Gamification (Placeholder)
+  // ================================
+
+  async getLeaderboard(tenantId: number) {
+    // Placeholder - needs leaderboard table implementation
+    return [];
+  }
+
+  async getUserAchievements(tenantId: number, userId: number) {
+    // Placeholder - needs user_achievements table implementation
+    return [];
+  }
+
+  async awardBadge(tenantId: number, userId: number, badgeType: string, title: string, points: number) {
+    // Placeholder - needs user_achievements table implementation
+    return { userId, badgeType, title, points };
+  }
+
+  // ================================
+  // AI Lecturers (Placeholder)
+  // ================================
+
+  async getAILecturers(tenantId: number) {
+    // Placeholder - needs ai_lecturers table implementation
+    return [];
+  }
+
+  async createAILecturer(tenantId: number, data: any) {
+    // Placeholder - needs ai_lecturers table implementation
+    return data;
+  }
+
+  async generateLessonVideo(tenantId: number, data: any) {
+    // Placeholder - needs lesson_videos table implementation
+    return data;
   }
 }
 

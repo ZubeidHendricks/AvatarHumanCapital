@@ -27,7 +27,15 @@ import TenantRequests from "@/pages/tenant-requests";
 import TenantManagement from "@/pages/tenant-management";
 import PlatformDocs from "@/pages/platform-docs";
 import WorkforceIntelligence from "@/pages/workforce-intelligence";
+import LearningManagement from "@/pages/learning-management";
+import CertificateTemplates from "@/pages/certificate-templates";
+import MyCertificates from "@/pages/my-certificates";
+import VerifyCertificate from "@/pages/verify-certificate";
 import PlatformSettings from "@/pages/platform-settings";
+import Certificates from "@/pages/certificates";
+import CourseCatalogue from "@/pages/course-catalogue";
+import Leaderboard from "@/pages/leaderboard";
+import SystemDocs from "@/pages/system-docs";
 import DocumentAutomation from "@/pages/document-automation";
 import WhatsAppMonitor from "@/pages/whatsapp-monitor";
 import InterviewInvite from "@/pages/interview-invite";
@@ -60,6 +68,14 @@ function Router() {
       <Route path="/tenant-requests" component={TenantRequests} />
       <Route path="/tenant-management" component={TenantManagement} />
       <Route path="/platform-docs" component={PlatformDocs} />
+      <Route path="/learning-management" component={LearningManagement} />
+      <Route path="/certificate-templates" component={CertificateTemplates} />
+      <Route path="/my-certificates" component={MyCertificates} />
+      <Route path="/verify-certificate/:number" component={VerifyCertificate} />
+      <Route path="/certificates" component={Certificates} />
+      <Route path="/courses" component={CourseCatalogue} />
+      <Route path="/leaderboard" component={Leaderboard} />
+      <Route path="/system-docs" component={SystemDocs} />
       <Route path="/persona-management" component={PersonaManagement} />
       <Route path="/recruitment-agent" component={RecruitmentAgent} />
       <Route path="/integrity-agent" component={IntegrityAgent} />
