@@ -43,6 +43,40 @@ app.post("/api/tenant-requests", async (req, res) => {
   }
 });
 
+// PUBLIC route for initial tenant setup (onboarding)
+app.post("/api/public/tenant-config", async (req, res) => {
+  try {
+    const { companyName, subdomain, primaryColor, industry, modulesEnabled } = req.body;
+    
+    // Check if subdomain already exists
+    const existing = await storage.getTenantConfigBySubdomain(subdomain);
+    if (existing) {
+      return res.status(409).json({ message: "Subdomain already taken" });
+    }
+    
+    // Validate subdomain format (alphanumeric, lowercase, no spaces)
+    if (!/^[a-z0-9-]+$/.test(subdomain)) {
+      return res.status(400).json({ 
+        message: "Subdomain must be lowercase alphanumeric (hyphens allowed)" 
+      });
+    }
+    
+    const config = await storage.createTenantConfig({
+      companyName,
+      subdomain,
+      primaryColor: primaryColor || "#0ea5e9",
+      industry,
+      modulesEnabled: modulesEnabled || {},
+      apiKeysConfigured: {},
+    });
+    
+    res.status(201).json(config);
+  } catch (error) {
+    console.error("Error creating tenant config:", error);
+    res.status(500).json({ message: "Failed to create tenant" });
+  }
+});
+
 // PUBLIC route for interview session by token (for candidates accessing their interview link)
 app.get("/api/public/interview-session/:token", async (req, res) => {
   try {

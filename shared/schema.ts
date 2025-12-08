@@ -293,6 +293,53 @@ export const tenantConfig = pgTable("tenant_config", {
   industry: text("industry"),
   modulesEnabled: jsonb("modules_enabled").notNull().default(sql`'{}'::jsonb`),
   apiKeysConfigured: jsonb("api_keys_configured").notNull().default(sql`'{}'::jsonb`),
+  
+  // Subscription & Payment
+  subscriptionTier: text("subscription_tier").default("free"), // 'free', 'basic', 'professional', 'enterprise'
+  subscriptionStatus: text("subscription_status").default("trial"), // 'trial', 'active', 'suspended', 'cancelled'
+  trialEndsAt: timestamp("trial_ends_at"),
+  subscriptionStartedAt: timestamp("subscription_started_at"),
+  subscriptionEndsAt: timestamp("subscription_ends_at"),
+  lastPaymentDate: timestamp("last_payment_date"),
+  nextPaymentDate: timestamp("next_payment_date"),
+  paymentMethod: text("payment_method"), // 'card', 'bank_transfer', 'invoice'
+  billingEmail: text("billing_email"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Payment history table
+export const tenantPayments = pgTable("tenant_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenantConfig.id, { onDelete: 'cascade' }),
+  amount: integer("amount").notNull(), // Amount in cents
+  currency: text("currency").notNull().default("ZAR"),
+  status: text("status").notNull().default("pending"), // 'pending', 'completed', 'failed', 'refunded'
+  paymentMethod: text("payment_method"), // 'card', 'bank_transfer', 'invoice'
+  transactionId: text("transaction_id"), // External payment provider transaction ID
+  description: text("description"),
+  invoiceUrl: text("invoice_url"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("tenant_payments_tenant_id_idx").on(table.tenantId),
+}));
+
+// Subscription plans (predefined or custom)
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // 'Free', 'Basic', 'Professional', 'Enterprise'
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  priceMonthly: integer("price_monthly"), // Price in cents
+  priceYearly: integer("price_yearly"), // Price in cents (usually discounted)
+  features: jsonb("features").notNull().default(sql`'{}'::jsonb`), // Module access and limits
+  modulesIncluded: jsonb("modules_included").notNull().default(sql`'{}'::jsonb`),
+  limits: jsonb("limits").notNull().default(sql`'{}'::jsonb`), // Usage limits
+  isActive: integer("is_active").notNull().default(1),
+  sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -518,6 +565,26 @@ export const insertTenantConfigSchema = createInsertSchema(tenantConfig).omit({
 
 export type InsertTenantConfig = z.infer<typeof insertTenantConfigSchema>;
 export type TenantConfig = typeof tenantConfig.$inferSelect;
+
+// Tenant Payments
+export const insertTenantPaymentSchema = createInsertSchema(tenantPayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTenantPayment = z.infer<typeof insertTenantPaymentSchema>;
+export type TenantPayment = typeof tenantPayments.$inferSelect;
+
+// Subscription Plans
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 
 export const insertTenantRequestSchema = createInsertSchema(tenantRequests).omit({
   id: true,

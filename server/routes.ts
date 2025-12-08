@@ -2320,7 +2320,10 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
 
   app.get("/api/tenant-config", async (req, res) => {
     try {
-      const config = await storage.getTenantConfig();
+      if (!req.tenant) {
+        return res.status(404).json({ message: "No tenant found" });
+      }
+      const config = await storage.getTenantConfig(req.tenant.id);
       res.json(config);
     } catch (error) {
       console.error("Error fetching tenant config:", error);
@@ -2347,6 +2350,18 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
 
   app.post("/api/tenant-config", async (req, res) => {
     try {
+      if (!req.tenant) {
+        return res.status(404).json({ message: "No tenant found" });
+      }
+
+      // This endpoint updates EXISTING tenant config
+      const config = await storage.getTenantConfig(req.tenant.id);
+      
+      if (!config) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      // Validate modules
       if (req.body.modulesEnabled && typeof req.body.modulesEnabled !== 'object') {
         return res.status(400).json({ message: "modulesEnabled must be an object" });
       }
@@ -2363,17 +2378,11 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
         }
       }
       
-      const existing = await storage.getTenantConfig();
-      if (existing) {
-        const updated = await storage.updateTenantConfig(existing.id, req.body);
-        return res.json(updated);
-      }
-      
-      const config = await storage.createTenantConfig(req.body);
-      res.json(config);
+      const updated = await storage.updateTenantConfig(config.id, req.body);
+      res.json(updated);
     } catch (error) {
-      console.error("Error creating tenant config:", error);
-      res.status(500).json({ message: "Failed to create tenant config" });
+      console.error("Error updating tenant config:", error);
+      res.status(500).json({ message: "Failed to update tenant config" });
     }
   });
 
@@ -2409,15 +2418,11 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
   // Get current tenant based on subdomain (attached by middleware)
   app.get("/api/tenant/current", async (req, res) => {
     try {
-      if (req.tenant) {
-        return res.json(req.tenant);
+      // req.tenant is set by tenant middleware
+      if (!req.tenant) {
+        return res.status(404).json({ message: "No tenant found" });
       }
-      // Fallback to default tenant for development
-      const config = await storage.getTenantConfig();
-      if (config) {
-        return res.json(config);
-      }
-      return res.status(404).json({ message: "No tenant found" });
+      res.json(req.tenant);
     } catch (error) {
       console.error("Error fetching current tenant:", error);
       res.status(500).json({ message: "Failed to fetch tenant" });
@@ -2918,6 +2923,114 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
   // Note: Public POST route is registered in server/index.ts BEFORE tenant middleware
   
   // Admin route: Get all tenant requests (requires admin authorization)
+  // Admin: Get all tenants for tenant switching
+  app.get("/api/admin/tenants", requireAdmin, async (req, res) => {
+    try {
+      const tenants = await storage.getAllTenantConfigs();
+      res.json(tenants);
+    } catch (error) {
+      console.error("Error fetching tenants:", error);
+      res.status(500).json({ message: "Failed to fetch tenants" });
+    }
+  });
+
+  // Admin: Override tenant context (for viewing other tenant's data)
+  app.post("/api/admin/impersonate-tenant", requireAdmin, async (req, res) => {
+    try {
+      const { tenantId } = req.body;
+      
+      if (!tenantId) {
+        return res.status(400).json({ message: "tenantId is required" });
+      }
+
+      const tenant = await storage.getTenantConfig(tenantId);
+      
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      // Return the tenant config for client-side storage
+      res.json(tenant);
+    } catch (error) {
+      console.error("Error impersonating tenant:", error);
+      res.status(500).json({ message: "Failed to impersonate tenant" });
+    }
+  });
+
+  // Admin: Get tenant payments
+  app.get("/api/admin/tenants/:tenantId/payments", requireAdmin, async (req, res) => {
+    try {
+      const { tenantId } = req.params;
+      const payments = await storage.getTenantPayments(tenantId);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching tenant payments:", error);
+      res.status(500).json({ message: "Failed to fetch payments" });
+    }
+  });
+
+  // Admin: Record a payment
+  app.post("/api/admin/tenants/:tenantId/payments", requireAdmin, async (req, res) => {
+    try {
+      const { tenantId } = req.params;
+      const payment = await storage.createTenantPayment({
+        ...req.body,
+        tenantId,
+      });
+      res.status(201).json(payment);
+    } catch (error) {
+      console.error("Error creating payment:", error);
+      res.status(500).json({ message: "Failed to record payment" });
+    }
+  });
+
+  // Admin: Update payment status
+  app.patch("/api/admin/payments/:paymentId", requireAdmin, async (req, res) => {
+    try {
+      const { paymentId } = req.params;
+      const payment = await storage.updateTenantPayment(paymentId, req.body);
+      
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      res.json(payment);
+    } catch (error) {
+      console.error("Error updating payment:", error);
+      res.status(500).json({ message: "Failed to update payment" });
+    }
+  });
+
+  // Admin: Update tenant subscription
+  app.patch("/api/admin/tenants/:tenantId/subscription", requireAdmin, async (req, res) => {
+    try {
+      const { tenantId } = req.params;
+      const updates = req.body;
+      
+      const tenant = await storage.updateTenantConfig(tenantId, updates);
+      
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+      
+      res.json(tenant);
+    } catch (error) {
+      console.error("Error updating subscription:", error);
+      res.status(500).json({ message: "Failed to update subscription" });
+    }
+  });
+
+  // Admin: Get subscription plans
+  app.get("/api/admin/subscription-plans", requireAdmin, async (req, res) => {
+    try {
+      const plans = await storage.getAllSubscriptionPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ message: "Failed to fetch plans" });
+    }
+  });
+
   app.get("/api/tenant-requests", requireAdmin, async (req, res) => {
     try {
       const status = req.query.status as string | undefined;

@@ -15,6 +15,10 @@ import {
   type InsertOnboardingWorkflow,
   type TenantConfig,
   type InsertTenantConfig,
+  type TenantPayment,
+  type InsertTenantPayment,
+  type SubscriptionPlan,
+  type InsertSubscriptionPlan,
   type Interview,
   type InsertInterview,
   type InterviewAssessment,
@@ -85,6 +89,8 @@ import {
   systemSettings,
   onboardingWorkflows,
   tenantConfig,
+  tenantPayments,
+  subscriptionPlans,
   interviews,
   interviewAssessments,
   tenantRequests,
@@ -210,10 +216,24 @@ export interface IStorage {
   updateOnboardingWorkflow(tenantId: string, id: string, workflow: Partial<InsertOnboardingWorkflow>): Promise<OnboardingWorkflow | undefined>;
   deleteOnboardingWorkflow(tenantId: string, id: string): Promise<boolean>;
   
-  getTenantConfig(): Promise<TenantConfig | undefined>;
+  getTenantConfig(tenantId: string): Promise<TenantConfig | undefined>;
+  getTenantConfigBySubdomain(subdomain: string): Promise<TenantConfig | undefined>;
+  getTenantConfigById(id: string): Promise<TenantConfig | undefined>;
   getAllTenantConfigs(): Promise<TenantConfig[]>;
   createTenantConfig(config: InsertTenantConfig): Promise<TenantConfig>;
   updateTenantConfig(id: string, config: Partial<InsertTenantConfig>): Promise<TenantConfig | undefined>;
+  
+  // Tenant Payments
+  getTenantPayments(tenantId: string): Promise<TenantPayment[]>;
+  getTenantPayment(id: string): Promise<TenantPayment | undefined>;
+  createTenantPayment(payment: InsertTenantPayment): Promise<TenantPayment>;
+  updateTenantPayment(id: string, updates: Partial<InsertTenantPayment>): Promise<TenantPayment | undefined>;
+  
+  // Subscription Plans
+  getAllSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+  getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined>;
+  createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan>;
+  updateSubscriptionPlan(id: string, updates: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan | undefined>;
   
   getAllInterviews(tenantId: string): Promise<Interview[]>;
   getInterview(tenantId: string, id: string): Promise<Interview | undefined>;
@@ -895,8 +915,30 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  async getTenantConfig(): Promise<TenantConfig | undefined> {
-    const [config] = await db.select().from(tenantConfig).orderBy(desc(tenantConfig.createdAt)).limit(1);
+  async getTenantConfig(tenantId: string): Promise<TenantConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(tenantConfig)
+      .where(eq(tenantConfig.id, tenantId))
+      .limit(1);
+    return config || undefined;
+  }
+
+  async getTenantConfigBySubdomain(subdomain: string): Promise<TenantConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(tenantConfig)
+      .where(eq(tenantConfig.subdomain, subdomain))
+      .limit(1);
+    return config || undefined;
+  }
+
+  async getTenantConfigById(id: string): Promise<TenantConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(tenantConfig)
+      .where(eq(tenantConfig.id, id))
+      .limit(1);
     return config || undefined;
   }
 
@@ -919,6 +961,74 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tenantConfig.id, id))
       .returning();
     return config || undefined;
+  }
+
+  // Tenant Payments
+  async getTenantPayments(tenantId: string): Promise<TenantPayment[]> {
+    return await db
+      .select()
+      .from(tenantPayments)
+      .where(eq(tenantPayments.tenantId, tenantId))
+      .orderBy(desc(tenantPayments.createdAt));
+  }
+
+  async getTenantPayment(id: string): Promise<TenantPayment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(tenantPayments)
+      .where(eq(tenantPayments.id, id));
+    return payment || undefined;
+  }
+
+  async createTenantPayment(insertPayment: InsertTenantPayment): Promise<TenantPayment> {
+    const [payment] = await db
+      .insert(tenantPayments)
+      .values(insertPayment)
+      .returning();
+    return payment;
+  }
+
+  async updateTenantPayment(id: string, updates: Partial<InsertTenantPayment>): Promise<TenantPayment | undefined> {
+    const [payment] = await db
+      .update(tenantPayments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tenantPayments.id, id))
+      .returning();
+    return payment || undefined;
+  }
+
+  // Subscription Plans
+  async getAllSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    return await db
+      .select()
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.isActive, 1))
+      .orderBy(subscriptionPlans.sortOrder);
+  }
+
+  async getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined> {
+    const [plan] = await db
+      .select()
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.id, id));
+    return plan || undefined;
+  }
+
+  async createSubscriptionPlan(insertPlan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    const [plan] = await db
+      .insert(subscriptionPlans)
+      .values(insertPlan)
+      .returning();
+    return plan;
+  }
+
+  async updateSubscriptionPlan(id: string, updates: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan | undefined> {
+    const [plan] = await db
+      .update(subscriptionPlans)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(subscriptionPlans.id, id))
+      .returning();
+    return plan || undefined;
   }
 
   async getAllInterviews(tenantId: string): Promise<Interview[]> {
