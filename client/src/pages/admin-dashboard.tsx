@@ -15,7 +15,9 @@ import type { SystemSetting } from "@shared/schema";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { TenantSelector } from "@/components/admin/TenantSelector";
+import { TenantManagement } from "@/components/admin/TenantManagement";
 import { useTenant } from "@/contexts/TenantContext";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EnvSecret {
   key: string;

@@ -54,6 +54,256 @@ function inferDepartmentFromTitle(title: string): string {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // ============= ADMIN: TENANT MANAGEMENT =============
+  app.get("/api/admin/tenants", requireAdmin, async (req, res) => {
+    try {
+      const tenants = await storage.getAllTenants();
+      res.json(tenants);
+    } catch (error) {
+      console.error("Error fetching tenants:", error);
+      res.status(500).json({ message: "Failed to fetch tenants" });
+    }
+  });
+
+  app.get("/api/admin/tenants/:id", requireAdmin, async (req, res) => {
+    try {
+      const tenant = await storage.getTenant(parseInt(req.params.id));
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+      res.json(tenant);
+    } catch (error) {
+      console.error("Error fetching tenant:", error);
+      res.status(500).json({ message: "Failed to fetch tenant" });
+    }
+  });
+
+  app.patch("/api/admin/tenants/:id/modules", requireAdmin, async (req, res) => {
+    try {
+      const { lmsEnabled, gamificationEnabled, aiLecturersEnabled, certificatesEnabled, paymentStatus, subscriptionTier } = req.body;
+      const tenant = await storage.updateTenantModules(parseInt(req.params.id), {
+        lmsEnabled,
+        gamificationEnabled,
+        aiLecturersEnabled,
+        certificatesEnabled,
+        paymentStatus,
+        subscriptionTier
+      });
+      res.json(tenant);
+    } catch (error) {
+      console.error("Error updating tenant modules:", error);
+      res.status(500).json({ message: "Failed to update tenant modules" });
+    }
+  });
+
+  // ============= LMS: COURSES =============
+  app.get("/api/lms/courses", async (req, res) => {
+    try {
+      const courses = await storage.getAllCourses(req.tenant.id);
+      res.json(courses);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      res.status(500).json({ message: "Failed to fetch courses" });
+    }
+  });
+
+  app.post("/api/lms/courses", async (req, res) => {
+    try {
+      const course = await storage.createCourse(req.tenant.id, req.body);
+      res.status(201).json(course);
+    } catch (error) {
+      console.error("Error creating course:", error);
+      res.status(500).json({ message: "Failed to create course" });
+    }
+  });
+
+  app.patch("/api/lms/courses/:id", async (req, res) => {
+    try {
+      const course = await storage.updateCourse(req.tenant.id, parseInt(req.params.id), req.body);
+      res.json(course);
+    } catch (error) {
+      console.error("Error updating course:", error);
+      res.status(500).json({ message: "Failed to update course" });
+    }
+  });
+
+  app.post("/api/lms/courses/:id/enroll", async (req, res) => {
+    try {
+      const enrollment = await storage.enrollInCourse(req.tenant.id, parseInt(req.params.id), req.user.id);
+      res.status(201).json(enrollment);
+    } catch (error) {
+      console.error("Error enrolling in course:", error);
+      res.status(500).json({ message: "Failed to enroll in course" });
+    }
+  });
+
+  // ============= LMS: ASSESSMENTS =============
+  app.get("/api/lms/assessments", async (req, res) => {
+    try {
+      const assessments = await storage.getAllAssessments(req.tenant.id);
+      res.json(assessments);
+    } catch (error) {
+      console.error("Error fetching assessments:", error);
+      res.status(500).json({ message: "Failed to fetch assessments" });
+    }
+  });
+
+  app.post("/api/lms/assessments", async (req, res) => {
+    try {
+      const assessment = await storage.createAssessment(req.tenant.id, req.body);
+      res.status(201).json(assessment);
+    } catch (error) {
+      console.error("Error creating assessment:", error);
+      res.status(500).json({ message: "Failed to create assessment" });
+    }
+  });
+
+  app.post("/api/lms/assessments/:id/submit", async (req, res) => {
+    try {
+      const { answers } = req.body;
+      const result = await storage.submitAssessment(req.tenant.id, parseInt(req.params.id), req.user.id, answers);
+      
+      // Award points for passing
+      if (result.passed) {
+        await storage.awardPoints(req.tenant.id, req.user.id, result.score);
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error submitting assessment:", error);
+      res.status(500).json({ message: "Failed to submit assessment" });
+    }
+  });
+
+  // ============= GAMIFICATION =============
+  app.get("/api/gamification/leaderboard", async (req, res) => {
+    try {
+      const leaderboard = await storage.getLeaderboard(req.tenant.id);
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("Error fetching leaderboard:", error);
+      res.status(500).json({ message: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/gamification/achievements/:userId", async (req, res) => {
+    try {
+      const achievements = await storage.getUserAchievements(req.tenant.id, parseInt(req.params.userId));
+      res.json(achievements);
+    } catch (error) {
+      console.error("Error fetching achievements:", error);
+      res.status(500).json({ message: "Failed to fetch achievements" });
+    }
+  });
+
+  app.post("/api/gamification/award-badge", async (req, res) => {
+    try {
+      const { userId, badgeType, title, points } = req.body;
+      const achievement = await storage.awardBadge(req.tenant.id, userId, badgeType, title, points);
+      res.status(201).json(achievement);
+    } catch (error) {
+      console.error("Error awarding badge:", error);
+      res.status(500).json({ message: "Failed to award badge" });
+    }
+  });
+
+  // ============= CERTIFICATES =============
+  app.get("/api/certificates/templates", async (req, res) => {
+    try {
+      const templates = await storage.getCertificateTemplates(req.tenant.id);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching certificate templates:", error);
+      res.status(500).json({ message: "Failed to fetch templates" });
+    }
+  });
+
+  app.post("/api/certificates/templates", upload.single("template"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "Template file required" });
+      }
+      
+      const fileName = `cert-template-${Date.now()}-${req.file.originalname}`;
+      const filePath = path.join("uploads/certificates", fileName);
+      
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      fs.writeFileSync(filePath, req.file.buffer);
+      
+      const template = await storage.createCertificateTemplate(req.tenant.id, {
+        name: req.body.name,
+        description: req.body.description,
+        templateUrl: `/uploads/certificates/${fileName}`,
+        placeholders: JSON.parse(req.body.placeholders || "[]"),
+      });
+      
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Error creating certificate template:", error);
+      res.status(500).json({ message: "Failed to create template" });
+    }
+  });
+
+  app.post("/api/certificates/issue", async (req, res) => {
+    try {
+      const { userId, courseId, templateId, metadata } = req.body;
+      const certificate = await storage.issueCertificate(req.tenant.id, userId, courseId, templateId, metadata);
+      res.status(201).json(certificate);
+    } catch (error) {
+      console.error("Error issuing certificate:", error);
+      res.status(500).json({ message: "Failed to issue certificate" });
+    }
+  });
+
+  app.get("/api/certificates/verify/:code", async (req, res) => {
+    try {
+      const certificate = await storage.verifyCertificate(req.params.code);
+      res.json(certificate);
+    } catch (error) {
+      console.error("Error verifying certificate:", error);
+      res.status(404).json({ message: "Certificate not found" });
+    }
+  });
+
+  // ============= AI LECTURERS =============
+  app.get("/api/ai-lecturers", async (req, res) => {
+    try {
+      const lecturers = await storage.getAILecturers(req.tenant.id);
+      res.json(lecturers);
+    } catch (error) {
+      console.error("Error fetching AI lecturers:", error);
+      res.status(500).json({ message: "Failed to fetch AI lecturers" });
+    }
+  });
+
+  app.post("/api/ai-lecturers", async (req, res) => {
+    try {
+      const lecturer = await storage.createAILecturer(req.tenant.id, req.body);
+      res.status(201).json(lecturer);
+    } catch (error) {
+      console.error("Error creating AI lecturer:", error);
+      res.status(500).json({ message: "Failed to create AI lecturer" });
+    }
+  });
+
+  app.post("/api/ai-lecturers/generate-video", async (req, res) => {
+    try {
+      const { lecturerId, courseId, moduleId, lessonId, script } = req.body;
+      const video = await storage.generateLessonVideo(req.tenant.id, {
+        lecturerId,
+        courseId,
+        moduleId,
+        lessonId,
+        script,
+      });
+      res.status(201).json(video);
+    } catch (error) {
+      console.error("Error generating video:", error);
+      res.status(500).json({ message: "Failed to generate video" });
+    }
+  });
+
   app.get("/api/candidates", async (req, res) => {
     try {
       const candidates = await storage.getAllCandidates(req.tenant.id);

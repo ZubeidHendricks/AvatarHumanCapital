@@ -3106,6 +3106,110 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     return certificate;
   }
+
+  // ================================
+  // Admin: Tenant Management
+  // ================================
+
+  async getAllTenants() {
+    return await db.select().from(tenantConfig).orderBy(desc(tenantConfig.createdAt));
+  }
+
+  async getTenant(tenantId: number) {
+    const [tenant] = await db.select().from(tenantConfig)
+      .where(eq(tenantConfig.id, tenantId))
+      .limit(1);
+    return tenant;
+  }
+
+  async updateTenantModules(tenantId: number, modules: any) {
+    const [tenant] = await db.update(tenantConfig)
+      .set({ ...modules, updatedAt: new Date() })
+      .where(eq(tenantConfig.id, tenantId))
+      .returning();
+    return tenant;
+  }
+
+  // ================================
+  // LMS: Courses (Placeholder - needs schema)
+  // ================================
+
+  async getAllCourses(tenantId: number) {
+    // Placeholder - needs courses table implementation
+    return [];
+  }
+
+  async createCourse(tenantId: number, data: any) {
+    // Placeholder - needs courses table implementation
+    return data;
+  }
+
+  async updateCourse(tenantId: number, courseId: number, data: any) {
+    // Placeholder - needs courses table implementation
+    return data;
+  }
+
+  async enrollInCourse(tenantId: number, courseId: number, userId: number) {
+    // Placeholder - needs enrollments table implementation
+    return { courseId, userId };
+  }
+
+  // ================================
+  // LMS: Assessments (Placeholder)
+  // ================================
+
+  async getAllAssessments(tenantId: number) {
+    // Placeholder - needs assessments table implementation
+    return [];
+  }
+
+  async createAssessment(tenantId: number, data: any) {
+    // Placeholder - needs assessments table implementation
+    return data;
+  }
+
+  async submitAssessment(tenantId: number, assessmentId: number, userId: number, answers: any) {
+    // Placeholder - needs assessment_attempts table implementation
+    return { passed: true, score: 85 };
+  }
+
+  // ================================
+  // Gamification (Placeholder)
+  // ================================
+
+  async getLeaderboard(tenantId: number) {
+    // Placeholder - needs leaderboard table implementation
+    return [];
+  }
+
+  async getUserAchievements(tenantId: number, userId: number) {
+    // Placeholder - needs user_achievements table implementation
+    return [];
+  }
+
+  async awardBadge(tenantId: number, userId: number, badgeType: string, title: string, points: number) {
+    // Placeholder - needs user_achievements table implementation
+    return { userId, badgeType, title, points };
+  }
+
+  // ================================
+  // AI Lecturers (Placeholder)
+  // ================================
+
+  async getAILecturers(tenantId: number) {
+    // Placeholder - needs ai_lecturers table implementation
+    return [];
+  }
+
+  async createAILecturer(tenantId: number, data: any) {
+    // Placeholder - needs ai_lecturers table implementation
+    return data;
+  }
+
+  async generateLessonVideo(tenantId: number, data: any) {
+    // Placeholder - needs lesson_videos table implementation
+    return data;
+  }
 }
 
 export const storage = new DatabaseStorage();
