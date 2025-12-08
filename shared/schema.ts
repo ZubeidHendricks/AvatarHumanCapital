@@ -315,6 +315,64 @@ export const tenantRequests = pgTable("tenant_requests", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Subscription Plans for multi-tenant billing
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // 'starter', 'professional', 'enterprise'
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  priceMonthly: integer("price_monthly").notNull(), // in cents (ZAR)
+  priceYearly: integer("price_yearly"), // in cents (ZAR), optional yearly discount
+  currency: text("currency").notNull().default("ZAR"),
+  features: jsonb("features").notNull().default(sql`'[]'::jsonb`), // Array of feature strings
+  limits: jsonb("limits").notNull().default(sql`'{}'::jsonb`), // { maxEmployees: 50, maxJobs: 10, ... }
+  isActive: integer("is_active").notNull().default(1),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Tenant Payments for tracking billing/subscription status
+export const tenantPayments = pgTable("tenant_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenantConfig.id),
+  planId: varchar("plan_id").references(() => subscriptionPlans.id),
+  status: text("status").notNull().default("pending"), // 'pending', 'active', 'cancelled', 'past_due', 'trialing'
+  billingCycle: text("billing_cycle").notNull().default("monthly"), // 'monthly', 'yearly'
+  amount: integer("amount").notNull(), // in cents
+  currency: text("currency").notNull().default("ZAR"),
+  paymentMethod: text("payment_method"), // 'card', 'eft', 'debit_order'
+  paymentReference: text("payment_reference"), // External payment gateway reference
+  invoiceNumber: text("invoice_number"),
+  periodStart: timestamp("period_start"),
+  periodEnd: timestamp("period_end"),
+  trialEndsAt: timestamp("trial_ends_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  metadata: jsonb("metadata"), // Additional payment info
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("tenant_payments_tenant_id_idx").on(table.tenantId),
+  planIdIdx: index("tenant_payments_plan_id_idx").on(table.planId),
+  statusIdx: index("tenant_payments_status_idx").on(table.status),
+}));
+
+// Tenant Subscription History for audit trail
+export const tenantSubscriptionHistory = pgTable("tenant_subscription_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenantConfig.id),
+  planId: varchar("plan_id").references(() => subscriptionPlans.id),
+  action: text("action").notNull(), // 'subscribed', 'upgraded', 'downgraded', 'cancelled', 'renewed'
+  previousPlanId: varchar("previous_plan_id"),
+  amount: integer("amount"),
+  currency: text("currency").default("ZAR"),
+  notes: text("notes"),
+  performedBy: varchar("performed_by"), // User ID who made the change
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("tenant_subscription_history_tenant_id_idx").on(table.tenantId),
+}));
+
 export const interviews = pgTable("interviews", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id"),
@@ -1988,3 +2046,38 @@ export type Feedback360Response = typeof feedback360Responses.$inferSelect;
 export type InsertReviewSubmission = z.infer<typeof insertReviewSubmissionSchema>;
 export type UpdateReviewSubmission = z.infer<typeof updateReviewSubmissionSchema>;
 export type ReviewSubmission = typeof reviewSubmissions.$inferSelect;
+
+// Subscription Plan schemas and types
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateSubscriptionPlanSchema = insertSubscriptionPlanSchema.partial();
+
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type UpdateSubscriptionPlan = z.infer<typeof updateSubscriptionPlanSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+
+// Tenant Payment schemas and types
+export const insertTenantPaymentSchema = createInsertSchema(tenantPayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateTenantPaymentSchema = insertTenantPaymentSchema.partial();
+
+export type InsertTenantPayment = z.infer<typeof insertTenantPaymentSchema>;
+export type UpdateTenantPayment = z.infer<typeof updateTenantPaymentSchema>;
+export type TenantPayment = typeof tenantPayments.$inferSelect;
+
+// Tenant Subscription History schemas and types
+export const insertTenantSubscriptionHistorySchema = createInsertSchema(tenantSubscriptionHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTenantSubscriptionHistory = z.infer<typeof insertTenantSubscriptionHistorySchema>;
+export type TenantSubscriptionHistory = typeof tenantSubscriptionHistory.$inferSelect;
