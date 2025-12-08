@@ -1,0 +1,125 @@
+~/workspace$ git pull https://github.com/ZubeidHendricks/AvatarHumanCapital.git main --no-edit
+remote: Enumerating objects: 79, done.
+remote: Counting objects: 100% (79/79), done.
+remote: Compressing objects: 100% (27/27), done.
+remote: Total 63 (delta 44), reused 52 (delta 33), pack-reused 0 (from 0)
+Unpacking objects: 100% (63/63), 42.33 KiB | 884.00 KiB/s, done.
+From https://github.com/ZubeidHendricks/AvatarHumanCapital
+ * branch            main       -> FETCH_HEAD
+Merge made by the 'ort' strategy.
+ REPLIT_MERGE_INSTRUCTIONS.md                     | 218 ++++++++++++++++++++++++++++++++++++++++++++++++
+ client/src/App.tsx                               |  16 ++++
+ client/src/components/admin/TenantManagement.tsx | 273 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ client/src/components/layout/navbar.tsx          |   6 ++
+ client/src/pages/admin-dashboard.tsx             |  17 ++++
+ client/src/pages/certificate-templates.tsx       | 189 ++++++++++++++++++++++++++++++++++++++++++
+ client/src/pages/certificates.tsx                | 271 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ client/src/pages/course-catalogue.tsx            | 222 +++++++++++++++++++++++++++++++++++++++++++++++++
+ client/src/pages/leaderboard.tsx                 | 219 +++++++++++++++++++++++++++++++++++++++++++++++++
+ client/src/pages/learning-management.tsx         | 377 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ client/src/pages/my-certificates.tsx             | 112 +++++++++++++++++++++++++
+ client/src/pages/system-docs.tsx                 | 497 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ client/src/pages/verify-certificate.tsx          | 127 ++++++++++++++++++++++++++++
+ migrations/0010_add_lms_tables.sql               | 219 +++++++++++++++++++++++++++++++++++++++++++++++++
+ migrations/add-certificate-templates.sql         |  34 ++++++++
+ migrations/add-lms-tables.sql                    | 247 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ server/routes.ts                                 | 609 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ server/storage.ts                                | 433 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ shared/schema.ts                                 | 216 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 19 files changed, 4301 insertions(+), 1 deletion(-)
+ create mode 100644 REPLIT_MERGE_INSTRUCTIONS.md
+ create mode 100644 client/src/components/admin/TenantManagement.tsx
+ create mode 100644 client/src/pages/certificate-templates.tsx
+ create mode 100644 client/src/pages/certificates.tsx
+ create mode 100644 client/src/pages/course-catalogue.tsx
+ create mode 100644 client/src/pages/leaderboard.tsx
+ create mode 100644 client/src/pages/learning-management.tsx
+ create mode 100644 client/src/pages/my-certificates.tsx
+ create mode 100644 client/src/pages/system-docs.tsx
+ create mode 100644 client/src/pages/verify-certificate.tsx
+ create mode 100644 migrations/0010_add_lms_tables.sql
+ create mode 100644 migrations/add-certificate-templates.sql
+ create mode 100644 migrations/add-lms-tables.sql
+~/workspace$ rm -f .git/index
+rm -f .git/index.lock
+git reset HEAD
+~/workspace$ git stash push -m "Replit local changes before merge"
+No local changes to save
+~/workspace$ git config pull.rebase false
+git pull https://github.com/ZubeidHendricks/AvatarHumanCapital.git main --no-edit
+From https://github.com/ZubeidHendricks/AvatarHumanCapital
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+~/workspace$ git status
+# Then for each conflicted file, choose theirs or ours:
+git checkout --theirs <file>  # or
+git checkout --ours <file>
+git add .
+git commit -m "Merge remote changes from GitHub"
+On branch main
+nothing to commit, working tree clean
+bash: syntax error near unexpected token `newline'
+bash: syntax error near unexpected token `newline'
+On branch main
+nothing to commit, working tree clean
+~/workspace$ npm install 
+
+up to date, audited 545 packages in 2s
+
+49 packages are looking for funding
+  run `npm fund` for details
+
+6 vulnerabilities (2 low, 4 moderate)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+~/workspace$ psql $DATABASE_URL -f migrations/0010_add_lms_tables.sql
+psql:migrations/0010_add_lms_tables.sql:20: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:22: ERROR:  relation "courses" does not exist
+psql:migrations/0010_add_lms_tables.sql:23: ERROR:  relation "courses" does not exist
+psql:migrations/0010_add_lms_tables.sql:40: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:42: ERROR:  relation "course_enrollments" does not exist
+psql:migrations/0010_add_lms_tables.sql:43: ERROR:  relation "course_enrollments" does not exist
+psql:migrations/0010_add_lms_tables.sql:44: ERROR:  relation "course_enrollments" does not exist
+psql:migrations/0010_add_lms_tables.sql:64: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:66: ERROR:  relation "assessments" does not exist
+psql:migrations/0010_add_lms_tables.sql:67: ERROR:  relation "assessments" does not exist
+psql:migrations/0010_add_lms_tables.sql:84: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:86: ERROR:  relation "assessment_attempts" does not exist
+psql:migrations/0010_add_lms_tables.sql:87: ERROR:  relation "assessment_attempts" does not exist
+psql:migrations/0010_add_lms_tables.sql:88: ERROR:  relation "assessment_attempts" does not exist
+psql:migrations/0010_add_lms_tables.sql:104: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:106: ERROR:  relation "user_achievements" does not exist
+psql:migrations/0010_add_lms_tables.sql:107: ERROR:  relation "user_achievements" does not exist
+psql:migrations/0010_add_lms_tables.sql:108: ERROR:  relation "user_achievements" does not exist
+psql:migrations/0010_add_lms_tables.sql:125: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:127: ERROR:  relation "leaderboard" does not exist
+psql:migrations/0010_add_lms_tables.sql:128: ERROR:  relation "leaderboard" does not exist
+psql:migrations/0010_add_lms_tables.sql:129: ERROR:  relation "leaderboard" does not exist
+psql:migrations/0010_add_lms_tables.sql:144: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:146: ERROR:  relation "certificate_templates" does not exist
+psql:migrations/0010_add_lms_tables.sql:163: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:165: ERROR:  relation "certificates" does not exist
+psql:migrations/0010_add_lms_tables.sql:166: ERROR:  relation "certificates" does not exist
+psql:migrations/0010_add_lms_tables.sql:167: ERROR:  relation "certificates" does not exist
+psql:migrations/0010_add_lms_tables.sql:168: ERROR:  relation "certificates" does not exist
+psql:migrations/0010_add_lms_tables.sql:183: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:185: ERROR:  relation "ai_lecturers" does not exist
+psql:migrations/0010_add_lms_tables.sql:205: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:207: ERROR:  relation "lesson_videos" does not exist
+psql:migrations/0010_add_lms_tables.sql:208: ERROR:  relation "lesson_videos" does not exist
+psql:migrations/0010_add_lms_tables.sql:209: ERROR:  relation "lesson_videos" does not exist
+psql:migrations/0010_add_lms_tables.sql:212: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:213: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:214: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:215: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:216: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:217: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:218: ERROR:  relation "tenants" does not exist
+psql:migrations/0010_add_lms_tables.sql:219: ERROR:  relation "tenants" does not exist
+~/workspace$ 
