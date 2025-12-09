@@ -53,6 +53,7 @@ import SocialScreeningAgent from "@/pages/social-screening-agent";
 import CVTemplatePage from "@/pages/cv-template";
 import DataSourcesPage from "@/pages/data-sources";
 import DataSourceDetailPage from "@/pages/data-source-detail";
+import SelfAssessment from "@/pages/self-assessment";
 
 function Router() {
   return (
@@ -106,6 +107,7 @@ function Router() {
       <Route path="/cv-template" component={CVTemplatePage} />
       <Route path="/data-sources" component={DataSourcesPage} />
       <Route path="/data-sources/:id" component={DataSourceDetailPage} />
+      <Route path="/self-assessment/:token" component={SelfAssessment} />
       <Route component={NotFound} />
     </Switch>
   );
