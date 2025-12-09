@@ -100,7 +100,15 @@ export default function LearningManagement() {
     queryFn: async () => {
       const res = await fetch("/api/lms/my-progress", { headers });
       if (!res.ok) return [];
-      return res.json();
+      const data = await res.json();
+      // Transform nested structure to flat structure
+      return data.map((item: { progress: any; course: any }) => ({
+        courseId: item.progress?.courseId || item.course?.id,
+        courseTitle: item.course?.title || "Unknown Course",
+        progress: item.progress?.progress || 0,
+        status: item.progress?.status || "not_started",
+        timeSpent: item.progress?.timeSpent || 0
+      }));
     },
     enabled: !!tenantId
   });
