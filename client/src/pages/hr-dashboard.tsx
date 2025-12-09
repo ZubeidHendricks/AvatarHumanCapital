@@ -668,13 +668,12 @@ BENEFITS:
 
         <Tabs defaultValue="jobs" className="space-y-6" onValueChange={setActiveTab}>
           <div className="flex items-center gap-3 flex-wrap">
-            <TabsList className="grid grid-cols-2 md:grid-cols-7 lg:w-[900px] bg-card/50 border border-white/5">
+            <TabsList className="grid grid-cols-2 md:grid-cols-6 lg:w-[800px] bg-card/50 border border-white/5">
               <TabsTrigger value="jobs">Jobs</TabsTrigger>
               <TabsTrigger value="recruitment">Recruitment</TabsTrigger>
               <TabsTrigger value="integrity">Integrity</TabsTrigger>
               <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
               <TabsTrigger value="performance">Performance</TabsTrigger>
-              <TabsTrigger value="lms">LMS</TabsTrigger>
               <TabsTrigger value="time-attendance">Time & Attendance</TabsTrigger>
             </TabsList>
             <Link href="/workforce-intelligence">
