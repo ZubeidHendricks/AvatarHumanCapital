@@ -7416,7 +7416,7 @@ Format your response as JSON:
         storage.getEmployee(tenantId, userId),
       ]);
 
-      const phone = employee?.contactPhone || employee?.phone;
+      const phone = employee?.phone;
       
       // Create the reminder record
       const reminder = await storage.createCourseReminder({
@@ -7429,40 +7429,45 @@ Format your response as JSON:
         sentBy: senderId,
         metadata: { 
           userName: user?.username,
-          employeeName: employee?.firstName + " " + employee?.lastName,
+          employeeName: employee?.fullName,
           phone,
         },
       });
 
       // Send via WhatsApp if phone is available and channel is whatsapp
       if (phone && (!channel || channel === "whatsapp")) {
-        const WhatsAppService = (await import("./whatsapp-service")).WhatsAppService;
-        const whatsappService = new WhatsAppService();
+        const WHATSAPP_API_URL = "https://graph.facebook.com/v18.0";
+        const token = process.env.WHATSAPP_API_TOKEN;
+        const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
         
-        if (whatsappService.isConfigured()) {
+        if (token && phoneNumberId) {
           try {
-            // Create or get conversation for this user
-            let conversation = await storage.getWhatsappConversationByPhone(tenantId, phone);
-            if (!conversation) {
-              conversation = await storage.createWhatsappConversation(tenantId, {
-                phone,
-                participantType: "employee",
-                participantId: userId,
-                status: "active",
-              });
-            }
-
-            await whatsappService.sendTextMessage(
-              tenantId,
-              conversation.id,
-              phone,
-              message,
-              "human",
-              senderId
+            const response = await fetch(
+              `${WHATSAPP_API_URL}/${phoneNumberId}/messages`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  to: phone,
+                  type: "text",
+                  text: { body: message },
+                }),
+              }
             );
-            
-            await storage.updateCourseReminderStatus(reminder.id, "sent", new Date());
-            return res.json({ ...reminder, status: "sent", deliveryMethod: "whatsapp" });
+
+            if (response.ok) {
+              await storage.updateCourseReminderStatus(reminder.id, "sent", new Date());
+              return res.json({ ...reminder, status: "sent", deliveryMethod: "whatsapp" });
+            } else {
+              const errorData = await response.json();
+              console.error("WhatsApp API error:", errorData);
+              await storage.updateCourseReminderStatus(reminder.id, "failed");
+              return res.json({ ...reminder, status: "failed", error: errorData?.error?.message, deliveryMethod: "whatsapp_failed" });
+            }
           } catch (error: any) {
             console.error("WhatsApp delivery failed:", error);
             await storage.updateCourseReminderStatus(reminder.id, "failed");

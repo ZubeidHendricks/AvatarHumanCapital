@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, Clock, Award, Play, Search, Trophy, Star, TrendingUp, Plus, Users, GraduationCap, Target, Loader2 } from "lucide-react";
+import { BookOpen, Clock, Award, Play, Search, Trophy, Star, TrendingUp, Plus, Users, GraduationCap, Target, Loader2, MessageSquare, Send } from "lucide-react";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
 
@@ -32,6 +32,7 @@ interface Course {
 }
 
 interface LearnerProgress {
+  progressId?: string;
   courseId: string;
   courseTitle: string;
   progress: number;
@@ -84,6 +85,9 @@ export default function LearningManagement() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [reminderProgress, setReminderProgress] = useState<LearnerProgress | null>(null);
+  const [reminderMessage, setReminderMessage] = useState("");
   const [newCourse, setNewCourse] = useState({
     title: "",
     description: "",
@@ -115,6 +119,7 @@ export default function LearningManagement() {
       const data = await res.json();
       // Transform nested structure to flat structure
       return data.map((item: { progress: any; course: any; user: any }) => ({
+        progressId: item.progress?.id,
         courseId: item.progress?.courseId || item.course?.id,
         courseTitle: item.course?.title || "Unknown Course",
         progress: item.progress?.progress || 0,
@@ -262,6 +267,68 @@ export default function LearningManagement() {
       toast.error("Failed to assign course");
     }
   });
+
+  const sendReminderMutation = useMutation({
+    mutationFn: async ({ userId, courseId, learnerProgressId, message }: { 
+      userId: string; 
+      courseId: string; 
+      learnerProgressId: string; 
+      message: string 
+    }) => {
+      const res = await fetch("/api/lms/reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-tenant-id": tenantId },
+        body: JSON.stringify({ userId, courseId, learnerProgressId, message })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 429) {
+          throw new Error(data.message || "Please wait before sending another reminder");
+        }
+        throw new Error(data.message || "Failed to send reminder");
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      setReminderDialogOpen(false);
+      setReminderProgress(null);
+      setReminderMessage("");
+      if (data.deliveryMethod === "whatsapp") {
+        toast.success("Reminder sent via WhatsApp!");
+      } else if (data.deliveryMethod === "in_app") {
+        toast.success("Reminder logged (WhatsApp not configured or no phone number)");
+      } else {
+        toast.warning("Reminder recorded but delivery failed");
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    }
+  });
+
+  const openReminderDialog = (progress: LearnerProgress) => {
+    setReminderProgress(progress);
+    const defaultMessage = `Hi ${progress.userName}! This is a friendly reminder to continue your "${progress.courseTitle}" course. You're at ${progress.progress}% completion. Keep up the great work!`;
+    setReminderMessage(defaultMessage);
+    setReminderDialogOpen(true);
+  };
+
+  const handleSendReminder = () => {
+    if (!reminderProgress || !reminderMessage.trim()) {
+      toast.error("Please enter a message");
+      return;
+    }
+    if (!reminderProgress.progressId || !reminderProgress.userId || !reminderProgress.courseId) {
+      toast.error("Missing required information to send reminder");
+      return;
+    }
+    sendReminderMutation.mutate({
+      userId: reminderProgress.userId,
+      courseId: reminderProgress.courseId,
+      learnerProgressId: reminderProgress.progressId,
+      message: reminderMessage
+    });
+  };
 
   const stats = myPoints || {
     totalPoints: 0,
@@ -811,12 +878,13 @@ export default function LearningManagement() {
                         <th className="text-left p-3 text-muted-foreground font-medium">Status</th>
                         <th className="text-left p-3 text-muted-foreground font-medium">Progress</th>
                         <th className="text-left p-3 text-muted-foreground font-medium">Time Spent</th>
+                        <th className="text-left p-3 text-muted-foreground font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {allProgress.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <td colSpan={6} className="text-center py-8 text-muted-foreground">
                             No learning progress recorded. Assign courses to employees to get started.
                           </td>
                         </tr>
@@ -845,6 +913,20 @@ export default function LearningManagement() {
                               </div>
                             </td>
                             <td className="p-3 text-muted-foreground">{Math.round((progress.timeSpent || 0) / 60)}h</td>
+                            <td className="p-3">
+                              {progress.status !== "completed" && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => openReminderDialog(progress)}
+                                  data-testid={`button-remind-${progress.userId}-${progress.courseId}`}
+                                  className="gap-1"
+                                >
+                                  <MessageSquare className="w-3 h-3" />
+                                  Remind
+                                </Button>
+                              )}
+                            </td>
                           </tr>
                         ))
                       )}
@@ -976,6 +1058,62 @@ export default function LearningManagement() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Send Reminder Dialog */}
+      <Dialog open={reminderDialogOpen} onOpenChange={setReminderDialogOpen}>
+        <DialogContent className="bg-black/95 border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              Send Course Reminder
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+              <p className="text-sm text-muted-foreground mb-1">Sending reminder to:</p>
+              <p className="text-white font-medium">{reminderProgress?.userName}</p>
+              <p className="text-sm text-muted-foreground mt-2 mb-1">About course:</p>
+              <p className="text-white">{reminderProgress?.courseTitle}</p>
+              <p className="text-sm text-muted-foreground mt-2">Current progress: {reminderProgress?.progress}%</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reminder-message" className="text-white">Message</Label>
+              <Textarea
+                id="reminder-message"
+                placeholder="Enter your reminder message..."
+                value={reminderMessage}
+                onChange={(e) => setReminderMessage(e.target.value)}
+                rows={4}
+                className="bg-white/5 border-white/10 text-white"
+                data-testid="input-reminder-message"
+              />
+              <p className="text-xs text-muted-foreground">This message will be sent via WhatsApp if the employee has a phone number on file.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReminderDialogOpen(false)} data-testid="button-cancel-reminder">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSendReminder} 
+              disabled={sendReminderMutation.isPending || !reminderMessage.trim()}
+              data-testid="button-send-reminder"
+            >
+              {sendReminderMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Reminder
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
