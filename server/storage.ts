@@ -3134,14 +3134,18 @@ export class DatabaseStorage implements IStorage {
   // LMS: Courses (Placeholder - needs schema)
   // ================================
 
-  async getAllCourses(tenantId: number) {
-    // Placeholder - needs courses table implementation
-    return [];
+  async getAllCourses(tenantId: string) {
+    return await db.select().from(courses)
+      .where(eq(courses.tenantId, tenantId))
+      .orderBy(desc(courses.createdAt));
   }
 
-  async createCourse(tenantId: number, data: any) {
-    // Placeholder - needs courses table implementation
-    return data;
+  async createCourse(tenantId: string, data: any) {
+    const [course] = await db.insert(courses).values({
+      ...data,
+      tenantId,
+    }).returning();
+    return course;
   }
 
   async updateCourse(tenantId: number, courseId: number, data: any) {
