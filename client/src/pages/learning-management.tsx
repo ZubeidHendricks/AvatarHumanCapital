@@ -118,7 +118,15 @@ export default function LearningManagement() {
     queryFn: async () => {
       const res = await fetch("/api/lms/leaderboard", { headers });
       if (!res.ok) return [];
-      return res.json();
+      const data = await res.json();
+      // Transform to expected format with user names
+      return data.map((item: any, index: number) => ({
+        userId: item.userId,
+        userName: item.userName || `User ${index + 1}`,
+        points: item.points || 0,
+        level: item.level || 1,
+        rank: item.rank || index + 1
+      }));
     },
     enabled: !!tenantId
   });
@@ -128,7 +136,17 @@ export default function LearningManagement() {
     queryFn: async () => {
       const res = await fetch("/api/lms/my-badges", { headers });
       if (!res.ok) return [];
-      return res.json();
+      const data = await res.json();
+      // Transform nested structure to flat structure
+      return data.map((item: { badge: any; earnedAt: string }) => ({
+        id: item.badge?.id,
+        name: item.badge?.name || "Unknown Badge",
+        description: item.badge?.description || "",
+        imageUrl: item.badge?.imageUrl,
+        rarity: item.badge?.rarity || "common",
+        points: item.badge?.points || 0,
+        earnedAt: item.earnedAt
+      }));
     },
     enabled: !!tenantId
   });
@@ -138,7 +156,16 @@ export default function LearningManagement() {
     queryFn: async () => {
       const res = await fetch("/api/lms/my-points", { headers });
       if (!res.ok) return { totalPoints: 0, level: 1, rank: 0, coursesCompleted: 0, hoursLearned: 0, badgesEarned: 0 };
-      return res.json();
+      const data = await res.json();
+      // Transform to expected format
+      return {
+        totalPoints: data.points || 0,
+        level: data.level || 1,
+        rank: data.rank || 1,
+        coursesCompleted: 0,
+        hoursLearned: 0,
+        badgesEarned: 0
+      };
     },
     enabled: !!tenantId
   });

@@ -2971,7 +2971,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLeaderboard(tenantId: string, limit: number = 50) {
-    return await db.select().from(learnerPoints)
+    return await db.select({
+      userId: learnerPoints.userId,
+      userName: users.username,
+      points: learnerPoints.points,
+      level: learnerPoints.level,
+      rank: learnerPoints.rank,
+    })
+      .from(learnerPoints)
+      .leftJoin(users, eq(learnerPoints.userId, users.id))
       .where(eq(learnerPoints.tenantId, tenantId))
       .orderBy(desc(learnerPoints.points))
       .limit(limit);
@@ -3178,22 +3186,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ================================
-  // Gamification (Placeholder)
+  // Gamification (Uses real implementations above)
   // ================================
 
-  async getLeaderboard(tenantId: number) {
-    // Placeholder - needs leaderboard table implementation
-    return [];
+  async getUserAchievements(tenantId: string, userId: string) {
+    return await this.getLearnerBadges(userId, tenantId);
   }
 
-  async getUserAchievements(tenantId: number, userId: number) {
-    // Placeholder - needs user_achievements table implementation
-    return [];
-  }
-
-  async awardBadge(tenantId: number, userId: number, badgeType: string, title: string, points: number) {
-    // Placeholder - needs user_achievements table implementation
-    return { userId, badgeType, title, points };
+  async awardBadge(tenantId: string, userId: string, badgeId: string) {
+    const [badge] = await db.insert(learnerBadges).values({
+      tenantId,
+      userId,
+      badgeId,
+      earnedAt: new Date(),
+    }).returning();
+    return badge;
   }
 
   // ================================
