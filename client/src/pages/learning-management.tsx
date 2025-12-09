@@ -82,56 +82,64 @@ export default function LearningManagement() {
     tags: ""
   });
 
+  const tenantId = tenant?.id || "";
+  const headers = { "x-tenant-id": tenantId };
+
   const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({
-    queryKey: ["/api/lms/courses"],
+    queryKey: ["/api/lms/courses", tenantId],
     queryFn: async () => {
-      const res = await fetch("/api/lms/courses");
+      const res = await fetch("/api/lms/courses", { headers });
       if (!res.ok) throw new Error("Failed to fetch courses");
       return res.json();
-    }
+    },
+    enabled: !!tenantId
   });
 
   const { data: myProgress = [] } = useQuery<LearnerProgress[]>({
-    queryKey: ["/api/lms/my-progress"],
+    queryKey: ["/api/lms/my-progress", tenantId],
     queryFn: async () => {
-      const res = await fetch("/api/lms/my-progress");
+      const res = await fetch("/api/lms/my-progress", { headers });
       if (!res.ok) return [];
       return res.json();
-    }
+    },
+    enabled: !!tenantId
   });
 
   const { data: leaderboard = [] } = useQuery<LeaderboardEntry[]>({
-    queryKey: ["/api/lms/leaderboard"],
+    queryKey: ["/api/lms/leaderboard", tenantId],
     queryFn: async () => {
-      const res = await fetch("/api/lms/leaderboard");
+      const res = await fetch("/api/lms/leaderboard", { headers });
       if (!res.ok) return [];
       return res.json();
-    }
+    },
+    enabled: !!tenantId
   });
 
   const { data: myBadges = [] } = useQuery<UserBadge[]>({
-    queryKey: ["/api/lms/my-badges"],
+    queryKey: ["/api/lms/my-badges", tenantId],
     queryFn: async () => {
-      const res = await fetch("/api/lms/my-badges");
+      const res = await fetch("/api/lms/my-badges", { headers });
       if (!res.ok) return [];
       return res.json();
-    }
+    },
+    enabled: !!tenantId
   });
 
   const { data: myPoints } = useQuery<UserStats>({
-    queryKey: ["/api/lms/my-points"],
+    queryKey: ["/api/lms/my-points", tenantId],
     queryFn: async () => {
-      const res = await fetch("/api/lms/my-points");
+      const res = await fetch("/api/lms/my-points", { headers });
       if (!res.ok) return { totalPoints: 0, level: 1, rank: 0, coursesCompleted: 0, hoursLearned: 0, badgesEarned: 0 };
       return res.json();
-    }
+    },
+    enabled: !!tenantId
   });
 
   const createCourseMutation = useMutation({
     mutationFn: async (courseData: typeof newCourse) => {
       const res = await fetch("/api/lms/courses", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-tenant-id": tenantId },
         body: JSON.stringify({
           title: courseData.title,
           description: courseData.description,
@@ -147,7 +155,7 @@ export default function LearningManagement() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/lms/courses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lms/courses", tenantId] });
       setCreateDialogOpen(false);
       setNewCourse({ title: "", description: "", category: "compliance", difficulty: "beginner", duration: 60, learningObjectives: "", tags: "" });
       toast.success("Course created successfully!");
@@ -161,15 +169,15 @@ export default function LearningManagement() {
     mutationFn: async (courseId: string) => {
       const res = await fetch(`/api/lms/courses/${courseId}/progress`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-tenant-id": tenantId },
         body: JSON.stringify({ status: "in_progress", progress: 0 })
       });
       if (!res.ok) throw new Error("Failed to enroll");
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/lms/courses"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/lms/my-progress"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lms/courses", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lms/my-progress", tenantId] });
       toast.success("Enrolled in course!");
     }
   });
