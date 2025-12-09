@@ -82,6 +82,8 @@ export default function LearningManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [newCourse, setNewCourse] = useState({
     title: "",
     description: "",
@@ -237,6 +239,27 @@ export default function LearningManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/lms/courses", tenantId] });
       queryClient.invalidateQueries({ queryKey: ["/api/lms/my-progress", tenantId] });
       toast.success("Enrolled in course!");
+    }
+  });
+
+  const assignCourseMutation = useMutation({
+    mutationFn: async ({ courseId, userId }: { courseId: string; userId: string }) => {
+      const res = await fetch("/api/lms/assign-course", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-tenant-id": tenantId },
+        body: JSON.stringify({ courseId, userId })
+      });
+      if (!res.ok) throw new Error("Failed to assign course");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lms/all-progress", tenantId] });
+      setSelectedCourseId("");
+      setSelectedEmployeeId("");
+      toast.success("Course assigned successfully!");
+    },
+    onError: () => {
+      toast.error("Failed to assign course");
     }
   });
 
@@ -591,8 +614,8 @@ export default function LearningManagement() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <Label className="text-white mb-2 block">Select Course</Label>
-                      <Select>
-                        <SelectTrigger className="bg-black/40 border-white/10">
+                      <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                        <SelectTrigger className="bg-black/40 border-white/10" data-testid="select-course">
                           <SelectValue placeholder="Choose a course..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -604,8 +627,8 @@ export default function LearningManagement() {
                     </div>
                     <div>
                       <Label className="text-white mb-2 block">Select Employee</Label>
-                      <Select>
-                        <SelectTrigger className="bg-black/40 border-white/10">
+                      <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                        <SelectTrigger className="bg-black/40 border-white/10" data-testid="select-employee">
                           <SelectValue placeholder="Choose an employee..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -616,8 +639,23 @@ export default function LearningManagement() {
                       </Select>
                     </div>
                   </div>
-                  <Button className="w-full md:w-auto">
-                    <Plus className="w-4 h-4 mr-2" />
+                  <Button 
+                    className="w-full md:w-auto"
+                    onClick={() => {
+                      if (selectedCourseId && selectedEmployeeId) {
+                        assignCourseMutation.mutate({ courseId: selectedCourseId, userId: selectedEmployeeId });
+                      } else {
+                        toast.error("Please select both a course and an employee");
+                      }
+                    }}
+                    disabled={assignCourseMutation.isPending || !selectedCourseId || !selectedEmployeeId}
+                    data-testid="button-assign-course"
+                  >
+                    {assignCourseMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4 mr-2" />
+                    )}
                     Assign Course
                   </Button>
                 </div>

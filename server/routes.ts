@@ -97,47 +97,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ============= LMS: COURSES =============
-  app.get("/api/lms/courses", async (req, res) => {
-    try {
-      const courses = await storage.getAllCourses(req.tenant.id);
-      res.json(courses);
-    } catch (error) {
-      console.error("Error fetching courses:", error);
-      res.status(500).json({ message: "Failed to fetch courses" });
-    }
-  });
-
-  app.post("/api/lms/courses", async (req, res) => {
-    try {
-      const course = await storage.createCourse(req.tenant.id, req.body);
-      res.status(201).json(course);
-    } catch (error) {
-      console.error("Error creating course:", error);
-      res.status(500).json({ message: "Failed to create course" });
-    }
-  });
-
-  app.patch("/api/lms/courses/:id", async (req, res) => {
-    try {
-      const course = await storage.updateCourse(req.tenant.id, parseInt(req.params.id), req.body);
-      res.json(course);
-    } catch (error) {
-      console.error("Error updating course:", error);
-      res.status(500).json({ message: "Failed to update course" });
-    }
-  });
-
-  app.post("/api/lms/courses/:id/enroll", async (req, res) => {
-    try {
-      const enrollment = await storage.enrollInCourse(req.tenant.id, parseInt(req.params.id), req.user.id);
-      res.status(201).json(enrollment);
-    } catch (error) {
-      console.error("Error enrolling in course:", error);
-      res.status(500).json({ message: "Failed to enroll in course" });
-    }
-  });
-
   // ============= LMS: ASSESSMENTS =============
   app.get("/api/lms/assessments", async (req, res) => {
     try {
