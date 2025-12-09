@@ -183,7 +183,9 @@ import {
   type CertificateTemplate,
   type InsertCertificateTemplate,
   type IssuedCertificate,
-  type InsertIssuedCertificate
+  type InsertIssuedCertificate,
+  learnerCourseReminders,
+  type LearnerCourseReminder,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte, sql, isNull, isNotNull } from "drizzle-orm";
@@ -3260,6 +3262,66 @@ export class DatabaseStorage implements IStorage {
   async generateLessonVideo(tenantId: number, data: any) {
     // Placeholder - needs lesson_videos table implementation
     return data;
+  }
+
+  // ================================
+  // LMS: Course Reminders (WhatsApp)
+  // ================================
+
+  async createCourseReminder(data: {
+    tenantId: string;
+    learnerProgressId: string;
+    userId: string;
+    courseId: string;
+    message: string;
+    channel?: string;
+    sentBy?: string;
+    metadata?: any;
+  }): Promise<LearnerCourseReminder> {
+    const [reminder] = await db.insert(learnerCourseReminders).values({
+      ...data,
+      channel: data.channel || "whatsapp",
+      status: "pending",
+    }).returning();
+    return reminder;
+  }
+
+  async getCourseReminders(tenantId: string, filters?: { userId?: string; courseId?: string; status?: string }) {
+    let query = db.select({
+      reminder: learnerCourseReminders,
+      user: users,
+      course: courses,
+    })
+      .from(learnerCourseReminders)
+      .leftJoin(users, eq(learnerCourseReminders.userId, users.id))
+      .leftJoin(courses, eq(learnerCourseReminders.courseId, courses.id))
+      .where(eq(learnerCourseReminders.tenantId, tenantId));
+
+    return await query.orderBy(desc(learnerCourseReminders.createdAt));
+  }
+
+  async updateCourseReminderStatus(reminderId: string, status: string, sentAt?: Date, deliveredAt?: Date) {
+    const updates: any = { status };
+    if (sentAt) updates.sentAt = sentAt;
+    if (deliveredAt) updates.deliveredAt = deliveredAt;
+    
+    const [reminder] = await db.update(learnerCourseReminders)
+      .set(updates)
+      .where(eq(learnerCourseReminders.id, reminderId))
+      .returning();
+    return reminder;
+  }
+
+  async getRecentRemindersForUser(userId: string, courseId: string, tenantId: string, hoursAgo: number = 24) {
+    const cutoffTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
+    return await db.select().from(learnerCourseReminders)
+      .where(and(
+        eq(learnerCourseReminders.userId, userId),
+        eq(learnerCourseReminders.courseId, courseId),
+        eq(learnerCourseReminders.tenantId, tenantId),
+        sql`${learnerCourseReminders.createdAt} >= ${cutoffTime}`
+      ))
+      .orderBy(desc(learnerCourseReminders.createdAt));
   }
 }
 
