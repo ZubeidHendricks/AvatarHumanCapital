@@ -55,6 +55,7 @@ import CVTemplatePage from "@/pages/cv-template";
 import DataSourcesPage from "@/pages/data-sources";
 import DataSourceDetailPage from "@/pages/data-source-detail";
 import SelfAssessment from "@/pages/self-assessment";
+import WorkflowShowcase from "@/pages/workflow-showcase";
 
 function Router() {
   return (
@@ -110,6 +111,7 @@ function Router() {
       <Route path="/data-sources" component={DataSourcesPage} />
       <Route path="/data-sources/:id" component={DataSourceDetailPage} />
       <Route path="/self-assessment/:token" component={SelfAssessment} />
+      <Route path="/workflow-showcase" component={WorkflowShowcase} />
       <Route component={NotFound} />
     </Switch>
   );
