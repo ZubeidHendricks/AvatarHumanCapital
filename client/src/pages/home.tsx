@@ -3,7 +3,7 @@ import { Hero } from "@/components/sections/hero";
 import { Services } from "@/components/sections/services";
 import { DashboardPreview } from "@/components/sections/dashboard-preview";
 import { AHCFeatures } from "@/components/sections/avery-features";
-import { Cpu, Mail, MapPin, Phone, Mic, Video, ArrowRight } from "lucide-react";
+import { Cpu, Mail, MapPin, Phone, Mic, Video, ArrowRight, Workflow } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
