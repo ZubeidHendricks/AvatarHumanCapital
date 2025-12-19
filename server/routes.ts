@@ -21,6 +21,9 @@ import multer from "multer";
 import { PDFParse } from "pdf-parse";
 import AdmZip from "adm-zip";
 import mammoth from "mammoth";
+import { pnetAPIService } from "./pnet-api-service";
+import { pnetApplicationAgent } from "./pnet-application-agent";
+import { pnetJobPostingAgent } from "./pnet-job-posting-agent";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -1286,6 +1289,22 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
           console.log(`✓ Generated embedding for job ${job.id}: ${job.title}`);
         }).catch((error) => {
           console.error(`✗ Failed to generate embedding for job ${job.id}:`, error);
+        });
+
+        // Auto-post to PNET in background (only for active jobs)
+        pnetJobPostingAgent.postJob(job, req.tenant.id).then((result) => {
+          if (result.success) {
+            console.log(`✓ Posted job ${job.id} to PNET: ${result.pnetJobId}`);
+            // Store PNET job ID in database
+            storage.updateJob(req.tenant.id, job.id, {
+              pnetJobId: result.pnetJobId,
+              pnetJobUrl: result.pnetUrl,
+            } as any);
+          } else {
+            console.error(`✗ Failed to post job ${job.id} to PNET:`, result.message);
+          }
+        }).catch((error) => {
+          console.error(`✗ Error posting job ${job.id} to PNET:`, error);
         });
       }
 
@@ -8133,6 +8152,318 @@ Format your response as JSON:
     } catch (error) {
       console.error("Error verifying certificate:", error);
       res.status(500).json({ message: "Failed to verify certificate" });
+    }
+  });
+
+  // ========== PNET AI AGENT ROUTES ==========
+  
+  /**
+   * Check if a PNET job is active and get application requirements
+   * Used by AI agents before applying candidates
+   */
+  app.post("/api/pnet/inquiry", async (req, res) => {
+    try {
+      const { jobUrl, atsJobId } = req.body;
+
+      if (!jobUrl) {
+        return res.status(400).json({ message: "jobUrl is required" });
+      }
+
+      const inquiry = await pnetAPIService.inquireJob(jobUrl, jobUrl, atsJobId);
+      res.json(inquiry);
+    } catch (error: any) {
+      console.error("PNET inquiry error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  /**
+   * Apply a single candidate to a PNET job using AI agent
+   */
+  app.post("/api/pnet/apply-candidate", async (req, res) => {
+    try {
+      const { candidateId, jobUrl, jobTitle, jobDescription } = req.body;
+
+      if (!candidateId || !jobUrl) {
+        return res.status(400).json({ message: "candidateId and jobUrl are required" });
+      }
+
+      const candidate = await storage.getCandidateById(req.tenantId, candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      const result = await pnetApplicationAgent.applyToJob({
+        candidate,
+        jobUrl,
+        jobTitle,
+        jobDescription,
+      });
+
+      if (result.success) {
+        // Log the application in our system
+        await storage.createApplication({
+          jobId: req.body.jobId || '', // Optional: link to internal job
+          candidateId: candidateId,
+          tenantId: req.tenantId,
+          stage: 'applied',
+          source: 'PNET AI Agent',
+          notes: `Applied via PNET API. Application ID: ${result.pnetApplicationId}`,
+        } as any);
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("PNET apply error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  /**
+   * Bulk apply multiple candidates to a PNET job using AI agent
+   */
+  app.post("/api/pnet/bulk-apply", async (req, res) => {
+    try {
+      const { candidateIds, jobUrl, jobTitle, jobDescription } = req.body;
+
+      if (!candidateIds || !Array.isArray(candidateIds) || !jobUrl) {
+        return res.status(400).json({ message: "candidateIds (array) and jobUrl are required" });
+      }
+
+      // Fetch all candidates
+      const candidates = await Promise.all(
+        candidateIds.map(id => storage.getCandidateById(req.tenantId, id))
+      );
+
+      const validCandidates = candidates.filter(c => c !== null);
+
+      if (validCandidates.length === 0) {
+        return res.status(404).json({ message: "No valid candidates found" });
+      }
+
+      const result = await pnetApplicationAgent.bulkApply(
+        validCandidates,
+        jobUrl,
+        jobTitle,
+        jobDescription
+      );
+
+      // Log successful applications
+      for (const appResult of result.results) {
+        if (appResult.success) {
+          try {
+            await storage.createApplication({
+              jobId: req.body.jobId || '',
+              candidateId: appResult.candidateId,
+              tenantId: req.tenantId,
+              stage: 'applied',
+              source: 'PNET AI Agent (Bulk)',
+              notes: `Bulk applied via PNET API: ${appResult.message}`,
+            } as any);
+          } catch (err) {
+            console.error('Failed to log application:', err);
+          }
+        }
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("PNET bulk apply error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  /**
+   * Get PNET job info (for AI agent decision making)
+   */
+  app.get("/api/pnet/job-info", async (req, res) => {
+    try {
+      const { jobUrl } = req.query;
+
+      if (!jobUrl || typeof jobUrl !== 'string') {
+        return res.status(400).json({ message: "jobUrl query parameter is required" });
+      }
+
+      const jobInfo = await pnetAPIService.isJobActiveAndReady(jobUrl);
+      res.json(jobInfo);
+    } catch (error: any) {
+      console.error("PNET job info error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  /**
+   * AI Agent: Auto-match and apply best candidates to a PNET job
+   * This is the "smart apply" feature where AI selects and applies candidates automatically
+   */
+  app.post("/api/pnet/auto-apply", async (req, res) => {
+    try {
+      const { jobUrl, jobTitle, jobDescription, maxCandidates = 5, minMatchScore = 70 } = req.body;
+
+      if (!jobUrl) {
+        return res.status(400).json({ message: "jobUrl is required" });
+      }
+
+      // Step 1: Check if job is active
+      const jobInfo = await pnetAPIService.isJobActiveAndReady(jobUrl);
+      if (!jobInfo.isActive) {
+        return res.status(400).json({ message: "Job is not active on PNET" });
+      }
+
+      // Step 2: Get all candidates
+      const allCandidates = await storage.getCandidates(req.tenantId);
+
+      // Step 3: AI ranks candidates (simplified - you can enhance this)
+      // TODO: Implement proper AI matching using groqService
+      const rankedCandidates = allCandidates
+        .slice(0, maxCandidates);
+
+      if (rankedCandidates.length === 0) {
+        return res.status(404).json({ message: "No suitable candidates found" });
+      }
+
+      // Step 4: Auto-apply top candidates
+      const result = await pnetApplicationAgent.bulkApply(
+        rankedCandidates,
+        jobUrl,
+        jobTitle,
+        jobDescription
+      );
+
+      res.json({
+        ...result,
+        message: `Auto-applied ${result.successful} out of ${result.total} candidates`,
+      });
+    } catch (error: any) {
+      console.error("PNET auto-apply error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  /**
+   * Post a job to PNET
+   */
+  app.post("/api/pnet/post-job", async (req, res) => {
+    try {
+      const { jobId } = req.body;
+
+      if (!jobId) {
+        return res.status(400).json({ message: "Job ID is required" });
+      }
+
+      const job = await storage.getJob(req.tenant.id, jobId);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      const result = await pnetJobPostingAgent.postJob(job, req.tenant.id);
+
+      if (result.success && result.pnetJobId) {
+        // Store PNET job ID in database
+        await storage.updateJob(req.tenant.id, jobId, {
+          pnetJobId: result.pnetJobId,
+          pnetJobUrl: result.pnetUrl,
+        } as any);
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("PNET post job error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  /**
+   * Update a job on PNET
+   */
+  app.patch("/api/pnet/update-job/:jobId", async (req, res) => {
+    try {
+      const { jobId } = req.params;
+
+      const job = await storage.getJob(req.tenant.id, parseInt(jobId));
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      const pnetJobId = (job as any).pnetJobId;
+      if (!pnetJobId) {
+        return res.status(400).json({ message: "Job not posted to PNET yet" });
+      }
+
+      const result = await pnetJobPostingAgent.updateJob(job, pnetJobId, req.tenant.id);
+      res.json(result);
+    } catch (error: any) {
+      console.error("PNET update job error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  /**
+   * Close/delete a job on PNET
+   */
+  app.delete("/api/pnet/close-job/:jobId", async (req, res) => {
+    try {
+      const { jobId } = req.params;
+
+      const job = await storage.getJob(req.tenant.id, parseInt(jobId));
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      const pnetJobId = (job as any).pnetJobId;
+      if (!pnetJobId) {
+        return res.status(400).json({ message: "Job not posted to PNET" });
+      }
+
+      const result = await pnetJobPostingAgent.closeJob(pnetJobId);
+
+      if (result.success) {
+        // Clear PNET job ID from database
+        await storage.updateJob(req.tenant.id, parseInt(jobId), {
+          pnetJobId: null,
+          pnetJobUrl: null,
+        } as any);
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("PNET close job error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  /**
+   * Bulk post multiple jobs to PNET
+   */
+  app.post("/api/pnet/bulk-post-jobs", async (req, res) => {
+    try {
+      const { jobIds } = req.body;
+
+      if (!Array.isArray(jobIds) || jobIds.length === 0) {
+        return res.status(400).json({ message: "Job IDs array is required" });
+      }
+
+      const jobs = await Promise.all(
+        jobIds.map(id => storage.getJob(req.tenant.id, id))
+      );
+
+      const validJobs = jobs.filter(job => job !== null) as any[];
+
+      const result = await pnetJobPostingAgent.bulkPostJobs(validJobs, req.tenant.id);
+
+      // Update database with PNET job IDs
+      for (const jobResult of result.results) {
+        if (jobResult.success && jobResult.pnetJobId) {
+          await storage.updateJob(req.tenant.id, jobResult.jobId, {
+            pnetJobId: jobResult.pnetJobId,
+          } as any);
+        }
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("PNET bulk post jobs error:", error);
+      res.status(500).json({ message: error.message });
     }
   });
 
