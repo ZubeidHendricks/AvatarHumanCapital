@@ -57,6 +57,7 @@ import DataSourcesPage from "@/pages/data-sources";
 import DataSourceDetailPage from "@/pages/data-source-detail";
 import SelfAssessment from "@/pages/self-assessment";
 import WorkflowShowcase from "@/pages/workflow-showcase";
+import DashboardBuilder from "@/pages/dashboard-builder";
 
 function Router() {
   return (
@@ -114,6 +115,7 @@ function Router() {
       <Route path="/data-sources/:id" component={DataSourceDetailPage} />
       <Route path="/self-assessment/:token" component={SelfAssessment} />
       <Route path="/workflow-showcase" component={WorkflowShowcase} />
+      <Route path="/dashboard-builder" component={DashboardBuilder} />
       <Route component={NotFound} />
     </Switch>
   );
