@@ -97,6 +97,12 @@ export function Navbar() {
                   </DropdownMenuItem>
                 </Link>
               )}
+              <Link href="/dashboard-builder">
+                <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
+                  <LayoutGrid className="w-4 h-4 mr-2 text-pink-400" />
+                  <span>Dashboard Builder</span>
+                </DropdownMenuItem>
+              </Link>
               <DropdownMenuSeparator className="bg-white/10" />
               <DropdownMenuLabel className="text-xs text-muted-foreground">HR Management</DropdownMenuLabel>
               <Link href="/kpi-hr-dashboard">
