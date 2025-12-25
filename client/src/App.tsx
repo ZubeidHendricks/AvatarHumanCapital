@@ -58,6 +58,7 @@ import DataSourceDetailPage from "@/pages/data-source-detail";
 import SelfAssessment from "@/pages/self-assessment";
 import WorkflowShowcase from "@/pages/workflow-showcase";
 import DashboardBuilder from "@/pages/dashboard-builder";
+import ExternalCandidates from "@/pages/external-candidates";
 
 function Router() {
   return (
@@ -116,6 +117,7 @@ function Router() {
       <Route path="/self-assessment/:token" component={SelfAssessment} />
       <Route path="/workflow-showcase" component={WorkflowShowcase} />
       <Route path="/dashboard-builder" component={DashboardBuilder} />
+      <Route path="/external-candidates" component={ExternalCandidates} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown, UserSearch, Shield, Settings, Users, Briefcase, TrendingUp, FileText, MessageCircle, ClipboardList, Sparkles, Target, Star, UserCheck, BarChart3, BookOpen, LayoutGrid } from "lucide-react";
+import { Menu, X, Cpu, LayoutDashboard, Building2, Mic, Video, ChevronDown, UserSearch, Shield, Settings, Users, Briefcase, TrendingUp, FileText, MessageCircle, ClipboardList, Sparkles, Target, Star, UserCheck, BarChart3, BookOpen, LayoutGrid, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -73,6 +73,12 @@ export function Navbar() {
                   </DropdownMenuItem>
                 </Link>
               )}
+              <Link href="/external-candidates">
+                <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
+                  <UserPlus className="w-4 h-4 mr-2 text-teal-400" />
+                  <span>Import Candidates</span>
+                </DropdownMenuItem>
+              </Link>
               {isModuleEnabled("integrity") && (
                 <Link href="/integrity-agent">
                   <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
