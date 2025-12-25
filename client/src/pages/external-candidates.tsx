@@ -38,12 +38,29 @@ interface ExternalProfile {
   original_filename?: string;
   original_file_url?: string;
   created_at?: string;
+  first_name?: string;
+  surname?: string;
 }
 
-interface ApiResponse {
+interface Contact {
+  id: string;
+  first_name: string;
+  surname: string;
+  whatsapp: string;
+  source?: string;
+  created_at?: string;
+}
+
+interface ProfilesApiResponse {
   success: boolean;
   count: number;
   profiles: ExternalProfile[];
+}
+
+interface ContactsApiResponse {
+  success: boolean;
+  count: number;
+  contacts: Contact[];
 }
 
 type ImportStatus = "idle" | "pending" | "success" | "error";
@@ -63,20 +80,47 @@ export default function ExternalCandidates() {
   const { data: profiles, isLoading, isError, error, refetch, isFetching } = useQuery<ExternalProfile[]>({
     queryKey: ["external-profiles"],
     queryFn: async () => {
-      const response = await fetch(`${EXTERNAL_API_BASE}/api/profiles`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch profiles: ${response.statusText}`);
+      const [profilesRes, contactsRes] = await Promise.all([
+        fetch(`${EXTERNAL_API_BASE}/api/profiles`),
+        fetch(`${EXTERNAL_API_BASE}/api/contacts`)
+      ]);
+      
+      if (!profilesRes.ok) {
+        throw new Error(`Failed to fetch profiles: ${profilesRes.statusText}`);
       }
-      const data: ApiResponse = await response.json();
-      return data.profiles || [];
+      
+      const profilesData: ProfilesApiResponse = await profilesRes.json();
+      const contactsData: ContactsApiResponse = contactsRes.ok ? await contactsRes.json() : { contacts: [] };
+      
+      const contactsByPhone = new Map<string, Contact>();
+      (contactsData.contacts || []).forEach(contact => {
+        const normalizedPhone = contact.whatsapp?.replace(/\D/g, '').slice(-9);
+        if (normalizedPhone) {
+          contactsByPhone.set(normalizedPhone, contact);
+        }
+      });
+      
+      return (profilesData.profiles || []).map(profile => {
+        const normalizedPhone = profile.phone_number?.replace(/\D/g, '').slice(-9);
+        const contact = normalizedPhone ? contactsByPhone.get(normalizedPhone) : undefined;
+        return {
+          ...profile,
+          first_name: contact?.first_name?.trim(),
+          surname: contact?.surname?.trim()
+        };
+      });
     },
     staleTime: 1000 * 60 * 5,
   });
 
   const importMutation = useMutation({
     mutationFn: async (profile: ExternalProfile) => {
+      const fullName = profile.first_name && profile.surname 
+        ? `${profile.first_name} ${profile.surname}`
+        : profile.job_title || `Candidate ${profile.phone_number}`;
+      
       const candidateData = {
-        fullName: profile.job_title || `Candidate ${profile.phone_number}`,
+        fullName,
         email: null,
         phone: profile.phone_number || null,
         role: profile.job_title || null,
@@ -106,6 +150,13 @@ export default function ExternalCandidates() {
     },
   });
 
+  const getDisplayName = (profile: ExternalProfile) => {
+    if (profile.first_name && profile.surname) {
+      return `${profile.first_name} ${profile.surname}`;
+    }
+    return profile.job_title || `Candidate ${profile.phone_number?.slice(-4) || "Unknown"}`;
+  };
+
   const handleImport = async (profile: ExternalProfile) => {
     setImportStatuses(prev => ({
       ...prev,
@@ -114,9 +165,9 @@ export default function ExternalCandidates() {
     
     try {
       await importMutation.mutateAsync(profile);
-      toast.success(`Successfully imported ${profile.fullName || profile.name}`);
+      toast.success(`Successfully imported ${getDisplayName(profile)}`);
     } catch (err: any) {
-      toast.error(`Failed to import ${profile.fullName || profile.name}: ${err.message}`);
+      toast.error(`Failed to import ${getDisplayName(profile)}: ${err.message}`);
     }
   };
 
@@ -297,7 +348,7 @@ export default function ExternalCandidates() {
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {profiles.map((profile) => {
                       const status = importStatuses[profile.id] || { status: "idle" as ImportStatus };
-                      const displayName = profile.job_title || `Candidate ${profile.phone_number?.slice(-4) || "Unknown"}`;
+                      const displayName = getDisplayName(profile);
                       
                       return (
                         <Card 
