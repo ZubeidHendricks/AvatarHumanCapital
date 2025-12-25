@@ -13,29 +13,37 @@ import {
   Download,
   UserPlus,
   Users,
-  Mail,
   Phone,
   Briefcase,
   CheckCircle2,
   XCircle,
   Loader2,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  MapPin
 } from "lucide-react";
 
 interface ExternalProfile {
   id: string;
-  fullName?: string;
-  name?: string;
-  email?: string;
-  phone?: string;
+  phone_number?: string;
+  job_title?: string;
   skills?: string[];
-  experience?: any;
-  education?: any;
-  role?: string;
-  summary?: string;
+  years_experience?: number;
   location?: string;
-  createdAt?: string;
+  education?: any[];
+  work_history?: { company?: string; position?: string; description?: string }[];
+  certifications?: string[];
+  status?: string;
+  completion_score?: number;
+  original_filename?: string;
+  original_file_url?: string;
+  created_at?: string;
+}
+
+interface ApiResponse {
+  success: boolean;
+  count: number;
+  profiles: ExternalProfile[];
 }
 
 type ImportStatus = "idle" | "pending" | "success" | "error";
@@ -59,7 +67,8 @@ export default function ExternalCandidates() {
       if (!response.ok) {
         throw new Error(`Failed to fetch profiles: ${response.statusText}`);
       }
-      return response.json();
+      const data: ApiResponse = await response.json();
+      return data.profiles || [];
     },
     staleTime: 1000 * 60 * 5,
   });
@@ -67,17 +76,17 @@ export default function ExternalCandidates() {
   const importMutation = useMutation({
     mutationFn: async (profile: ExternalProfile) => {
       const candidateData = {
-        fullName: profile.fullName || profile.name || "Unknown",
-        email: profile.email || null,
-        phone: profile.phone || null,
-        role: profile.role || null,
+        fullName: profile.job_title || `Candidate ${profile.phone_number}`,
+        email: null,
+        phone: profile.phone_number || null,
+        role: profile.job_title || null,
         skills: profile.skills || [],
-        experience: profile.experience || null,
-        education: profile.education || null,
+        experience: profile.work_history ? JSON.stringify(profile.work_history) : null,
+        education: profile.education ? JSON.stringify(profile.education) : null,
         status: "New",
         stage: "Sourcing",
         source: "wefindjobs.co.za",
-        summary: profile.summary || null,
+        summary: profile.certifications?.join(", ") || null,
         location: profile.location || null,
       };
       return candidateService.create(candidateData);
@@ -288,7 +297,7 @@ export default function ExternalCandidates() {
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {profiles.map((profile) => {
                       const status = importStatuses[profile.id] || { status: "idle" as ImportStatus };
-                      const displayName = profile.fullName || profile.name || "Unknown";
+                      const displayName = profile.job_title || `Candidate ${profile.phone_number?.slice(-4) || "Unknown"}`;
                       
                       return (
                         <Card 
@@ -302,11 +311,19 @@ export default function ExternalCandidates() {
                                 <CardTitle className="text-lg truncate" data-testid={`text-name-${profile.id}`}>
                                   {displayName}
                                 </CardTitle>
-                                {profile.role && (
+                                {profile.location && (
                                   <CardDescription className="flex items-center gap-1 mt-1">
                                     <Briefcase className="w-3 h-3" />
-                                    {profile.role}
+                                    {profile.location}
                                   </CardDescription>
+                                )}
+                                {profile.completion_score !== undefined && (
+                                  <Badge 
+                                    variant={profile.completion_score >= 70 ? "default" : "secondary"}
+                                    className={`mt-1 text-xs ${profile.completion_score >= 70 ? "bg-green-500/20 text-green-400" : ""}`}
+                                  >
+                                    {profile.completion_score}% Complete
+                                  </Badge>
                                 )}
                               </div>
                               {getStatusBadge(status.status, status.error)}
@@ -315,18 +332,10 @@ export default function ExternalCandidates() {
                           
                           <CardContent className="space-y-3">
                             <div className="space-y-2 text-sm">
-                              {profile.email && (
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                  <Mail className="w-4 h-4 shrink-0" />
-                                  <span className="truncate" data-testid={`text-email-${profile.id}`}>
-                                    {profile.email}
-                                  </span>
-                                </div>
-                              )}
-                              {profile.phone && (
+                              {profile.phone_number && (
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <Phone className="w-4 h-4 shrink-0" />
-                                  <span data-testid={`text-phone-${profile.id}`}>{profile.phone}</span>
+                                  <span data-testid={`text-phone-${profile.id}`}>{profile.phone_number}</span>
                                 </div>
                               )}
                             </div>
@@ -350,9 +359,11 @@ export default function ExternalCandidates() {
                               </div>
                             )}
 
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {formatExperience(profile.experience)}
-                            </p>
+                            {profile.work_history && profile.work_history.length > 0 && (
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {profile.work_history[0]?.position} at {profile.work_history[0]?.company}
+                              </p>
+                            )}
 
                             <div className="flex items-center gap-2 pt-2">
                               <Button
