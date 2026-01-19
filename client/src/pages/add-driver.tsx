@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AddDriver() {
-  const [, navigate] = useNavigate();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -51,7 +51,7 @@ export default function AddDriver() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/fleetlogix/drivers"] });
       toast({ title: "Driver created successfully!" });
-      navigate("/fleetlogix");
+      setLocation("/fleetlogix");
     },
     onError: (error) => {
       toast({ 
@@ -72,7 +72,7 @@ export default function AddDriver() {
       <div className="mb-6">
         <Button
           variant="ghost"
-          onClick={() => navigate("/fleetlogix")}
+          onClick={() => setLocation("/fleetlogix")}
           className="mb-4"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -296,7 +296,7 @@ export default function AddDriver() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate("/fleetlogix")}
+                onClick={() => setLocation("/fleetlogix")}
                 className="flex-1"
               >
                 Cancel

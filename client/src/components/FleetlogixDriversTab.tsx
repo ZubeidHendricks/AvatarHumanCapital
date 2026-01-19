@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,7 +50,7 @@ interface Driver {
 }
 
 export function FleetlogixDriversTab() {
-  const [, navigate] = useNavigate();
+  const [, setLocation] = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [formData, setFormData] = useState({
@@ -225,7 +225,7 @@ export function FleetlogixDriversTab() {
           <p className="text-sm text-muted-foreground">Manage driver information and salaries</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => navigate("/add-driver")} size="lg">
+          <Button onClick={() => setLocation("/add-driver")} size="lg">
             <Plus className="mr-2 h-4 w-4" />
             Add New Driver
           </Button>
