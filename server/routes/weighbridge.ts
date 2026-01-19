@@ -213,4 +213,34 @@ export function registerWeighbridgeRoutes(app: Express) {
       res.status(500).json({ message: "Failed to verify weighbridge slip" });
     }
   });
+
+  /**
+   * Link weighbridge slip to a FleetLogix load
+   */
+  app.post("/api/weighbridge/slips/:id/link-load", async (req, res) => {
+    try {
+      const { loadId } = req.body;
+      
+      if (!loadId) {
+        return res.status(400).json({ message: "loadId is required" });
+      }
+
+      const updated = await storage.updateWeighbridgeSlip(
+        req.tenant.id,
+        req.params.id,
+        {
+          linkedLoadId: loadId,
+        }
+      );
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Weighbridge slip not found" });
+      }
+      
+      res.json({ message: "Successfully linked to load", slip: updated });
+    } catch (error: any) {
+      console.error("Error linking weighbridge slip to load:", error);
+      res.status(500).json({ message: "Failed to link weighbridge slip to load" });
+    }
+  });
 }

@@ -6,7 +6,8 @@ import { FleetlogixRoutesTab } from "./FleetlogixRoutesTab";
 import { FleetlogixLoadsTab } from "./FleetlogixLoadsTab";
 import { FleetlogixSalariesTab } from "./FleetlogixSalariesTab";
 import { FleetlogixReconciliationTab } from "./FleetlogixReconciliationTab";
-import { Truck, Users, Route, Package, DollarSign, FileCheck, Moon, Sun } from "lucide-react";
+import { FleetlogixWeighbridgeTab } from "./FleetlogixWeighbridgeTab";
+import { Truck, Users, Route, Package, DollarSign, FileCheck, Scale, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 
@@ -48,7 +49,7 @@ export function FleetLogixDashboard() {
         </div>
 
         <Tabs defaultValue="loads" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 bg-white dark:bg-gray-800 border-2 border-orange-200 dark:border-orange-700 p-1">
+          <TabsList className="grid w-full grid-cols-7 bg-white dark:bg-gray-800 border-2 border-orange-200 dark:border-orange-700 p-1">
             <TabsTrigger 
               value="loads" 
               className="flex items-center gap-2 text-gray-900 dark:text-gray-100 font-semibold data-[state=active]:bg-orange-500 data-[state=active]:text-white"
@@ -90,6 +91,13 @@ export function FleetLogixDashboard() {
             >
               <FileCheck className="h-4 w-4" />
               <span className="hidden sm:inline">Reconciliation</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="weighbridge" 
+              className="flex items-center gap-2 text-gray-900 dark:text-gray-100 font-semibold data-[state=active]:bg-orange-500 data-[state=active]:text-white"
+            >
+              <Scale className="h-4 w-4" />
+              <span className="hidden sm:inline">Weighbridge</span>
             </TabsTrigger>
           </TabsList>
 
@@ -161,6 +169,18 @@ export function FleetLogixDashboard() {
             </CardHeader>
             <CardContent className="pt-6">
               <FleetlogixReconciliationTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="weighbridge" className="space-y-4">
+          <Card className="border-2 border-orange-200 dark:border-orange-700 shadow-md bg-white dark:bg-gray-800">
+            <CardHeader className="border-b-2 border-orange-200 dark:border-orange-700 bg-orange-50 dark:bg-gray-700">
+              <CardTitle className="text-gray-900 dark:text-white font-bold text-xl">Weighbridge Management</CardTitle>
+              <CardDescription className="text-gray-700 dark:text-gray-300 font-semibold">Upload and link weighbridge slips to loads</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <FleetlogixWeighbridgeTab />
             </CardContent>
           </Card>
         </TabsContent>
