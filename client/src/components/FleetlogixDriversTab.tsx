@@ -31,13 +31,21 @@ import { Plus, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Driver {
-  id: number;
+  id: string; // Changed from number to string (UUID)
   name: string;
   licenseNumber?: string;
-  contactNumber?: string;
+  licenseType?: string;
+  phone?: string;
   email?: string;
+  idNumber?: string;
+  address?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
   status: string;
   hireDate?: string;
+  basicSalary?: string;
+  salaryPeriod?: string;
+  bonusPerLoad?: string;
 }
 
 export function FleetlogixDriversTab() {
@@ -46,10 +54,18 @@ export function FleetlogixDriversTab() {
   const [formData, setFormData] = useState({
     name: "",
     licenseNumber: "",
-    contactNumber: "",
+    licenseType: "",
+    phone: "",
     email: "",
+    idNumber: "",
+    address: "",
+    emergencyContact: "",
+    emergencyPhone: "",
     status: "active",
     hireDate: "",
+    basicSalary: "",
+    salaryPeriod: "monthly",
+    bonusPerLoad: "",
   });
   
   const { toast } = useToast();
@@ -88,7 +104,7 @@ export function FleetlogixDriversTab() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: typeof formData }) => {
+    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
       const token = localStorage.getItem("ahc_auth_token");
       const headers: HeadersInit = { "Content-Type": "application/json" };
       if (token && token !== "demo_token") {
@@ -116,7 +132,7 @@ export function FleetlogixDriversTab() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string) => {
       const response = await fetch(`/api/fleetlogix/drivers/${id}`, {
         method: "DELETE",
         credentials: "include",
@@ -137,10 +153,18 @@ export function FleetlogixDriversTab() {
     setFormData({
       name: "",
       licenseNumber: "",
-      contactNumber: "",
+      licenseType: "",
+      phone: "",
       email: "",
+      idNumber: "",
+      address: "",
+      emergencyContact: "",
+      emergencyPhone: "",
       status: "active",
       hireDate: "",
+      basicSalary: "",
+      salaryPeriod: "monthly",
+      bonusPerLoad: "",
     });
     setEditingDriver(null);
   };
@@ -150,10 +174,18 @@ export function FleetlogixDriversTab() {
     setFormData({
       name: driver.name,
       licenseNumber: driver.licenseNumber || "",
-      contactNumber: driver.contactNumber || "",
+      licenseType: driver.licenseType || "",
+      phone: driver.phone || "",
       email: driver.email || "",
+      idNumber: driver.idNumber || "",
+      address: driver.address || "",
+      emergencyContact: driver.emergencyContact || "",
+      emergencyPhone: driver.emergencyPhone || "",
       status: driver.status,
       hireDate: driver.hireDate || "",
+      basicSalary: driver.basicSalary || "",
+      salaryPeriod: driver.salaryPeriod || "monthly",
+      bonusPerLoad: driver.bonusPerLoad || "",
     });
     setIsDialogOpen(true);
   };
@@ -222,11 +254,32 @@ export function FleetlogixDriversTab() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="contactNumber">Contact Number</Label>
+                  <Label htmlFor="licenseType">License Type</Label>
+                  <Select value={formData.licenseType} onValueChange={(value) => setFormData({ ...formData, licenseType: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select license type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Code 8">Code 8</SelectItem>
+                      <SelectItem value="Code 10">Code 10</SelectItem>
+                      <SelectItem value="Code 14">Code 14</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="idNumber">ID Number</Label>
                   <Input
-                    id="contactNumber"
-                    value={formData.contactNumber}
-                    onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
+                    id="idNumber"
+                    value={formData.idNumber}
+                    onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -259,6 +312,41 @@ export function FleetlogixDriversTab() {
                     onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="basicSalary">Basic Salary (R)</Label>
+                  <Input
+                    id="basicSalary"
+                    type="number"
+                    step="0.01"
+                    value={formData.basicSalary}
+                    onChange={(e) => setFormData({ ...formData, basicSalary: e.target.value })}
+                    placeholder="15000.00"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="salaryPeriod">Salary Period</Label>
+                  <Select value={formData.salaryPeriod} onValueChange={(value) => setFormData({ ...formData, salaryPeriod: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="bonusPerLoad">Bonus Per Load (R)</Label>
+                  <Input
+                    id="bonusPerLoad"
+                    type="number"
+                    step="0.01"
+                    value={formData.bonusPerLoad}
+                    onChange={(e) => setFormData({ ...formData, bonusPerLoad: e.target.value })}
+                    placeholder="500.00"
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button type="submit">
@@ -274,11 +362,12 @@ export function FleetlogixDriversTab() {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>License Number</TableHead>
-            <TableHead>Contact</TableHead>
+            <TableHead>License</TableHead>
+            <TableHead>Phone</TableHead>
             <TableHead>Email</TableHead>
+            <TableHead>Basic Salary</TableHead>
+            <TableHead>Bonus/Load</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Hire Date</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -286,9 +375,11 @@ export function FleetlogixDriversTab() {
           {drivers?.map((driver) => (
             <TableRow key={driver.id}>
               <TableCell className="font-medium">{driver.name}</TableCell>
-              <TableCell>{driver.licenseNumber || "-"}</TableCell>
-              <TableCell>{driver.contactNumber || "-"}</TableCell>
+              <TableCell>{driver.licenseNumber ? `${driver.licenseNumber} (${driver.licenseType || 'N/A'})` : "-"}</TableCell>
+              <TableCell>{driver.phone || "-"}</TableCell>
               <TableCell>{driver.email || "-"}</TableCell>
+              <TableCell>{driver.basicSalary ? `R${parseFloat(driver.basicSalary).toLocaleString()}` : "-"}</TableCell>
+              <TableCell>{driver.bonusPerLoad ? `R${parseFloat(driver.bonusPerLoad).toLocaleString()}` : "-"}</TableCell>
               <TableCell>
                 <span className={`px-2 py-1 rounded text-xs ${
                   driver.status === "active" 
@@ -298,7 +389,6 @@ export function FleetlogixDriversTab() {
                   {driver.status}
                 </span>
               </TableCell>
-              <TableCell>{driver.hireDate ? new Date(driver.hireDate).toLocaleDateString() : "-"}</TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
                   <Button
