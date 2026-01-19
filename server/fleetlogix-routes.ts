@@ -64,7 +64,7 @@ export function registerFleetLogixRoutes(app: Express) {
       const tenantId = req.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: "Unauthorized" });
 
-      const id = parseInt(req.params.id);
+      const { id } = req.params;
       const [updatedDriver] = await db
         .update(fleetlogixDrivers)
         .set({ ...req.body, updatedAt: new Date() })
@@ -80,6 +80,7 @@ export function registerFleetLogixRoutes(app: Express) {
 
       res.json(updatedDriver);
     } catch (error) {
+      console.error("Update driver error:", error);
       res.status(400).json({ error: "Failed to update driver" });
     }
   });
@@ -90,7 +91,7 @@ export function registerFleetLogixRoutes(app: Express) {
       const tenantId = req.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: "Unauthorized" });
 
-      const id = parseInt(req.params.id);
+      const { id } = req.params;
       await db
         .delete(fleetlogixDrivers)
         .where(and(
@@ -100,6 +101,7 @@ export function registerFleetLogixRoutes(app: Express) {
 
       res.json({ success: true });
     } catch (error) {
+      console.error("Delete driver error:", error);
       res.status(400).json({ error: "Failed to delete driver" });
     }
   });
@@ -162,7 +164,7 @@ export function registerFleetLogixRoutes(app: Express) {
       const tenantId = req.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: "Unauthorized" });
 
-      const id = parseInt(req.params.id);
+      const { id } = req.params;
       const [updatedVehicle] = await db
         .update(fleetlogixVehicles)
         .set({ ...req.body, updatedAt: new Date() })
@@ -178,6 +180,7 @@ export function registerFleetLogixRoutes(app: Express) {
 
       res.json(updatedVehicle);
     } catch (error) {
+      console.error("Update vehicle error:", error);
       res.status(400).json({ error: "Failed to update vehicle" });
     }
   });
@@ -188,7 +191,7 @@ export function registerFleetLogixRoutes(app: Express) {
       const tenantId = req.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: "Unauthorized" });
 
-      const id = parseInt(req.params.id);
+      const { id } = req.params;
       await db
         .delete(fleetlogixVehicles)
         .where(and(
@@ -198,6 +201,7 @@ export function registerFleetLogixRoutes(app: Express) {
 
       res.json({ success: true });
     } catch (error) {
+      console.error("Delete vehicle error:", error);
       res.status(400).json({ error: "Failed to delete vehicle" });
     }
   });
@@ -262,7 +266,7 @@ export function registerFleetLogixRoutes(app: Express) {
       const tenantId = req.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: "Unauthorized" });
 
-      const id = parseInt(req.params.id);
+      const { id } = req.params;
       const [updatedRoute] = await db
         .update(fleetlogixRoutes)
         .set({ ...req.body, updatedAt: new Date() })
@@ -278,6 +282,7 @@ export function registerFleetLogixRoutes(app: Express) {
 
       res.json(updatedRoute);
     } catch (error) {
+      console.error("Update route error:", error);
       res.status(400).json({ error: "Failed to update route" });
     }
   });
@@ -288,7 +293,7 @@ export function registerFleetLogixRoutes(app: Express) {
       const tenantId = req.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: "Unauthorized" });
 
-      const id = parseInt(req.params.id);
+      const { id } = req.params;
       await db
         .delete(fleetlogixRoutes)
         .where(and(
@@ -298,6 +303,7 @@ export function registerFleetLogixRoutes(app: Express) {
 
       res.json({ success: true });
     } catch (error) {
+      console.error("Delete route error:", error);
       res.status(400).json({ error: "Failed to delete route" });
     }
   });
@@ -373,7 +379,7 @@ export function registerFleetLogixRoutes(app: Express) {
       const tenantId = req.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: "Unauthorized" });
 
-      const id = parseInt(req.params.id);
+      const { id } = req.params;
       const [updatedLoad] = await db
         .update(fleetlogixLoads)
         .set({ ...req.body, updatedAt: new Date() })
@@ -389,6 +395,7 @@ export function registerFleetLogixRoutes(app: Express) {
 
       res.json(updatedLoad);
     } catch (error) {
+      console.error("Update load error:", error);
       res.status(400).json({ error: "Failed to update load" });
     }
   });
@@ -399,7 +406,7 @@ export function registerFleetLogixRoutes(app: Express) {
       const tenantId = req.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: "Unauthorized" });
 
-      const id = parseInt(req.params.id);
+      const { id } = req.params;
       await db
         .delete(fleetlogixLoads)
         .where(and(
@@ -409,6 +416,7 @@ export function registerFleetLogixRoutes(app: Express) {
 
       res.json({ success: true });
     } catch (error) {
+      console.error("Delete load error:", error);
       res.status(400).json({ error: "Failed to delete load" });
     }
   });
