@@ -2513,6 +2513,10 @@ export const fleetlogixDrivers = pgTable("fleetlogix_drivers", {
   emergencyPhone: text("emergency_phone"),
   hireDate: date("hire_date"),
   status: text("status").default("active"),
+  // Salary fields
+  basicSalary: decimal("basic_salary", { precision: 10, scale: 2 }),
+  salaryPeriod: text("salary_period").default("monthly"), // 'monthly', 'weekly', 'daily'
+  bonusPerLoad: decimal("bonus_per_load", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
