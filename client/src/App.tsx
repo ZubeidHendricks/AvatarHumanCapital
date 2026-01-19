@@ -62,6 +62,7 @@ import DashboardBuilder from "@/pages/dashboard-builder";
 import WeighbridgeDashboard from "@/pages/weighbridge-dashboard";
 import WeighbridgeSlipDetails from "@/pages/weighbridge-slip-details";
 import FleetLogixPage from "@/pages/fleetlogix";
+import AddDriverPage from "@/pages/add-driver";
 
 function Router() {
   return (
@@ -123,6 +124,7 @@ function Router() {
       <Route path="/weighbridge" component={WeighbridgeDashboard} />
       <Route path="/weighbridge/slip/:id" component={WeighbridgeSlipDetails} />
       <Route path="/fleetlogix" component={FleetLogixPage} />
+      <Route path="/add-driver" component={AddDriverPage} />
       <Route component={NotFound} />
     </Switch>
   );
