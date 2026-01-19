@@ -367,6 +367,7 @@ export function FleetlogixDriversTab() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Table>
