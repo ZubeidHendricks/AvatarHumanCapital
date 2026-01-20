@@ -59,7 +59,7 @@ import SelfAssessment from "@/pages/self-assessment";
 import WorkflowShowcase from "@/pages/workflow-showcase";
 import DashboardBuilder from "@/pages/dashboard-builder";
 import ExternalCandidates from "@/pages/external-candidates";
-import FleetLogixDashboard from "@/components/FleetLogixDashboard";
+import { FleetLogixDashboard } from "@/components/FleetLogixDashboard";
 
 function Router() {
   return (
