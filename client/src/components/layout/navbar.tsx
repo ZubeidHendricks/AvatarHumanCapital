@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTenant } from "@/hooks/useTenant";
 import { TenantSelector } from "@/components/admin/TenantSelector";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -322,6 +323,9 @@ export function Navbar() {
           {isAdminPage && (
             <TenantSelector currentTenant={tenant} />
           )}
+
+          {/* Theme Toggle */}
+          <ThemeToggle />
 
           <Link href="/login">
             <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_-5px_hsl(var(--primary)/0.5)]">
