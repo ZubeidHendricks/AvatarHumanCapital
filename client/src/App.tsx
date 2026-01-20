@@ -59,6 +59,7 @@ import SelfAssessment from "@/pages/self-assessment";
 import WorkflowShowcase from "@/pages/workflow-showcase";
 import DashboardBuilder from "@/pages/dashboard-builder";
 import ExternalCandidates from "@/pages/external-candidates";
+import FleetLogixDashboard from "@/components/FleetLogixDashboard";
 
 function Router() {
   return (
@@ -118,6 +119,7 @@ function Router() {
       <Route path="/workflow-showcase" component={WorkflowShowcase} />
       <Route path="/dashboard-builder" component={DashboardBuilder} />
       <Route path="/external-candidates" component={ExternalCandidates} />
+      <Route path="/fleetlogix" component={FleetLogixDashboard} />
       <Route component={NotFound} />
     </Switch>
   );
