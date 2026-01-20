@@ -90,41 +90,41 @@
 }
 
 .light {
-  /* Light Theme - Claude/Anthropic Colors */
-  --background: 50 21% 95%; /* Pampas off-white #F4F3EE */
-  --foreground: 0 0% 9%; /* Near black for readability */
+  /* Light Theme - Claude/Anthropic Style (clean, minimal) */
+  --background: 0 0% 100%; /* Pure white main background */
+  --foreground: 24 10% 10%; /* Warm dark text */
 
-  --card: 0 0% 100%; /* Pure white cards */
-  --card-foreground: 0 0% 9%;
+  --card: 0 0% 100%; /* White cards */
+  --card-foreground: 24 10% 10%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 9%;
+  --popover: 0 0% 100%; /* White popovers */
+  --popover-foreground: 24 10% 10%;
 
-  --primary: 16 53% 50%; /* Claude Terra Cotta #C15F3C */
+  --primary: 16 53% 50%; /* Claude Terra Cotta #C15F3C - used sparingly */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 45 9% 66%; /* Cloudy grey #B1ADA1 */
-  --secondary-foreground: 0 0% 9%;
+  --secondary: 40 12% 95%; /* Very light warm grey for secondary elements */
+  --secondary-foreground: 24 10% 20%;
 
-  --muted: 45 15% 90%; /* Warm light grey */
-  --muted-foreground: 45 10% 40%;
+  --muted: 40 10% 96%; /* Light warm background */
+  --muted-foreground: 24 5% 45%; /* Warm grey text */
 
-  --accent: 15 63% 60%; /* Lighter terra cotta #da7756 */
-  --accent-foreground: 0 0% 100%;
+  --accent: 40 12% 93%; /* Subtle warm grey hover */
+  --accent-foreground: 24 10% 10%;
 
   --destructive: 0 72% 51%;
-  --destructive-foreground: 0 0% 98%;
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 45 12% 82%; /* Warm grey border */
-  --input: 50 15% 92%;
-  --ring: 16 53% 50%; /* Terra cotta ring */
+  --border: 40 10% 88%; /* Subtle warm grey border */
+  --input: 40 10% 96%; /* Light input background */
+  --ring: 16 53% 50%; /* Terra cotta focus ring */
 
-  /* Chart Colors for Light Mode - Claude palette */
+  /* Chart Colors for Light Mode */
   --chart-1: 16 53% 50%; /* Terra Cotta */
-  --chart-2: 45 9% 66%; /* Cloudy grey */
-  --chart-3: 15 63% 60%; /* Light terra cotta */
-  --chart-4: 45 15% 75%;
-  --chart-5: 0 0% 30%;
+  --chart-2: 210 60% 50%; /* Blue for contrast */
+  --chart-3: 160 60% 40%; /* Teal */
+  --chart-4: 45 70% 50%; /* Amber */
+  --chart-5: 280 50% 50%; /* Purple */
 }
 
 @layer base {
