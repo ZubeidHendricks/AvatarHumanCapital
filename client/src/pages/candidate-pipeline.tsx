@@ -528,7 +528,7 @@ export default function CandidatePipeline() {
                       </Button>
                       <Button 
                         size="sm" 
-                        className="flex-1 bg-primary"
+                        className="flex-1 bg-primary text-white"
                         onClick={() => handleViewProfile(candidate)}
                         data-testid={`button-view-profile-${candidate.id}`}
                       >
@@ -729,7 +729,7 @@ export default function CandidatePipeline() {
                     )}
                   </Button>
                   <Link href={`/candidates/${selectedCandidate.id}`}>
-                    <Button className="bg-primary" data-testid="button-full-profile">
+                    <Button className="bg-primary text-white" data-testid="button-full-profile">
                       <ExternalLink className="h-4 w-4 mr-2" />
                       Full Profile
                     </Button>
