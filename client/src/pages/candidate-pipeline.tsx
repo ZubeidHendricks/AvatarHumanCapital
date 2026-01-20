@@ -528,7 +528,7 @@ export default function CandidatePipeline() {
                       </Button>
                       <Button 
                         size="sm" 
-                        className="flex-1 bg-primary text-white"
+                        className="flex-1 bg-orange-500 hover:bg-orange-600 !text-white"
                         onClick={() => handleViewProfile(candidate)}
                         data-testid={`button-view-profile-${candidate.id}`}
                       >
@@ -540,7 +540,7 @@ export default function CandidatePipeline() {
                     {getNextStage(candidate.stage || 'sourcing') && (
                       <Button 
                         size="sm" 
-                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 mt-2"
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 mt-2 !text-white"
                         onClick={() => handleAdvanceStage(candidate)}
                         disabled={advancingCandidate === candidate.id}
                         data-testid={`button-advance-stage-${candidate.id}`}
