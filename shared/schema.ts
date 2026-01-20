@@ -2587,3 +2587,30 @@ export const fleetlogixLoads = pgTable("fleetlogix_loads", {
 export const insertFleetlogixLoadSchema = createInsertSchema(fleetlogixLoads);
 export type FleetlogixLoad = typeof fleetlogixLoads.$inferSelect;
 export type InsertFleetlogixLoad = typeof fleetlogixLoads.$inferInsert;
+
+export const weighbridgeSlips = pgTable("weighbridge_slips", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  ticketNumber: text("ticket_number"),
+  vehicleRegistration: text("vehicle_registration"),
+  grossWeight: integer("gross_weight"),
+  tareWeight: integer("tare_weight"),
+  netWeight: integer("net_weight"),
+  weighDateTime: timestamp("weigh_date_time"),
+  operator: text("operator"),
+  product: text("product"),
+  customer: text("customer"),
+  weighbridgeLocation: text("weighbridge_location"),
+  imageUrl: text("image_url"),
+  extractedData: jsonb("extracted_data"),
+  status: text("status").default("pending"),
+  verifiedBy: varchar("verified_by"),
+  verifiedAt: timestamp("verified_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertWeighbridgeSlipSchema = createInsertSchema(weighbridgeSlips);
+export type WeighbridgeSlip = typeof weighbridgeSlips.$inferSelect;
+export type InsertWeighbridgeSlip = typeof weighbridgeSlips.$inferInsert;

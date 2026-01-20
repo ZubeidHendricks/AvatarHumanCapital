@@ -192,6 +192,9 @@ import {
   cvTemplates,
   type CvTemplate,
   type InsertCvTemplate,
+  weighbridgeSlips,
+  type WeighbridgeSlip,
+  type InsertWeighbridgeSlip,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte, sql, isNull, isNotNull, or } from "drizzle-orm";
