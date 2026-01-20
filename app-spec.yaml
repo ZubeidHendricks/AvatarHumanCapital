@@ -13,10 +13,11 @@ ingress:
 name: aihr-backend
 region: nyc
 services:
-- dockerfile_path: Dockerfile
-  git:
-    branch: main
-    repo_clone_url: https://github.com/ZubeidHendricks/AvatarHumanCapital.git
+- image:
+    registry: carta-ta
+    registry_type: DOCR
+    repository: aihr-backend
+    tag: latest
   envs:
   - key: DATABASE_URL
     scope: RUN_TIME
