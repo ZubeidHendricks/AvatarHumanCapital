@@ -90,41 +90,41 @@
 }
 
 .light {
-  /* Light Theme - Consistent Orange Brand */
-  --background: 0 0% 98%; /* Nearly white */
-  --foreground: 0 0% 10%; /* Dark text for readability */
+  /* Light Theme - Claude/Anthropic Colors */
+  --background: 50 21% 95%; /* Pampas off-white #F4F3EE */
+  --foreground: 0 0% 9%; /* Near black for readability */
 
   --card: 0 0% 100%; /* Pure white cards */
-  --card-foreground: 0 0% 10%;
+  --card-foreground: 0 0% 9%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 10%;
+  --popover-foreground: 0 0% 9%;
 
-  --primary: 25 95% 53%; /* Orange - Main Brand Color */
+  --primary: 16 53% 50%; /* Claude Terra Cotta #C15F3C */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 25 100% 97%; /* Very light orange */
-  --secondary-foreground: 0 0% 10%;
+  --secondary: 45 9% 66%; /* Cloudy grey #B1ADA1 */
+  --secondary-foreground: 0 0% 9%;
 
-  --muted: 0 0% 96%;
-  --muted-foreground: 0 0% 45%;
+  --muted: 45 15% 90%; /* Warm light grey */
+  --muted-foreground: 45 10% 40%;
 
-  --accent: 25 95% 95%; /* Light orange accent */
-  --accent-foreground: 25 95% 35%;
+  --accent: 15 63% 60%; /* Lighter terra cotta #da7756 */
+  --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 84% 60%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 25 30% 85%; /* Subtle orange border */
-  --input: 0 0% 96%;
-  --ring: 25 95% 53%; /* Orange ring */
+  --border: 45 12% 82%; /* Warm grey border */
+  --input: 50 15% 92%;
+  --ring: 16 53% 50%; /* Terra cotta ring */
 
-  /* Chart Colors for Light Mode */
-  --chart-1: 25 95% 53%; /* Orange */
-  --chart-2: 210 100% 50%; /* Blue */
-  --chart-3: 45 100% 51%; /* Yellow */
-  --chart-4: 0 0% 60%;
-  --chart-5: 160 84% 39%;
+  /* Chart Colors for Light Mode - Claude palette */
+  --chart-1: 16 53% 50%; /* Terra Cotta */
+  --chart-2: 45 9% 66%; /* Cloudy grey */
+  --chart-3: 15 63% 60%; /* Light terra cotta */
+  --chart-4: 45 15% 75%;
+  --chart-5: 0 0% 30%;
 }
 
 @layer base {
