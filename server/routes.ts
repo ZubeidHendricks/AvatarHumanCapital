@@ -7687,6 +7687,168 @@ Format your response as JSON:
     }
   });
 
+  // Seed Fleet Logix data for a tenant (admin only)
+  app.post("/api/admin/seed-fleetlogix/:tenantId", async (req, res) => {
+    try {
+      const { tenantId } = req.params;
+      const tenant = await storage.getTenantById(tenantId);
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      const results = { routes: 0, vehicles: 0, drivers: 0, loads: 0 };
+
+      // Sample routes data
+      const routes = [
+        { name: 'Exxaro Leeuwpan - Sasol Bosjesspruit', origin: 'Exxaro Leeuwpan', destination: 'Sasol Bosjesspruit', distance: 102 },
+        { name: 'Exxaro Leeuwpan - Sasol Site 1', origin: 'Exxaro Leeuwpan', destination: 'Sasol Site 1', distance: 85 },
+        { name: 'Kleinfontein - Arnot', origin: 'Kleinfontein', destination: 'Arnot', distance: 145 },
+        { name: 'Leeuwport Mine - Lk Tlou', origin: 'Leeuwport Mine', destination: 'Lk Tlou', distance: 29 },
+        { name: 'Lk Tlou - Middelbult', origin: 'Lk Tlou', destination: 'Middelbult', distance: 70 },
+        { name: 'Lk Tlou - Sasol Bosjesspruit', origin: 'Lk Tlou', destination: 'Sasol Bosjesspruit', distance: 85 },
+        { name: 'Lk Tlou - Sasol Impumelelo', origin: 'Lk Tlou', destination: 'Sasol Impumelelo', distance: 73 },
+        { name: 'Lk Tlou - Shondoni', origin: 'Lk Tlou', destination: 'Shondoni', distance: 58 },
+        { name: 'LK Tlou - Arnot', origin: 'LK Tlou', destination: 'Arnot', distance: 145 },
+        { name: 'LK Tlou - Kleinfontein', origin: 'LK Tlou', destination: 'Kleinfontein', distance: 110 },
+        { name: 'LK Tlou - Hendrina', origin: 'LK Tlou', destination: 'Hendrina', distance: 136 },
+        { name: 'Matsambisa Kriel - Arnot', origin: 'Matsambisa Kriel', destination: 'Arnot', distance: 126 },
+        { name: 'Matsambisa Kriel - Hendrina Power', origin: 'Matsambisa Kriel', destination: 'Hendrina Power', distance: 122 },
+        { name: 'Matsambisa Kriel - Resinga', origin: 'Matsambisa Kriel', destination: 'Resinga', distance: 96 },
+        { name: 'Mavungwani - Duvha Power Station', origin: 'Mavungwani', destination: 'Duvha Power Station', distance: 82 },
+        { name: 'Mavungwani - Hendrina Power', origin: 'Mavungwani', destination: 'Hendrina Power', distance: 47 },
+        { name: 'Mavungwani - Matla Power', origin: 'Mavungwani', destination: 'Matla Power', distance: 108 },
+        { name: 'Resinga Mine - Arnot', origin: 'Resinga Mine', destination: 'Arnot', distance: 52 },
+        { name: 'Resinga Mine - Camden', origin: 'Resinga Mine', destination: 'Camden', distance: 62 },
+        { name: 'Resinga Mine - Matla', origin: 'Resinga Mine', destination: 'Matla', distance: 105 },
+      ];
+
+      // Insert routes
+      for (const route of routes) {
+        try {
+          await storage.createFleetLogixRoute(tenantId, {
+            name: route.name,
+            origin: route.origin,
+            destination: route.destination,
+            distance: route.distance.toString(),
+            status: 'active'
+          });
+          results.routes++;
+        } catch (e) { /* Skip duplicates */ }
+      }
+
+      // Sample vehicles data
+      const vehicles = [
+        { registration: 'KX31ZLGP - FL04', fleetNumber: 'FL04' },
+        { registration: 'KX31ZNGP - FL09', fleetNumber: 'FL09' },
+        { registration: 'KX31ZSGP - FL25', fleetNumber: 'FL25' },
+        { registration: 'KX32BVGP - FL23', fleetNumber: 'FL23' },
+        { registration: 'KX32CMGP - FL10', fleetNumber: 'FL10' },
+        { registration: 'KX32CXGP - FL14', fleetNumber: 'FL14' },
+        { registration: 'KX32DBGP - FL12', fleetNumber: 'FL12' },
+        { registration: 'LC18JZGP - FL29', fleetNumber: 'FL29' },
+        { registration: 'LC18KGGP - FL27', fleetNumber: 'FL27' },
+        { registration: 'LC18KPGP - FL05', fleetNumber: 'FL05' },
+        { registration: 'LC18KWGP - FL06', fleetNumber: 'FL06' },
+        { registration: 'LC18KZGP - FL17', fleetNumber: 'FL17' },
+        { registration: 'LC18LFGP - FL08', fleetNumber: 'FL08' },
+        { registration: 'LC18LKGP - FL02', fleetNumber: 'FL02' },
+        { registration: 'LC18LTGP - FL30', fleetNumber: 'FL30' },
+        { registration: 'LG23HJGP - FL19', fleetNumber: 'FL19' },
+        { registration: 'LG23HTGP - FL15', fleetNumber: 'FL15' },
+        { registration: 'LG23KSGP - FL28', fleetNumber: 'FL28' },
+        { registration: 'LG23MCGP - FL26', fleetNumber: 'FL26' },
+        { registration: 'LG24BKGP - FL24', fleetNumber: 'FL24' },
+        { registration: 'LG24BXGP - FL16', fleetNumber: 'FL16' },
+        { registration: 'LG24CDGP - FL22', fleetNumber: 'FL22' },
+        { registration: 'LG24CKGP - FL21', fleetNumber: 'FL21' },
+        { registration: 'LG24GBGP - FL20', fleetNumber: 'FL20' },
+        { registration: 'LG24GGGP - FL03', fleetNumber: 'FL03' },
+        { registration: 'LG24GMGP - FL01', fleetNumber: 'FL01' },
+        { registration: 'LG24GXGP - FL11', fleetNumber: 'FL11' },
+        { registration: 'LG24HFGP - FL07', fleetNumber: 'FL07' },
+        { registration: 'LG24HKGP - FL31', fleetNumber: 'FL31' },
+        { registration: 'LG29CZGP - FL18', fleetNumber: 'FL18' },
+        { registration: 'KX31ZJGP - FL13', fleetNumber: 'FL13' },
+      ];
+
+      // Insert vehicles
+      for (const vehicle of vehicles) {
+        try {
+          await storage.createFleetLogixVehicle(tenantId, {
+            registration: vehicle.registration,
+            fleetNumber: vehicle.fleetNumber,
+            type: 'Truck',
+            capacity: '34',
+            status: 'active'
+          });
+          results.vehicles++;
+        } catch (e) { /* Skip duplicates */ }
+      }
+
+      // Sample drivers data
+      const drivers = [
+        'Ayanda Tembe', 'Meshack Khathide', 'Sihle Thabo Nkosi', 'Sandile Peter Nzimande',
+        'Witness Nkosi', 'Themba Simelane', 'Welcome Mashaya', 'Production Mthethwa',
+        'Bhekinkozi Ismael Zwane', 'Siphesihle Xaba', 'Albert Mduduzi Zikalala', 'Sandiso Siyaya',
+        'Nkosenhle Ndlovu', 'Lennox Banele Ncanazo', 'Sammy Mahlangu', 'Xolani Ngcobo',
+        'Melizwe Siyaya', 'Nkosivumile Luphuzi', 'Dumusani Masilela', 'Khanyisani Lembethe',
+        'Vincent Nkosi', 'Mlungisi Nkambula', 'Zamani Buthelezi', 'Wonder Innocent Kubheka',
+        'Thabani Mpungose', 'Phumlani Simo Mthethwa', 'Jabulani Buthelezi', 'Mandla Frans Khumalo',
+        'Sbusiso Samson Kubheka', 'Happy Mashilwane', 'Bongani Mnisi', 'Thulani Victor Magagula',
+        'Nhlanhla Mafutha Myeni', 'Wonderful Sandile Qwabe', 'Bheki Zulu', 'Siswe Zwane',
+        'Sakhile Freedom Mabaso', 'Thulani Sabelo Simelane', 'Musa Zwane', 'Sipho Nkosi'
+      ];
+
+      // Insert drivers
+      for (const name of drivers) {
+        try {
+          await storage.createFleetLogixDriver(tenantId, {
+            name,
+            status: 'active',
+            salaryPeriod: 'monthly'
+          });
+          results.drivers++;
+        } catch (e) { /* Skip duplicates */ }
+      }
+
+      // Get created resources for sample loads
+      const allDrivers = await storage.getFleetLogixDrivers(tenantId);
+      const allVehicles = await storage.getFleetLogixVehicles(tenantId);
+      const allRoutes = await storage.getFleetLogixRoutes(tenantId);
+
+      // Create sample loads
+      if (allDrivers.length > 0 && allVehicles.length > 0 && allRoutes.length > 0) {
+        for (let i = 0; i < Math.min(30, allDrivers.length); i++) {
+          try {
+            const loadDate = new Date();
+            loadDate.setDate(loadDate.getDate() - i);
+            
+            await storage.createFleetLogixLoad(tenantId, {
+              loadNumber: `LOAD-${loadDate.toISOString().split('T')[0]}-${i + 1}`,
+              driverId: allDrivers[i % allDrivers.length].id,
+              vehicleId: allVehicles[i % allVehicles.length].id,
+              routeId: allRoutes[i % allRoutes.length].id,
+              loadDate: loadDate.toISOString().split('T')[0],
+              weight: (30 + Math.random() * 10).toFixed(2),
+              revenue: (80 + Math.random() * 150).toFixed(2),
+              status: 'delivered'
+            });
+            results.loads++;
+          } catch (e) { /* Skip duplicates */ }
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        message: 'Fleet Logix data seeded successfully',
+        results 
+      });
+    } catch (error) {
+      console.error("Error seeding Fleet Logix data:", error);
+      res.status(500).json({ message: "Failed to seed Fleet Logix data" });
+    }
+  });
+
   // ================================
   // LMS Routes
   // ================================
