@@ -1,4 +1,3 @@
-import { Navbar } from "@/components/layout/navbar";
 import { Hero } from "@/components/sections/hero";
 import { Services } from "@/components/sections/services";
 import { DashboardPreview } from "@/components/sections/dashboard-preview";
@@ -11,8 +10,6 @@ import { Link } from "wouter";
 export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-      <Navbar />
-      
       <main>
         <Hero />
         
