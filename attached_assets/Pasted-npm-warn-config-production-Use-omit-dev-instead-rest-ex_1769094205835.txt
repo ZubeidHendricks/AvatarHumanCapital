@@ -1,0 +1,140 @@
+npm warn config production Use `--omit=dev` instead.
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development npx tsx server/index.ts
+
+npm warn config production Use `--omit=dev` instead.
+[PNetAPIService] Configured with Org ID: 120911, Sender ID: 21965
+Default tenant already exists: Avatar Human Capital
+2:39:31 PM [express] serving on port 5000
+2:39:31 PM [express] Background reminder checker started (runs every hour)
+[DataCollectionService] Starting background data collection service
+2:39:31 PM [express] Background data collection service started (checks every minute)
+2:39:55 PM [express] GET /api/tenant-config 200 in 45ms :: {"id":"1580efd0-8445-4afb-b961-d20ca18024…
+2:53:53 PM [vite] (client) hmr update /src/index.css, /src/components/layout/app-layout.tsx
+2:53:53 PM [vite] (client) hmr update /src/index.css, /src/components/layout/sidebar.tsx
+2:53:53 PM [vite] (client) hmr update /src/index.css, /src/components/layout/top-header.tsx
+2:53:53 PM [vite] (client) hmr update /src/index.css, /src/pages/external-candidates.tsx
+2:53:54 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/components/sections/avery-features.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/components/layout/navbar.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/components/sections/dashboard-preview.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/components/sections/hero.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/components/sections/services.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/admin-dashboard.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/admin-dashboard.tsx (x2)
+2:53:54 PM [vite] (client) hmr update /src/index.css
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/candidate-pipeline.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/candidates-list.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/certificates.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/course-catalogue.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/customer-onboarding.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/cv-template.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/cv-templates.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/dashboard-builder.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/dashboard-builder.tsx (x2)
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/data-source-detail.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/data-sources.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/document-automation.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/document-library.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/executive-dashboard.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/home.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/hr-dashboard.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/hr-management-agent.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/integrity-agent.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/interview-invite.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/interview-video.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/interview-voice.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/kpi-hr-dashboard.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/kpi-management.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/kpi-manager-review.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/kpi-review.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/leaderboard.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/learning-management.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/login.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/onboarding-agent.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/onboarding-dashboard.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/persona-management.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/pipeline-board.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/platform-docs.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/platform-settings.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/recommendations.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/recruitment-agent.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/recruitment-dashboard.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/shortlisted-candidates.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/social-screening-agent.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/social-screening.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/system-docs.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/tenant-management.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/tenant-requests.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/whatsapp-monitor.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/workflow-showcase.tsx
+2:53:54 PM [vite] (client) hmr update /src/index.css, /src/pages/workforce-intelligence.tsx
+2:53:54 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[replit-cartographer] Error processing /home/runner/workspace/client/src/App.tsx: SyntaxError: Unexpected token (1:1)
+    at toParseError (/home/runner/workspace/node_modules/@babel/parser/src/parse-error.ts:95:45)
+    at raise (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1504:19)
+    at unexpected (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1544:16)
+    at jsxParseIdentifier (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:278:14)
+    at jsxParseNamespacedName (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:288:25)
+    at jsxParseElementName (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:306:14)
+    at jsxParseOpeningElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:429:24)
+    at jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:470:35)
+    at jsxParseElement (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:559:19)
+    at parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:573:21)
+    at parseExprSubscripts (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:742:23)
+    at parseUpdate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:721:21)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:683:23)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3872:20)
+    at parseMaybeUnaryOrPrivate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:417:14)
+    at parseExprOps (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:429:23)
+    at parseMaybeConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:384:23)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+    at fn (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3724:23)
+    at tryParse (/home/runner/workspace/node_modules/@babel/parser/src/parser/util.ts:174:20)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3723:20)
+    at parseExpressionBase (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:226:23)
+    at callback (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:217:39)
+    at allowInAnd (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:3189:16)
+    at parseExpression (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:217:17)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:688:23)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3219:20)
+    at parseStatementLike (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:482:17)
+    at parseModuleItem (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:419:17)
+    at parseBlockOrModuleBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1443:16)
+    at parseBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1417:10)
+    at parseProgram (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:229:10)
+    at parseTopLevel (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:203:25)
+    at parse (/home/runner/workspace/node_modules/@babel/parser/src/parser/index.ts:83:25)
+    at parse (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:4333:20)
+    at parse (/home/runner/workspace/node_modules/@babel/parser/src/index.ts:86:38)
+    at TransformPluginContext.handler (/home/runner/workspace/node_modules/@replit/vite-plugin-cartographer/dist/index.mjs:74:23)
+    at EnvironmentPluginContainer.transform (/home/runner/workspace/node_modules/vite/dist/node/chunks/config.js:28797:51)
+    at loadAndTransform (/home/runner/workspace/node_modules/vite/dist/node/chunks/config.js:22670:48)
+    at async DevEnvironment.warmupRequest (/home/runner/workspace/node_modules/vite/dist/node/chunks/config.js:34839:4) {
+  code: 'BABEL_PARSER_SYNTAX_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 1, column: 1, index: 1 },
+  pos: 1,
+  syntaxPlugin: undefined
+}
+2:53:56 PM [vite] (client) Pre-transform error: /home/runner/workspace/client/src/App.tsx: Unexpected token (1:1)
+
+> 1 | <<<<<<< HEAD
+    |  ^
+  2 | import { Switch, Route } from "wouter";
+  3 | import { queryClient } from "./lib/queryClient";
+  4 | import { QueryClientProvider } from "@tanstack/react-query";
+  Plugin: vite:react-babel
+  File: /home/runner/workspace/client/src/App.tsx:1:1
+  1  |  <<<<<<< HEAD
+     |   ^
+  2  |  import { Switch, Route } from "wouter";
+  3  |  import { queryClient } from "./lib/queryClient";
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.8.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.8.0
+npm notice To update run: npm install -g npm@11.8.0
+npm notice
