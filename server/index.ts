@@ -1,8 +1,8 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
+import fs from "fs";
 import path from "path";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
 import { resolveTenant } from "./tenant-middleware";
 import { seedDefaultTenant } from "./seed-default-tenant";
 import { storage } from "./storage";
@@ -12,6 +12,17 @@ import { dataCollectionService } from "./data-collection-service";
 import whatsappWebhookRouter from "./routes/whatsapp-webhook";
 import { authService } from "./auth-service";
 import { registerFleetLogixRoutes } from "./fleetlogix-routes";
+
+// Simple logging function
+function log(message: string, source = "express") {
+  const formattedTime = new Date().toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
 
 const app = express();
 
@@ -71,6 +82,16 @@ app.post("/api/auth/login", async (req, res) => {
     console.error("Login error:", error);
     res.status(500).json({ message: "Login failed" });
   }
+});
+
+// Health check endpoint for Docker
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV
+  });
 });
 
 // PUBLIC route for interview session by token (for candidates accessing their interview link)
@@ -254,9 +275,24 @@ app.use((req, res, next) => {
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
+    const { setupVite } = await import("./vite.js");
     await setupVite(app, server);
   } else {
-    serveStatic(app);
+    // Serve static files in production
+    const distPath = path.resolve(import.meta.dirname, "public");
+
+    if (!fs.existsSync(distPath)) {
+      throw new Error(
+        `Could not find the build directory: ${distPath}, make sure to build the client first`,
+      );
+    }
+
+    app.use(express.static(distPath));
+
+    // fall through to index.html if the file doesn't exist
+    app.use("*", (_req, res) => {
+      res.sendFile(path.resolve(distPath, "index.html"));
+    });
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

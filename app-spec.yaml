@@ -1,0 +1,79 @@
+databases:
+- cluster_name: aihr-postgres
+  engine: PG
+  name: db
+  production: true
+ingress:
+  rules:
+  - component:
+      name: api
+    match:
+      path:
+        prefix: /
+name: aihr-backend
+region: nyc
+services:
+- image:
+    registry: carta-ta
+    registry_type: DOCR
+    repository: aihr-backend
+    tag: latest
+  envs:
+  - key: DATABASE_URL
+    scope: RUN_TIME
+    type: SECRET
+    value: EV[1:c8sgGNv+rW9bCBr0qUdEUEs1fR6+Znin:4fRfraogMGiTuAunoGFP1S/Y/MwasdiKhhLOYHmR3mbJjg==]
+  - key: REDIS_URL
+    scope: RUN_TIME
+    value: redis://localhost:6379
+  - key: ENVIRONMENT
+    scope: RUN_AND_BUILD_TIME
+    value: production
+  - key: DEBUG
+    scope: RUN_TIME
+    value: "false"
+  - key: SECRET_KEY
+    scope: RUN_TIME
+    type: SECRET
+    value: EV[1:y3oy/Y6bnYd6VRhO9OSqi7crF/vgPjS3:Ok+AF8iCJeYe9dgW/BzQjEVhVQ4JFWzXf1SCo86agfL70UEf9EHgjy7zL6Mkgq4eY7bqUYZbn0J7hzA=]
+  - key: CORS_ORIGINS
+    scope: RUN_TIME
+    value: https://chet-ab4r.vercel.app,https://chet-brown.vercel.app,*
+  - key: STORAGE_TYPE
+    scope: RUN_TIME
+    value: local
+  - key: GROQ_API_KEY
+    scope: RUN_TIME
+    value: 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
+  - key: TAVUS_API_KEY
+    scope: RUN_TIME
+    value: 8bc5784c92854fccaab9a18fd6cd2b61
+  - key: HUMAI_API_KEY
+    scope: RUN_TIME
+    value: 0qAiCrJHqJvGEe98Ku3xFGRDJT9tHEeZu7z6MDSD
+  - key: HUMAI_SECRET_KEY
+    scope: RUN_TIME
+    value: V0Ir67cbscSmw6WFuhI3OwfwK3DpphZczW50LKyC
+  - key: ELEVENLABS_API_KEY
+    scope: RUN_TIME
+    value: sk_c4b1d78bead8a9b14ea3c92e12f2eb3ea5c40e98e0a3ef82
+  - key: WHATSAPP_API_TOKEN
+    scope: RUN_TIME
+    value: EAAVoZCx43YmIBO4q6rjC1omdNCBIkbNMLDlXNTOCK6RKwrC3jyqwGj6MPHj4oYJHHEKiLvN8tNy9xVA2ZAZBZA1LjUjpgZAf0FXrr0XjN08GfPsNs0DvR8lUVFKJLZC3y40HQHjWfZAtZA3IhGUGlN08EXx6f2qFX4BvJzMwrQ7BhCm4bkzqsAOh8gCcR2E7aZCZBUZD
+  - key: WHATSAPP_PHONE_NUMBER_ID
+    scope: RUN_TIME
+    value: "534691176412862"
+  - key: WHATSAPP_VERIFY_TOKEN
+    scope: RUN_TIME
+    value: my_webhook_token_12345
+  health_check:
+    failure_threshold: 3
+    http_path: /health
+    initial_delay_seconds: 180
+    period_seconds: 20
+    success_threshold: 1
+    timeout_seconds: 15
+  http_port: 5000
+  instance_count: 1
+  instance_size_slug: basic-xs
+  name: api
