@@ -1,10 +1,15 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
-import { ArrowRight, PlayCircle } from "lucide-react";
+import { ArrowRight, PlayCircle, X } from "lucide-react";
 import { Link } from "wouter";
 import heroBg from "@assets/generated_images/abstract_tech_network_visualization.png";
+import demoVideo from "@/assets/videos/ahc-explainer.mp4";
 
 export function Hero() {
+  const [showDemo, setShowDemo] = useState(false);
+
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden bg-background">
       {/* Background Image with Overlay */}
@@ -67,7 +72,13 @@ export function Hero() {
                 Start Transformation <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="h-12 px-8 text-base border-border hover:bg-accent">
+            <Button 
+              size="lg" 
+              variant="outline" 
+              className="h-12 px-8 text-base border-border hover:bg-accent"
+              onClick={() => setShowDemo(true)}
+              data-testid="button-watch-demo"
+            >
               <PlayCircle className="mr-2 w-4 h-4" /> Watch Demo
             </Button>
           </motion.div>
@@ -76,6 +87,29 @@ export function Hero() {
 
       {/* Decorative Elements */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+
+      {/* Demo Video Modal */}
+      <Dialog open={showDemo} onOpenChange={setShowDemo}>
+        <DialogContent className="max-w-4xl p-0 bg-black border-0 overflow-hidden">
+          <DialogTitle className="sr-only">AHC Platform Demo Video</DialogTitle>
+          <button
+            onClick={() => setShowDemo(false)}
+            className="absolute top-4 right-4 z-50 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+            data-testid="button-close-demo"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <video
+            src={demoVideo}
+            controls
+            autoPlay
+            className="w-full h-auto max-h-[80vh]"
+            data-testid="video-demo"
+          >
+            Your browser does not support the video tag.
+          </video>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
