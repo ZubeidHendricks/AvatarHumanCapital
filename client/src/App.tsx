@@ -67,6 +67,7 @@ import RecruitmentSetup from "@/pages/recruitment-setup";
 import IntegritySetup from "@/pages/integrity-setup";
 import OfferManagement from "@/pages/offer-management";
 import EmployeeOnboarding from "@/pages/employee-onboarding";
+import TemplatesPage from "@/pages/templates";
 
 function Router() {
   return (
@@ -120,6 +121,7 @@ function Router() {
       <Route path="/social-screening-agent" component={SocialScreeningAgent} />
       <Route path="/cv-template" component={CVTemplatePage} />
       <Route path="/cv-templates" component={CVTemplatesPage} />
+      <Route path="/templates" component={TemplatesPage} />
       <Route path="/data-sources" component={DataSourcesPage} />
       <Route path="/data-sources/:id" component={DataSourceDetailPage} />
       <Route path="/self-assessment/:token" component={SelfAssessment} />
