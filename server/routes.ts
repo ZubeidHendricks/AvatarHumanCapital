@@ -880,7 +880,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(template || null);
     } catch (error) {
       console.error("Error fetching active document template:", error);
-      res.status(500).json({ message: "Failed to fetch active CV template" });
+      res.status(500).json({ message: "Failed to fetch active document template" });
+    }
+  });
+
+  // ============= DOCUMENT GENERATION ENDPOINTS =============
+
+  const documentGenerationSchema = z.object({
+    fullName: z.string().min(1, "Full name is required"),
+    jobTitle: z.string().min(1, "Job title is required"),
+    startDate: z.string().min(1, "Start date is required"),
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+    idNumber: z.string().optional(),
+    address: z.string().optional(),
+    department: z.string().optional(),
+    salary: z.string().optional(),
+    currency: z.string().optional(),
+    manager: z.string().optional(),
+    probationPeriod: z.string().optional(),
+    workingHours: z.string().optional(),
+    leaveEntitlement: z.string().optional(),
+    benefits: z.array(z.string()).optional(),
+    companyAddress: z.string().optional(),
+  });
+
+  app.post("/api/documents/generate/:type", async (req, res) => {
+    try {
+      const { type } = req.params;
+      const validTypes = ['offer_letter', 'welcome_letter', 'employee_handbook', 'nda', 'employment_contract'];
+      
+      if (!validTypes.includes(type)) {
+        return res.status(400).json({ message: `Invalid document type. Must be one of: ${validTypes.join(', ')}` });
+      }
+
+      const parseResult = documentGenerationSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+        });
+      }
+
+      const { createDocumentGenerator } = await import("./document-generator");
+      const docGenerator = createDocumentGenerator(storage);
+
+      const tenantConfig = await storage.getTenantConfig(req.tenant.id);
+      const employeeData = {
+        ...parseResult.data,
+        companyName: tenantConfig?.companyName || req.tenant.subdomain || 'Company',
+      };
+
+      const result = await docGenerator.generateDocument(
+        req.tenant.id,
+        type as any,
+        employeeData
+      );
+
+      res.setHeader('Content-Type', result.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+      res.send(result.buffer);
+    } catch (error) {
+      console.error("Error generating document:", error);
+      res.status(500).json({ message: "Failed to generate document", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  app.post("/api/candidates/:id/generate-document/:type", async (req, res) => {
+    try {
+      const { id, type } = req.params;
+      const validTypes = ['offer_letter', 'welcome_letter', 'employee_handbook', 'nda', 'employment_contract'];
+      
+      if (!validTypes.includes(type)) {
+        return res.status(400).json({ message: `Invalid document type. Must be one of: ${validTypes.join(', ')}` });
+      }
+
+      const candidate = await storage.getCandidate(req.tenant.id, id);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      const { createDocumentGenerator } = await import("./document-generator");
+      const docGenerator = createDocumentGenerator(storage);
+
+      const tenantConfig = await storage.getTenantConfig(req.tenant.id);
+      
+      const employeeData = {
+        fullName: candidate.fullName,
+        email: candidate.email || undefined,
+        phone: candidate.phone || undefined,
+        idNumber: (candidate as any).idNumber || undefined,
+        jobTitle: (candidate as any).jobTitle || req.body.jobTitle || 'Position',
+        department: req.body.department || undefined,
+        startDate: req.body.startDate || new Date().toLocaleDateString('en-ZA'),
+        salary: req.body.salary || (candidate as any).expectedSalary || undefined,
+        currency: req.body.currency || 'ZAR',
+        manager: req.body.manager || undefined,
+        probationPeriod: req.body.probationPeriod || '3 months',
+        workingHours: req.body.workingHours || '08:00 - 17:00, Monday to Friday',
+        leaveEntitlement: req.body.leaveEntitlement || '15 days annual leave',
+        benefits: req.body.benefits || [],
+        companyName: tenantConfig?.companyName || req.tenant.subdomain || 'Company',
+        companyAddress: req.body.companyAddress || undefined,
+      };
+
+      const result = await docGenerator.generateDocument(
+        req.tenant.id,
+        type as any,
+        employeeData
+      );
+
+      res.setHeader('Content-Type', result.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+      res.send(result.buffer);
+    } catch (error) {
+      console.error("Error generating document for candidate:", error);
+      res.status(500).json({ message: "Failed to generate document", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 
