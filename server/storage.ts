@@ -192,6 +192,9 @@ import {
   cvTemplates,
   type CvTemplate,
   type InsertCvTemplate,
+  documentTemplates,
+  type DocumentTemplate,
+  type InsertDocumentTemplate,
   weighbridgeSlips,
   type WeighbridgeSlip,
   type InsertWeighbridgeSlip,
@@ -586,6 +589,14 @@ export interface IStorage {
   createCvTemplate(tenantId: string, template: InsertCvTemplate): Promise<CvTemplate>;
   activateCvTemplate(tenantId: string, id: string): Promise<CvTemplate | undefined>;
   deleteCvTemplate(tenantId: string, id: string): Promise<boolean>;
+  
+  // Document Templates (Offer Letters, Welcome Letters, etc.)
+  getDocumentTemplates(tenantId: string, templateType?: string): Promise<DocumentTemplate[]>;
+  getDocumentTemplateById(tenantId: string, id: string): Promise<DocumentTemplate | undefined>;
+  getActiveDocumentTemplate(tenantId: string, templateType: string): Promise<DocumentTemplate | undefined>;
+  createDocumentTemplate(tenantId: string, template: InsertDocumentTemplate): Promise<DocumentTemplate>;
+  activateDocumentTemplate(tenantId: string, id: string): Promise<DocumentTemplate | undefined>;
+  deleteDocumentTemplate(tenantId: string, id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3440,6 +3451,69 @@ export class DatabaseStorage implements IStorage {
   async deleteCvTemplate(tenantId: string, id: string): Promise<boolean> {
     const result = await db.delete(cvTemplates)
       .where(and(eq(cvTemplates.id, id), eq(cvTemplates.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ================================
+  // DOCUMENT TEMPLATES
+  // ================================
+
+  async getDocumentTemplates(tenantId: string, templateType?: string): Promise<DocumentTemplate[]> {
+    if (templateType) {
+      return await db.select().from(documentTemplates)
+        .where(and(eq(documentTemplates.tenantId, tenantId), eq(documentTemplates.templateType, templateType)))
+        .orderBy(desc(documentTemplates.createdAt));
+    }
+    return await db.select().from(documentTemplates)
+      .where(eq(documentTemplates.tenantId, tenantId))
+      .orderBy(desc(documentTemplates.createdAt));
+  }
+
+  async getDocumentTemplateById(tenantId: string, id: string): Promise<DocumentTemplate | undefined> {
+    const [template] = await db.select().from(documentTemplates)
+      .where(and(eq(documentTemplates.id, id), eq(documentTemplates.tenantId, tenantId)));
+    return template || undefined;
+  }
+
+  async getActiveDocumentTemplate(tenantId: string, templateType: string): Promise<DocumentTemplate | undefined> {
+    const [template] = await db.select().from(documentTemplates)
+      .where(and(
+        eq(documentTemplates.tenantId, tenantId),
+        eq(documentTemplates.templateType, templateType),
+        eq(documentTemplates.isActive, 1)
+      ));
+    return template || undefined;
+  }
+
+  async createDocumentTemplate(tenantId: string, template: InsertDocumentTemplate): Promise<DocumentTemplate> {
+    const [newTemplate] = await db.insert(documentTemplates).values({
+      ...template,
+      tenantId,
+    }).returning();
+    return newTemplate;
+  }
+
+  async activateDocumentTemplate(tenantId: string, id: string): Promise<DocumentTemplate | undefined> {
+    const template = await this.getDocumentTemplateById(tenantId, id);
+    if (!template) return undefined;
+
+    await db.update(documentTemplates)
+      .set({ isActive: 0, updatedAt: new Date() })
+      .where(and(
+        eq(documentTemplates.tenantId, tenantId),
+        eq(documentTemplates.templateType, template.templateType)
+      ));
+    
+    const [updated] = await db.update(documentTemplates)
+      .set({ isActive: 1, updatedAt: new Date() })
+      .where(and(eq(documentTemplates.id, id), eq(documentTemplates.tenantId, tenantId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteDocumentTemplate(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(documentTemplates)
+      .where(and(eq(documentTemplates.id, id), eq(documentTemplates.tenantId, tenantId)));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 

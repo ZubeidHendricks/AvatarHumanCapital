@@ -2496,6 +2496,37 @@ export type InsertCvTemplate = z.infer<typeof insertCvTemplateSchema>;
 export type CvTemplate = typeof cvTemplates.$inferSelect;
 
 // ============================================
+// DOCUMENT TEMPLATES (Offer Letters, Welcome Letters, Handbooks, etc.)
+// ============================================
+
+export const documentTemplates = pgTable("document_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  templateType: text("template_type").notNull(), // 'offer_letter', 'welcome_letter', 'employee_handbook', 'nda', 'employment_contract'
+  name: text("name").notNull(),
+  originalFilename: text("original_filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  filePath: text("file_path").notNull(),
+  isActive: integer("is_active").notNull().default(0),
+  rawText: text("raw_text"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("document_templates_tenant_id_idx").on(table.tenantId),
+  templateTypeIdx: index("document_templates_type_idx").on(table.templateType),
+  isActiveIdx: index("document_templates_is_active_idx").on(table.isActive),
+}));
+
+export const insertDocumentTemplateSchema = createInsertSchema(documentTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDocumentTemplate = z.infer<typeof insertDocumentTemplateSchema>;
+export type DocumentTemplate = typeof documentTemplates.$inferSelect;
+
+// ============================================
 // FLEETLOGIX (matches actual database structure)
 // ============================================
 
