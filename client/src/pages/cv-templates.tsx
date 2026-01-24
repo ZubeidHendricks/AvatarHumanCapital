@@ -25,7 +25,9 @@ import {
   ScrollText,
   BookOpen,
   ShieldCheck,
-  FileCheck
+  FileCheck,
+  Download,
+  Sparkles
 } from "lucide-react";
 import type { CvTemplate, DocumentTemplate } from "@shared/schema";
 
@@ -217,17 +219,51 @@ function TemplateCard({
   );
 }
 
+interface GenerateFormData {
+  fullName: string;
+  email: string;
+  phone: string;
+  jobTitle: string;
+  department: string;
+  startDate: string;
+  salary: string;
+  currency: string;
+  manager: string;
+  probationPeriod: string;
+  workingHours: string;
+  leaveEntitlement: string;
+}
+
+const defaultFormData: GenerateFormData = {
+  fullName: "",
+  email: "",
+  phone: "",
+  jobTitle: "",
+  department: "",
+  startDate: new Date().toISOString().split('T')[0],
+  salary: "",
+  currency: "ZAR",
+  manager: "",
+  probationPeriod: "3 months",
+  workingHours: "08:00 - 17:00, Monday to Friday",
+  leaveEntitlement: "15 days annual leave",
+};
+
 function TemplateSection({ templateType }: { templateType: TemplateType }) {
   const queryClient = useQueryClient();
   const tenantKey = useTenantQueryKey(templateType.queryKey);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [templateName, setTemplateName] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [formData, setFormData] = useState<GenerateFormData>(defaultFormData);
 
   const isCvTemplate = templateType.id === "cv";
+  const canGenerate = !isCvTemplate;
 
   const { data: templates = [], isLoading } = useQuery<(CvTemplate | DocumentTemplate)[]>({
     queryKey: tenantKey,
@@ -346,6 +382,56 @@ function TemplateSection({ templateType }: { templateType: TemplateType }) {
     }
   };
 
+  const handleGenerateDocument = async () => {
+    if (!formData.fullName || !formData.jobTitle || !formData.startDate) {
+      toast.error("Please fill in required fields: Full Name, Job Title, and Start Date");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch(`/api/documents/generate/${templateType.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to generate document");
+      }
+
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch ? filenameMatch[1] : `${templateType.id}_${formData.fullName.replace(/\s+/g, '_')}.docx`;
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success("Document generated and downloaded successfully!");
+      setGenerateDialogOpen(false);
+      setFormData(defaultFormData);
+    } catch (error) {
+      console.error("Error generating document:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to generate document");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const updateFormField = (field: keyof GenerateFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleUpload = () => {
     if (!selectedFile) return;
     
@@ -371,13 +457,205 @@ function TemplateSection({ templateType }: { templateType: TemplateType }) {
           <p className="text-muted-foreground">{templateType.description}</p>
         </div>
         
-        <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid={`button-upload-${templateType.id}`} className="gap-2">
-              <Upload className="w-4 h-4" />
-              Upload Template
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          {canGenerate && (
+            <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" data-testid={`button-generate-${templateType.id}`} className="gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  Generate Document
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    Generate {templateType.label.replace(/s$/, '')}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Fill in the employee details below. AI will generate a professional document based on your active template.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">Full Name *</Label>
+                      <Input
+                        id="fullName"
+                        data-testid="input-gen-fullname"
+                        placeholder="John Smith"
+                        value={formData.fullName}
+                        onChange={(e) => updateFormField("fullName", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        data-testid="input-gen-email"
+                        placeholder="john@company.com"
+                        value={formData.email}
+                        onChange={(e) => updateFormField("email", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input
+                        id="phone"
+                        data-testid="input-gen-phone"
+                        placeholder="+27 12 345 6789"
+                        value={formData.phone}
+                        onChange={(e) => updateFormField("phone", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="jobTitle">Job Title *</Label>
+                      <Input
+                        id="jobTitle"
+                        data-testid="input-gen-jobtitle"
+                        placeholder="Software Engineer"
+                        value={formData.jobTitle}
+                        onChange={(e) => updateFormField("jobTitle", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Department</Label>
+                      <Input
+                        id="department"
+                        data-testid="input-gen-department"
+                        placeholder="Engineering"
+                        value={formData.department}
+                        onChange={(e) => updateFormField("department", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="startDate">Start Date *</Label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        data-testid="input-gen-startdate"
+                        value={formData.startDate}
+                        onChange={(e) => updateFormField("startDate", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="salary">Salary</Label>
+                      <Input
+                        id="salary"
+                        data-testid="input-gen-salary"
+                        placeholder="50000"
+                        value={formData.salary}
+                        onChange={(e) => updateFormField("salary", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="currency">Currency</Label>
+                      <Input
+                        id="currency"
+                        data-testid="input-gen-currency"
+                        placeholder="ZAR"
+                        value={formData.currency}
+                        onChange={(e) => updateFormField("currency", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="manager">Manager</Label>
+                      <Input
+                        id="manager"
+                        data-testid="input-gen-manager"
+                        placeholder="Jane Doe"
+                        value={formData.manager}
+                        onChange={(e) => updateFormField("manager", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="probationPeriod">Probation Period</Label>
+                      <Input
+                        id="probationPeriod"
+                        data-testid="input-gen-probation"
+                        placeholder="3 months"
+                        value={formData.probationPeriod}
+                        onChange={(e) => updateFormField("probationPeriod", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="workingHours">Working Hours</Label>
+                    <Input
+                      id="workingHours"
+                      data-testid="input-gen-hours"
+                      placeholder="08:00 - 17:00, Monday to Friday"
+                      value={formData.workingHours}
+                      onChange={(e) => updateFormField("workingHours", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="leaveEntitlement">Leave Entitlement</Label>
+                    <Input
+                      id="leaveEntitlement"
+                      data-testid="input-gen-leave"
+                      placeholder="15 days annual leave"
+                      value={formData.leaveEntitlement}
+                      onChange={(e) => updateFormField("leaveEntitlement", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setGenerateDialogOpen(false)}
+                    disabled={isGenerating}
+                    data-testid="button-cancel-generate"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleGenerateDocument}
+                    disabled={isGenerating || !formData.fullName || !formData.jobTitle || !formData.startDate}
+                    data-testid="button-submit-generate"
+                    className="gap-2"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Generate & Download
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid={`button-upload-${templateType.id}`} className="gap-2">
+                <Upload className="w-4 h-4" />
+                Upload Template
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Upload {templateType.label.replace(/s$/, '')}</DialogTitle>
@@ -472,6 +750,7 @@ function TemplateSection({ templateType }: { templateType: TemplateType }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {isLoading ? (
