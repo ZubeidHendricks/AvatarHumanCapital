@@ -59,7 +59,6 @@ export function Sidebar() {
         { name: "Integrity Setup", href: "/integrity-setup", icon: Shield, module: "integrity" },
         { name: "Offer Management", href: "/offer-management", icon: FileText },
         { name: "Employee Onboarding", href: "/employee-onboarding", icon: Building2, module: "onboarding" },
-        { name: "Time & Attendance", href: "/hr-dashboard?tab=time-attendance", icon: Cpu },
       ]
     },
     {
