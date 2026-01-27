@@ -54,7 +54,6 @@ export function Sidebar() {
     {
       title: "HR COMMAND CENTRE",
       items: [
-        { name: "HR Dashboard", href: "/dashboard-builder", icon: LayoutGrid },
         { name: "HR Command", href: "/hr-dashboard", icon: Users, module: "hr_management" },
         { name: "Recruitment Setup", href: "/recruitment-setup", icon: Settings },
         { name: "Integrity Setup", href: "/integrity-setup", icon: Shield, module: "integrity" },
