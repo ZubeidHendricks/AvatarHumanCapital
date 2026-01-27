@@ -1,0 +1,77 @@
+D8tavision Platform Enhancements
+
+1	HR COMMAND CENTRE
+
+1.1	HR Dashboard
+•	Change the name HR Dashboard on the left menu to HR Command
+
+•	Offer (on HR Dashboard)
+•	When I click on the Offer tab in the HR Command Centre I only want to see the “Offer Management” Page
+•	Remove the “Are You Ready to Make an Offer” box
+•	Move the template download buttons to “Offer Setup” selection on the menu items on the left.
+
+•	Onboarding (On HR Dashboard)
+•	When I click on the Onboarding tab in the HR Command Centre I only want to see the Employee Onboarding Page
+•	Remove the “Automate New Hiring Provision” box
+•	Move any template download buttons to “Onboarding Setup” selection on the left hand menu dropdown list
+
+1.2	Offer Management (Menu item on left)
+•	Change the name to “Offer Setup”
+•	I only want to see the option to upload the various offer templates when I click on this tab
+•	This is where I want to download all the relevant templates that relate to making an offer to the candidate
+
+1.3	Employee Onboarding (Menu item on left)
+•	Change the name to “Employee Onboarding Setup”
+•	I only want to see the options to upload the various Onboarding Document templates when I click on this tab
+•	This is where I want to download all the relevant templates that relate to onboarding the candidate
+
+1.4	Workforce Intelligence (under Performance & Analytics Menu Item)
+•	Move “Workforce Intelligence” that is currently under the Performance & Analytics Menu item to the HR Command Centre Menu and place it after Employee Onboarding Setup
+
+1.5	AI Recommendations (under Performance & Analytics Menu Item)
+•	Move “AI Recommendations” that is currently under the Performance & Analytics Menu item to the HR Command Centre Menu and place it after Workforce Intelligence
+
+1.6	Dashboard Builder (under AI & Automation Menu Item)
+•	Move “Dashboard Builder” that is currently under the AI & Automation Menu item to the HR Command Centre menu item and place it at the top as the 1st item under HR Command Centre and before HR Command menu item
+•	Rename Dashboard Builder to HR Dashboard
+
+2	RECRUITMENT
+
+2.1	Pipeline Board
+•	Change the name “Pipeline Board” to “Candidate Pipeline”
+•	Move the “Recruitment Pipeline” tab up so that it ss between Recruitment AI and “Candidate Pipeline”
+•	When I click on the candidate in the various pipeline stage I would like to see the detail of each candidate
+
+2.2	Candidate Pipeline
+•	Change the name “Candidate Pipeline” to “Candidate Status”
+•	Move “Candidate Status” tab down so that it is after “Candidate Pipeline”
+
+2.3	Interview Console
+•	Move “Interview Console” tab down so that falls under the “INTERVIEW” menu item and place it before “Voice Interview”
+
+2.4	Recruitment Dashboard
+•	Move “Recruitment Dashboard” that is currently under the “Performance & Analytics” Menu item to the “RECRUITMENT” menu item and place it at the top as the 1st item before “AI Recruitment” tab
+•	This must have dashboard building capabilities so that I can customise this dashboard
+
+Additional commentary
+-	The ability to shortlist candidates needs to be reviewed 
+
+3	INTERVIEWS
+
+3.1	Face to Face Interview (New tab)
+•	Ad an option to set up a Face-to-face Interview 
+•	Place this item after “Interview Console” tab and before “Voice Interview” tab
+
+4	PERFMORMANCE AND ANALYTICS
+•	Change name to PERFORMANCE MANAGEMENT
+
+4.1	HR Performance
+4.1.1	This must have dashboard building capabilities so that I can add other performance metrics to the current layout
+4.1.2	This must be the first item under PERFORMANCE MANAGEMENT before KPI Management. 
+
+4.2	Time & Attendance
+•	Move the “Time & attendance” tab that is currently under “TRAINING” menu item up to this PERFORMANCE MANAGMEENT menu so that it  the last item on the menu under HR Performance 
+
+
+5	AI & AUTOMATION
+•	“AI Recommendations” and “Dashboard Builder” have been move to HR COMMAND CENTRE” so this menu item is no longer required.

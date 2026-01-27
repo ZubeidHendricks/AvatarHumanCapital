@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { jobsService, candidateService, api } from "@/lib/api";
 import { useTenantQueryKey } from "@/hooks/useTenant";
@@ -11,6 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { JobCreationChat } from "@/components/job-creation-chat";
+import OfferManagement from "@/pages/offer-management";
+import EmployeeOnboarding from "@/pages/employee-onboarding";
 import { 
   Users, 
   UserPlus, 
@@ -2073,131 +2075,14 @@ BENEFITS:
             </div>
           </TabsContent>
 
-          {/* OFFER TAB */}
+          {/* OFFER TAB - Embedded Offer Management Page */}
           <TabsContent value="offer" className="space-y-6">
-            <div className="rounded-lg bg-green-50 dark:bg-green-900 border-2 border-green-200 dark:border-green-700 p-6 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-                  <FileText className="w-5 h-5 text-green-500" />
-                  Ready to make an offer?
-                </h3>
-                <p className="text-gray-900 dark:text-gray-100 font-semibold text-sm mt-1">
-                  Generate professional offer letters, contracts, and NDAs for your selected candidates.
-                </p>
-              </div>
-              <Link href="/offer-management">
-                <Button className="bg-green-500 hover:bg-green-600 text-white font-semibold">
-                  Go to Offer Management
-                </Button>
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="border-2 border-green-200 dark:border-green-700">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-green-500" />
-                    Standard Offers
-                  </CardTitle>
-                  <CardDescription>Generate standard employment offer letters</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link href="/offer-management">
-                    <Button variant="outline" className="w-full">Create Offer Letter</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-
-              <Card className="border-2 border-blue-200 dark:border-blue-700">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileCheck className="w-5 h-5 text-blue-500" />
-                    Contract Offers
-                  </CardTitle>
-                  <CardDescription>Generate detailed employment contracts</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link href="/offer-management">
-                    <Button variant="outline" className="w-full">Create Contract</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-
-              <Card className="border-2 border-purple-200 dark:border-purple-700">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-purple-500" />
-                    NDA Documents
-                  </CardTitle>
-                  <CardDescription>Generate non-disclosure agreements</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link href="/offer-management">
-                    <Button variant="outline" className="w-full">Create NDA</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            </div>
+            <OfferManagement />
           </TabsContent>
 
-          {/* ONBOARDING TAB */}
+          {/* ONBOARDING TAB - Embedded Employee Onboarding Page */}
           <TabsContent value="onboarding" className="space-y-6">
-            
-             {/* AI Onboarding Banner */}
-            <div className="rounded-lg bg-orange-50 dark:bg-orange-900 border-2 border-orange-200 dark:border-orange-700 p-6 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-                  <Laptop className="w-5 h-5 text-amber-400" />
-                  Automate new hire provisioning?
-                </h3>
-                <p className="text-gray-900 dark:text-gray-100 font-semibold text-sm mt-1">
-                  Use the Onboarding Agent to manage welcome packs, equipment orders, and digital paperwork.
-                </p>
-              </div>
-              <Link href="/onboarding-agent">
-                <Button className="bg-amber-500 text-amber-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20">
-                  Start Onboarding
-                </Button>
-              </Link>
-            </div>
-
-             <Card className="border-border bg-card">
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white font-bold flex items-center gap-2">
-                  <UserPlus className="w-5 h-5 text-primary" />
-                  Active Onboarding Workflows
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div>
-                    <div className="flex justify-between mb-2">
-                      <span className="font-medium">Marcus Johnson - Operations Lead</span>
-                      <span className="text-sm text-gray-900 dark:text-gray-100 font-semibold">75% Complete</span>
-                    </div>
-                    <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-primary w-[75%]" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    {onboardingTasks.map((task) => (
-                      <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-white/5">
-                        {task.status === "Completed" ? (
-                          <CheckCircle2 className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30" />
-                        )}
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{task.task}</p>
-                          <p className="text-xs text-gray-900 dark:text-gray-100 font-semibold">Assigned to: {task.assignee}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <EmployeeOnboarding />
           </TabsContent>
 
           {/* PERFORMANCE TAB - Employee Performance Management */}

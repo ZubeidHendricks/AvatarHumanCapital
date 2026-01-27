@@ -54,39 +54,43 @@ export function Sidebar() {
     {
       title: "HR COMMAND CENTRE",
       items: [
-        { name: "HR Dashboard", href: "/hr-dashboard", icon: Users, module: "hr_management" },
+        { name: "HR Dashboard", href: "/dashboard-builder", icon: LayoutGrid },
+        { name: "HR Command", href: "/hr-dashboard", icon: Users, module: "hr_management" },
         { name: "Recruitment Setup", href: "/recruitment-setup", icon: Settings },
         { name: "Integrity Setup", href: "/integrity-setup", icon: Shield, module: "integrity" },
-        { name: "Offer Management", href: "/offer-management", icon: FileText },
-        { name: "Employee Onboarding", href: "/employee-onboarding", icon: Building2, module: "onboarding" },
+        { name: "Offer Setup", href: "/offer-setup", icon: FileText },
+        { name: "Employee Onboarding Setup", href: "/onboarding-setup", icon: Building2, module: "onboarding" },
+        { name: "Workforce Intelligence", href: "/workforce-intelligence", icon: TrendingUp },
+        { name: "AI Recommendations", href: "/recommendations", icon: Sparkles },
       ]
     },
     {
       title: "RECRUITMENT",
       items: [
+        { name: "Recruitment Dashboard", href: "/recruitment-dashboard", icon: TrendingUp },
         { name: "AI Recruitment", href: "/recruitment-agent", icon: UserSearch, module: "recruitment" },
-        { name: "Candidate Pipeline", href: "/candidate-pipeline", icon: Briefcase },
-        { name: "Pipeline Board", href: "/pipeline-board", icon: LayoutGrid },
+        { name: "Candidate Pipeline", href: "/pipeline-board", icon: LayoutGrid },
+        { name: "Candidate Status", href: "/candidate-pipeline", icon: Briefcase },
         { name: "Import Candidates", href: "/external-candidates", icon: UserPlus },
-        { name: "Interview Console", href: "/interview-console", icon: ClipboardList },
       ]
     },
     {
       title: "INTERVIEWS",
       items: [
+        { name: "Interview Console", href: "/interview-console", icon: ClipboardList },
+        { name: "Face to Face Interview", href: "/interview/face-to-face", icon: Users },
         { name: "Voice Interview", href: "/interview/voice", icon: Mic },
         { name: "Video Interview", href: "/interview/video", icon: Video },
       ]
     },
     {
-      title: "PERFORMANCE & ANALYTICS",
+      title: "PERFORMANCE MANAGEMENT",
       items: [
+        { name: "HR Performance", href: "/kpi-hr-dashboard", icon: BarChart3 },
         { name: "KPI Management", href: "/kpi-management", icon: Target },
         { name: "My KPI Review", href: "/kpi-review", icon: Star },
         { name: "Manager Review", href: "/kpi-manager-review", icon: UserCheck },
-        { name: "HR Performance", href: "/kpi-hr-dashboard", icon: BarChart3 },
-        { name: "Workforce Intelligence", href: "/workforce-intelligence", icon: TrendingUp },
-        { name: "Recruitment Dashboard", href: "/recruitment-dashboard", icon: TrendingUp },
+        { name: "Time & Attendance", href: "https://carta-ta-ji5og.ondigitalocean.app/", icon: Cpu, external: true },
       ]
     },
     {
@@ -105,18 +109,10 @@ export function Sidebar() {
       ]
     },
     {
-      title: "AI & AUTOMATION",
-      items: [
-        { name: "AI Recommendations", href: "/recommendations", icon: Sparkles },
-        { name: "Dashboard Builder", href: "/dashboard-builder", icon: LayoutGrid },
-      ]
-    },
-    {
-      title: "LEARNING",
+      title: "TRAINING",
       items: [
         { name: "LMS Dashboard", href: "http://165.227.113.197/", icon: BookOpen, external: true },
         { name: "Attendance", href: "http://208.68.39.111/", icon: ClipboardList, external: true },
-        { name: "Time & Attendance", href: "https://carta-ta-ji5og.ondigitalocean.app/", icon: Target, external: true },
       ]
     },
     {

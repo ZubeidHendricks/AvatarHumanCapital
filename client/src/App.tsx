@@ -19,6 +19,9 @@ import ExecutiveDashboard from "@/pages/executive-dashboard";
 import RecruitmentDashboard from "@/pages/recruitment-dashboard";
 import InterviewVoice from "@/pages/interview-voice";
 import InterviewVideo from "@/pages/interview-video";
+import InterviewFaceToFace from "@/pages/interview-face-to-face";
+import OfferSetup from "@/pages/offer-setup";
+import OnboardingSetup from "@/pages/onboarding-setup";
 import CustomerOnboarding from "@/pages/customer-onboarding";
 import CandidatesList from "@/pages/candidates-list";
 import CandidateDetail from "@/pages/candidate-detail";
@@ -98,6 +101,7 @@ function Router() {
       <Route path="/hr-management-agent" component={HRManagementAgent} />
       <Route path="/interview/voice" component={InterviewVoice} />
       <Route path="/interview/video" component={InterviewVideo} />
+      <Route path="/interview/face-to-face" component={InterviewFaceToFace} />
       <Route path="/interview/invite/:token" component={InterviewInvite} />
       <Route path="/candidates-list" component={CandidatesList} />
       <Route path="/candidates/:id" component={CandidateDetail} />
@@ -132,7 +136,9 @@ function Router() {
       <Route path="/recruitment-setup" component={RecruitmentSetup} />
       <Route path="/integrity-setup" component={IntegritySetup} />
       <Route path="/offer-management" component={OfferManagement} />
+      <Route path="/offer-setup" component={OfferSetup} />
       <Route path="/employee-onboarding" component={EmployeeOnboarding} />
+      <Route path="/onboarding-setup" component={OnboardingSetup} />
       <Route component={NotFound} />
     </Switch>
   );
