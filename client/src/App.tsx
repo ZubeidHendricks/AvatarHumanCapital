@@ -16,6 +16,7 @@ import IntegrityAgent from "@/pages/integrity-agent";
 import OnboardingAgent from "@/pages/onboarding-agent";
 import HRManagementAgent from "@/pages/hr-management-agent";
 import ExecutiveDashboard from "@/pages/executive-dashboard";
+import ExecutiveDashboardCustom from "@/pages/executive-dashboard-custom";
 import RecruitmentDashboard from "@/pages/recruitment-dashboard";
 import InterviewVoice from "@/pages/interview-voice";
 import InterviewVideo from "@/pages/interview-video";
@@ -81,6 +82,7 @@ function Router() {
       <Route path="/hr" component={HRDashboard} />
       <Route path="/hr-dashboard" component={HRDashboard} />
       <Route path="/executive-dashboard" component={ExecutiveDashboard} />
+      <Route path="/executive-dashboard-custom" component={ExecutiveDashboardCustom} />
       <Route path="/recruitment-dashboard" component={RecruitmentDashboard} />
       <Route path="/admin-dashboard" component={AdminDashboard} />
       <Route path="/tenant-requests" component={TenantRequests} />
