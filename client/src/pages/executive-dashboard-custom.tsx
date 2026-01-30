@@ -41,6 +41,19 @@ import {
   Legend 
 } from "recharts";
 import { candidateService, jobsService, api } from "@/lib/api";
+import "react-grid-layout/css/styles.css";
+// @ts-expect-error - react-grid-layout types are incompatible but runtime works correctly
+import ReactGridLayout from "react-grid-layout";
+
+type LayoutItem = {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  minW?: number;
+  minH?: number;
+};
 
 interface ChartConfig {
   id: string;
@@ -48,6 +61,7 @@ interface ChartConfig {
   chartType: "bar" | "line" | "pie" | "area";
   dataSource: "candidates" | "jobs" | "employees" | "placements" | "payments" | "financialMetrics";
   xAxisField: string;
+  layout?: { x: number; y: number; w: number; h: number };
   yAxisField: string;
   aggregation: "count" | "sum" | "average";
 }
@@ -163,6 +177,60 @@ export default function ExecutiveDashboardCustom() {
         xAxisField: "department",
         yAxisField: "count",
         aggregation: "count"
+      },
+      {
+        id: "3",
+        title: "Quarterly Revenue",
+        chartType: "area",
+        dataSource: "financialMetrics",
+        xAxisField: "category",
+        yAxisField: "revenue",
+        aggregation: "sum"
+      },
+      {
+        id: "4",
+        title: "Quarterly Profit",
+        chartType: "line",
+        dataSource: "financialMetrics",
+        xAxisField: "category",
+        yAxisField: "profit",
+        aggregation: "sum"
+      },
+      {
+        id: "5",
+        title: "Employees by Department",
+        chartType: "bar",
+        dataSource: "employees",
+        xAxisField: "department",
+        yAxisField: "count",
+        aggregation: "count"
+      },
+      {
+        id: "6",
+        title: "Payments by Status",
+        chartType: "pie",
+        dataSource: "payments",
+        xAxisField: "status",
+        yAxisField: "count",
+        aggregation: "count"
+      },
+      {
+        id: "7",
+        title: "Candidate Sources",
+        chartType: "pie",
+        dataSource: "candidates",
+        xAxisField: "source",
+        yAxisField: "count",
+        aggregation: "count"
+      },
+      {
+        id: "8",
+        title: "Monthly Placements",
+        chartType: "bar",
+        dataSource: "placements",
+        xAxisField: "month",
+        yAxisField: "placements",
+        aggregation: "sum"
       }
     ];
   });
@@ -170,6 +238,65 @@ export default function ExecutiveDashboardCustom() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(charts));
   }, [charts]);
+
+  const [containerWidth, setContainerWidth] = useState(1200);
+  
+  useEffect(() => {
+    const updateWidth = () => {
+      const container = document.getElementById('exec-dashboard-grid');
+      if (container) {
+        setContainerWidth(container.offsetWidth);
+      }
+    };
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  const generateLayout = () => {
+    return charts.map((chart, index) => {
+      if (chart.layout) {
+        return {
+          i: chart.id,
+          x: chart.layout.x,
+          y: chart.layout.y,
+          w: chart.layout.w,
+          h: chart.layout.h,
+          minW: 1,
+          minH: 2
+        };
+      }
+      return {
+        i: chart.id,
+        x: (index % 2) * 6,
+        y: Math.floor(index / 2) * 3,
+        w: 6,
+        h: 3,
+        minW: 1,
+        minH: 2
+      };
+    });
+  };
+
+  const handleLayoutChange = (newLayout: LayoutItem[]) => {
+    setCharts(prevCharts => 
+      prevCharts.map(chart => {
+        const layoutItem = newLayout.find(l => l.i === chart.id);
+        if (layoutItem) {
+          return {
+            ...chart,
+            layout: {
+              x: layoutItem.x,
+              y: layoutItem.y,
+              w: layoutItem.w,
+              h: layoutItem.h
+            }
+          };
+        }
+        return chart;
+      })
+    );
+  };
   
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingChart, setEditingChart] = useState<ChartConfig | null>(null);
@@ -277,12 +404,13 @@ export default function ExecutiveDashboardCustom() {
     });
   };
 
-  const renderChart = (config: ChartConfig) => {
+  const renderChart = (config: ChartConfig, height: number = 300) => {
     const data = aggregateData(config.dataSource, config.xAxisField, config.yAxisField, config.aggregation);
+    const chartHeight = height;
     
     if (!data.length) {
       return (
-        <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        <div className="h-full flex items-center justify-center text-muted-foreground">
           No data available
         </div>
       );
@@ -291,11 +419,11 @@ export default function ExecutiveDashboardCustom() {
     switch (config.chartType) {
       case "bar":
         return (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
+              <XAxis dataKey="name" fontSize={12} />
+              <YAxis fontSize={12} />
               <Tooltip />
               <Legend />
               <Bar dataKey="value" fill="#8884d8" name={config.aggregation === "count" ? "Count" : config.yAxisField} />
@@ -304,11 +432,11 @@ export default function ExecutiveDashboardCustom() {
         );
       case "line":
         return (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
+              <XAxis dataKey="name" fontSize={12} />
+              <YAxis fontSize={12} />
               <Tooltip />
               <Legend />
               <Line type="monotone" dataKey="value" stroke="#8884d8" name={config.aggregation === "count" ? "Count" : config.yAxisField} />
@@ -317,7 +445,7 @@ export default function ExecutiveDashboardCustom() {
         );
       case "pie":
         return (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <PieChart>
               <Pie
                 data={data}
@@ -325,7 +453,7 @@ export default function ExecutiveDashboardCustom() {
                 cy="50%"
                 labelLine={false}
                 label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                outerRadius={100}
+                outerRadius={Math.min(chartHeight / 3, 80)}
                 fill="#8884d8"
                 dataKey="value"
               >
@@ -340,11 +468,11 @@ export default function ExecutiveDashboardCustom() {
         );
       case "area":
         return (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <RechartsAreaChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
+              <XAxis dataKey="name" fontSize={12} />
+              <YAxis fontSize={12} />
               <Tooltip />
               <Legend />
               <Area type="monotone" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} name={config.aggregation === "count" ? "Count" : config.yAxisField} />
@@ -612,45 +740,79 @@ export default function ExecutiveDashboardCustom() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {charts.map((chart) => (
-          <Card key={chart.id} className="relative" data-testid={`chart-card-${chart.id}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle className="text-lg">{chart.title}</CardTitle>
-                <CardDescription className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    {DATA_SOURCE_FIELDS[chart.dataSource]?.label}
-                  </Badge>
-                  <Badge variant="secondary" className="text-xs">
-                    {chart.xAxisField}
-                  </Badge>
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setEditingChart(chart)}
-                  data-testid={`button-edit-${chart.id}`}
-                >
-                  <Settings className="w-4 h-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => handleDeleteChart(chart.id)}
-                  data-testid={`button-delete-${chart.id}`}
-                >
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {renderChart(chart)}
-            </CardContent>
-          </Card>
-        ))}
+      <div className="flex items-center gap-4 mb-4 text-sm text-muted-foreground">
+        <GripVertical className="w-4 h-4" />
+        <span>Drag charts to reorder</span>
+        <span className="ml-2">Resize from corners</span>
+      </div>
+      
+      <div id="exec-dashboard-grid" className="w-full">
+        {charts.length > 0 && (
+          <ReactGridLayout
+            className="layout"
+            layout={generateLayout() as any}
+            cols={12}
+            rowHeight={100}
+            width={containerWidth}
+            onLayoutChange={(layout: any) => handleLayoutChange(layout)}
+            draggableHandle=".drag-handle"
+            isResizable={true}
+            isDraggable={true}
+            compactType="vertical"
+            preventCollision={false}
+            margin={[16, 16] as [number, number]}
+          >
+            {charts.map((chart) => {
+              const layout = chart.layout || { w: 6, h: 3 };
+              const height = layout.h * 100;
+              return (
+                <div key={chart.id} data-testid={`chart-card-${chart.id}`}>
+                  <Card className="h-full overflow-hidden border-2 hover:border-primary/50 transition-colors">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle cursor-move bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="w-4 h-4 text-muted-foreground" />
+                        <div>
+                          <CardTitle className="text-base">{chart.title}</CardTitle>
+                          <CardDescription className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              {DATA_SOURCE_FIELDS[chart.dataSource]?.label}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              {chart.xAxisField}
+                            </Badge>
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => setEditingChart(chart)}
+                          data-testid={`button-edit-${chart.id}`}
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => handleDeleteChart(chart.id)}
+                          data-testid={`button-delete-${chart.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      {renderChart(chart, Math.max(height - 80, 150))}
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
+          </ReactGridLayout>
+        )}
       </div>
 
       {charts.length === 0 && (

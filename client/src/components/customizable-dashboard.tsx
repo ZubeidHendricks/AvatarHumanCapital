@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,9 @@ import {
   Plus,
   Settings,
   Trash2,
-  Save
+  Save,
+  GripVertical,
+  Maximize2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { 
@@ -34,6 +36,19 @@ import {
   Cell, 
   Legend 
 } from "recharts";
+import "react-grid-layout/css/styles.css";
+// @ts-expect-error - react-grid-layout types are incompatible but runtime works correctly
+import ReactGridLayout from "react-grid-layout";
+
+type LayoutItem = {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  minW?: number;
+  minH?: number;
+};
 
 export interface ChartConfig {
   id: string;
@@ -43,6 +58,7 @@ export interface ChartConfig {
   xAxisField: string;
   yAxisField: string;
   aggregation: "count" | "sum" | "average";
+  layout?: { x: number; y: number; w: number; h: number };
 }
 
 export interface DataSourceConfig {
@@ -94,6 +110,7 @@ export function CustomizableDashboard({
     return initialCharts;
   });
   
+  const [containerWidth, setContainerWidth] = useState(1200);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingChart, setEditingChart] = useState<ChartConfig | null>(null);
   const [newChart, setNewChart] = useState<Partial<ChartConfig>>({
@@ -110,6 +127,64 @@ export function CustomizableDashboard({
     }
     onChartsChange?.(charts);
   }, [charts, storageKey, onChartsChange]);
+
+  useEffect(() => {
+    const updateWidth = () => {
+      const container = document.getElementById('dashboard-grid-container');
+      if (container) {
+        setContainerWidth(container.offsetWidth);
+      }
+    };
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  const generateLayout = useCallback(() => {
+    const colCount = columns === 1 ? 1 : columns === 3 ? 3 : 2;
+    return charts.map((chart, index) => {
+      if (chart.layout) {
+        return {
+          i: chart.id,
+          x: chart.layout.x,
+          y: chart.layout.y,
+          w: chart.layout.w,
+          h: chart.layout.h,
+          minW: 1,
+          minH: 2
+        };
+      }
+      return {
+        i: chart.id,
+        x: (index % colCount) * Math.floor(12 / colCount),
+        y: Math.floor(index / colCount) * 3,
+        w: Math.floor(12 / colCount),
+        h: 3,
+        minW: 1,
+        minH: 2
+      };
+    });
+  }, [charts, columns]);
+
+  const handleLayoutChange = (newLayout: LayoutItem[]) => {
+    setCharts(prevCharts => 
+      prevCharts.map(chart => {
+        const layoutItem = newLayout.find(l => l.i === chart.id);
+        if (layoutItem) {
+          return {
+            ...chart,
+            layout: {
+              x: layoutItem.x,
+              y: layoutItem.y,
+              w: layoutItem.w,
+              h: layoutItem.h
+            }
+          };
+        }
+        return chart;
+      })
+    );
+  };
 
   const aggregateData = (dataSource: string, xField: string, yField: string, aggregation: string) => {
     const data = getData(dataSource);
@@ -140,12 +215,13 @@ export function CustomizableDashboard({
     });
   };
 
-  const renderChart = (config: ChartConfig) => {
+  const renderChart = (config: ChartConfig, height: number) => {
     const data = aggregateData(config.dataSource, config.xAxisField, config.yAxisField, config.aggregation);
+    const chartHeight = Math.max(height - 80, 150);
     
     if (!data.length) {
       return (
-        <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+        <div className="h-full flex items-center justify-center text-muted-foreground">
           No data available
         </div>
       );
@@ -154,7 +230,7 @@ export function CustomizableDashboard({
     switch (config.chartType) {
       case "bar":
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" fontSize={12} />
@@ -167,7 +243,7 @@ export function CustomizableDashboard({
         );
       case "line":
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" fontSize={12} />
@@ -180,7 +256,7 @@ export function CustomizableDashboard({
         );
       case "pie":
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <PieChart>
               <Pie
                 data={data}
@@ -188,7 +264,7 @@ export function CustomizableDashboard({
                 cy="50%"
                 labelLine={false}
                 label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                outerRadius={80}
+                outerRadius={Math.min(chartHeight / 3, 80)}
                 fill="#8884d8"
                 dataKey="value"
               >
@@ -203,7 +279,7 @@ export function CustomizableDashboard({
         );
       case "area":
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <RechartsAreaChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" fontSize={12} />
@@ -227,6 +303,7 @@ export function CustomizableDashboard({
       return;
     }
 
+    const colCount = columns === 1 ? 1 : columns === 3 ? 3 : 2;
     const chart: ChartConfig = {
       id: Date.now().toString(),
       title: newChart.title!,
@@ -234,7 +311,13 @@ export function CustomizableDashboard({
       dataSource: newChart.dataSource!,
       xAxisField: newChart.xAxisField!,
       yAxisField: newChart.yAxisField || "count",
-      aggregation: newChart.aggregation as ChartConfig["aggregation"] || "count"
+      aggregation: newChart.aggregation as ChartConfig["aggregation"] || "count",
+      layout: {
+        x: (charts.length % colCount) * Math.floor(12 / colCount),
+        y: Infinity,
+        w: Math.floor(12 / colCount),
+        h: 3
+      }
     };
 
     setCharts([...charts, chart]);
@@ -249,7 +332,7 @@ export function CustomizableDashboard({
     
     toast({
       title: "Chart Added",
-      description: "Your custom chart has been added.",
+      description: "Your custom chart has been added. Drag to move, resize from corners.",
     });
   };
 
@@ -281,11 +364,17 @@ export function CustomizableDashboard({
     return dataSources.find(ds => ds.key === key)?.label || key;
   };
 
-  const gridCols = columns === 1 ? "grid-cols-1" : columns === 3 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1 md:grid-cols-2";
+  const rowHeight = 100;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <GripVertical className="w-4 h-4" />
+          <span>Drag charts to reorder</span>
+          <Maximize2 className="w-4 h-4 ml-2" />
+          <span>Resize from corners</span>
+        </div>
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-custom-chart">
@@ -419,64 +508,88 @@ export function CustomizableDashboard({
         </Dialog>
       </div>
 
-      <div className={`grid ${gridCols} gap-6`}>
-        {charts.map((chart) => (
-          <Card key={chart.id} className="relative" data-testid={`custom-chart-${chart.id}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle className="text-base">{chart.title}</CardTitle>
-                <CardDescription className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    {getDataSourceLabel(chart.dataSource)}
-                  </Badge>
-                  <Badge variant="secondary" className="text-xs">
-                    {chart.xAxisField}
-                  </Badge>
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  onClick={() => setEditingChart(chart)}
-                  data-testid={`button-edit-custom-${chart.id}`}
-                >
-                  <Settings className="w-4 h-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  onClick={() => handleDeleteChart(chart.id)}
-                  data-testid={`button-delete-custom-${chart.id}`}
-                >
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {renderChart(chart)}
-            </CardContent>
+      <div id="dashboard-grid-container" className="w-full">
+        {charts.length > 0 ? (
+          <ReactGridLayout
+            className="layout"
+            layout={generateLayout() as any}
+            cols={12}
+            rowHeight={rowHeight}
+            width={containerWidth}
+            onLayoutChange={(layout: any) => handleLayoutChange(layout)}
+            draggableHandle=".drag-handle"
+            isResizable={true}
+            isDraggable={true}
+            compactType="vertical"
+            preventCollision={false}
+            margin={[16, 16] as [number, number]}
+          >
+            {charts.map((chart) => {
+              const layout = chart.layout || { w: 6, h: 3 };
+              const height = layout.h * rowHeight;
+              return (
+                <div key={chart.id} data-testid={`custom-chart-${chart.id}`}>
+                  <Card className="h-full overflow-hidden border-2 hover:border-primary/50 transition-colors">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle cursor-move bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="w-4 h-4 text-muted-foreground" />
+                        <div>
+                          <CardTitle className="text-base">{chart.title}</CardTitle>
+                          <CardDescription className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              {getDataSourceLabel(chart.dataSource)}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              {chart.xAxisField}
+                            </Badge>
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => setEditingChart(chart)}
+                          data-testid={`button-edit-custom-${chart.id}`}
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => handleDeleteChart(chart.id)}
+                          data-testid={`button-delete-custom-${chart.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      {renderChart(chart, height)}
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
+          </ReactGridLayout>
+        ) : (
+          <Card className="p-12 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <BarChart3 className="w-16 h-16 text-muted-foreground" />
+              <h3 className="text-xl font-semibold">No Charts Yet</h3>
+              <p className="text-muted-foreground">
+                Click "Add Chart" to create your first customizable chart
+              </p>
+              <Button onClick={() => setAddDialogOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Your First Chart
+              </Button>
+            </div>
           </Card>
-        ))}
+        )}
       </div>
-
-      {charts.length === 0 && (
-        <Card className="p-12 text-center">
-          <div className="flex flex-col items-center gap-4">
-            <BarChart3 className="w-16 h-16 text-muted-foreground" />
-            <h3 className="text-xl font-semibold">No Charts Yet</h3>
-            <p className="text-muted-foreground">
-              Click "Add Chart" to create your first customizable chart
-            </p>
-            <Button onClick={() => setAddDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Your First Chart
-            </Button>
-          </div>
-        </Card>
-      )}
 
       <Dialog open={!!editingChart} onOpenChange={(open) => !open && setEditingChart(null)}>
         <DialogContent className="max-w-md">
