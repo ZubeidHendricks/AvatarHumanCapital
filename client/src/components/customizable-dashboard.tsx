@@ -134,7 +134,8 @@ export function CustomizableDashboard({
     return initialCharts;
   });
   
-  const [containerWidth, setContainerWidth] = useState(1200);
+  const [containerWidth, setContainerWidth] = useState(2400);
+  const [gridWidth, setGridWidth] = useState(2400);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingChart, setEditingChart] = useState<ChartConfig | null>(null);
   const [newChart, setNewChart] = useState<Partial<ChartConfig>>({
@@ -164,8 +165,17 @@ export function CustomizableDashboard({
     return () => window.removeEventListener('resize', updateWidth);
   }, []);
 
+  useEffect(() => {
+    if (charts.length > 0) {
+      const maxX = Math.max(...charts.map(c => (c.layout?.x || 0) + (c.layout?.w || 4)));
+      const minWidth = Math.max(containerWidth, maxX * 100 + 200);
+      setGridWidth(minWidth);
+    } else {
+      setGridWidth(containerWidth);
+    }
+  }, [charts, containerWidth]);
+
   const generateLayout = useCallback(() => {
-    const colCount = columns === 1 ? 1 : columns === 3 ? 3 : 2;
     return charts.map((chart, index) => {
       if (chart.layout) {
         return {
@@ -180,15 +190,15 @@ export function CustomizableDashboard({
       }
       return {
         i: chart.id,
-        x: (index % colCount) * Math.floor(12 / colCount),
-        y: Math.floor(index / colCount) * 3,
-        w: Math.floor(12 / colCount),
+        x: (index % 4) * 12,
+        y: Math.floor(index / 4) * 3,
+        w: 12,
         h: 3,
         minW: 1,
         minH: 2
       };
     });
-  }, [charts, columns]);
+  }, [charts]);
 
   const handleLayoutChange = (newLayout: LayoutItem[]) => {
     setCharts(prevCharts => 
@@ -408,7 +418,6 @@ export function CustomizableDashboard({
       return;
     }
 
-    const colCount = columns === 1 ? 1 : columns === 3 ? 3 : 2;
     const chart: ChartConfig = {
       id: Date.now().toString(),
       title: newChart.title!,
@@ -418,9 +427,9 @@ export function CustomizableDashboard({
       yAxisField: newChart.yAxisField || "count",
       aggregation: newChart.aggregation as ChartConfig["aggregation"] || "count",
       layout: {
-        x: (charts.length % colCount) * Math.floor(12 / colCount),
+        x: (charts.length % 4) * 12,
         y: Infinity,
-        w: Math.floor(12 / colCount),
+        w: 12,
         h: 3
       }
     };
@@ -613,22 +622,23 @@ export function CustomizableDashboard({
         </Dialog>
       </div>
 
-      <div id="dashboard-grid-container" className="w-full">
+      <div id="dashboard-grid-container" className="w-full overflow-x-auto pb-4">
         {charts.length > 0 ? (
-          <ReactGridLayout
-            className="layout"
-            layout={generateLayout() as any}
-            cols={12}
-            rowHeight={rowHeight}
-            width={containerWidth}
-            onLayoutChange={(layout: any) => handleLayoutChange(layout)}
-            draggableHandle=".drag-handle"
-            isResizable={true}
-            isDraggable={true}
-            compactType="vertical"
-            preventCollision={false}
-            margin={[16, 16] as [number, number]}
-          >
+          <div style={{ minWidth: gridWidth }}>
+            <ReactGridLayout
+              className="layout"
+              layout={generateLayout() as any}
+              cols={48}
+              rowHeight={rowHeight}
+              width={gridWidth}
+              onLayoutChange={(layout: any) => handleLayoutChange(layout)}
+              draggableHandle=".drag-handle"
+              isResizable={true}
+              isDraggable={true}
+              compactType={null}
+              preventCollision={false}
+              margin={[16, 16] as [number, number]}
+            >
             {charts.map((chart) => {
               const layout = chart.layout || { w: 6, h: 3 };
               const height = layout.h * rowHeight;
@@ -678,7 +688,8 @@ export function CustomizableDashboard({
                 </div>
               );
             })}
-          </ReactGridLayout>
+            </ReactGridLayout>
+          </div>
         ) : (
           <Card className="p-12 text-center">
             <div className="flex flex-col items-center gap-4">

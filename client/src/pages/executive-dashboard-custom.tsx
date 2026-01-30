@@ -263,7 +263,8 @@ export default function ExecutiveDashboardCustom() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(charts));
   }, [charts]);
 
-  const [containerWidth, setContainerWidth] = useState(1200);
+  const [containerWidth, setContainerWidth] = useState(2400);
+  const [gridWidth, setGridWidth] = useState(2400);
   
   useEffect(() => {
     const updateWidth = () => {
@@ -276,6 +277,16 @@ export default function ExecutiveDashboardCustom() {
     window.addEventListener('resize', updateWidth);
     return () => window.removeEventListener('resize', updateWidth);
   }, []);
+
+  useEffect(() => {
+    if (charts.length > 0) {
+      const maxX = Math.max(...charts.map(c => (c.layout?.x || 0) + (c.layout?.w || 12)));
+      const minWidth = Math.max(containerWidth, maxX * 50 + 200);
+      setGridWidth(minWidth);
+    } else {
+      setGridWidth(containerWidth);
+    }
+  }, [charts, containerWidth]);
 
   const generateLayout = () => {
     return charts.map((chart, index) => {
@@ -292,9 +303,9 @@ export default function ExecutiveDashboardCustom() {
       }
       return {
         i: chart.id,
-        x: (index % 2) * 6,
-        y: Math.floor(index / 2) * 3,
-        w: 6,
+        x: (index % 4) * 12,
+        y: Math.floor(index / 4) * 3,
+        w: 12,
         h: 3,
         minW: 1,
         minH: 2
@@ -851,22 +862,23 @@ export default function ExecutiveDashboardCustom() {
         <span className="ml-2">Resize from corners</span>
       </div>
       
-      <div id="exec-dashboard-grid" className="w-full">
+      <div id="exec-dashboard-grid" className="w-full overflow-x-auto pb-4">
         {charts.length > 0 && (
-          <ReactGridLayout
-            className="layout"
-            layout={generateLayout() as any}
-            cols={12}
-            rowHeight={100}
-            width={containerWidth}
-            onLayoutChange={(layout: any) => handleLayoutChange(layout)}
-            draggableHandle=".drag-handle"
-            isResizable={true}
-            isDraggable={true}
-            compactType="vertical"
-            preventCollision={false}
-            margin={[16, 16] as [number, number]}
-          >
+          <div style={{ minWidth: gridWidth }}>
+            <ReactGridLayout
+              className="layout"
+              layout={generateLayout() as any}
+              cols={48}
+              rowHeight={100}
+              width={gridWidth}
+              onLayoutChange={(layout: any) => handleLayoutChange(layout)}
+              draggableHandle=".drag-handle"
+              isResizable={true}
+              isDraggable={true}
+              compactType={null}
+              preventCollision={false}
+              margin={[16, 16] as [number, number]}
+            >
             {charts.map((chart) => {
               const layout = chart.layout || { w: 6, h: 3 };
               const height = layout.h * 100;
@@ -916,7 +928,8 @@ export default function ExecutiveDashboardCustom() {
                 </div>
               );
             })}
-          </ReactGridLayout>
+            </ReactGridLayout>
+          </div>
         )}
       </div>
 
