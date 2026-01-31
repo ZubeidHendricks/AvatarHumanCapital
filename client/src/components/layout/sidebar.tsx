@@ -109,6 +109,12 @@ export function Sidebar() {
       ]
     },
     {
+      title: "SUPPORT",
+      items: [
+        { name: "AI Support", href: "/ai-support", icon: Bot },
+      ]
+    },
+    {
       title: "TRAINING",
       items: [
         { name: "LMS Dashboard", href: "http://165.227.113.197/", icon: BookOpen, external: true },

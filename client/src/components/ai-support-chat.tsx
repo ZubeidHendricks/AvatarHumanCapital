@@ -61,7 +61,7 @@ export function AISupportChat() {
     setIsLoading(true);
 
     try {
-      const response = await api.post("/api/support/chat", {
+      const response = await api.post("/support/chat", {
         question: userMessage.content,
         sessionId
       });
@@ -95,7 +95,7 @@ export function AISupportChat() {
 
   const handleClearHistory = async () => {
     try {
-      await api.post("/api/support/clear-history", { sessionId });
+      await api.post("/support/clear-history", { sessionId });
       setMessages([]);
       toast({
         title: "Conversation Cleared",

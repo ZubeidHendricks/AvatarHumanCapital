@@ -316,11 +316,11 @@ export function TutorialButton({ onClick }: { onClick: () => void }) {
       variant="ghost"
       size="icon"
       onClick={onClick}
-      className="fixed bottom-6 right-6 h-12 w-12 rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg z-40"
+      className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg z-40"
       title="Start Tutorial"
       data-testid="button-start-tutorial"
     >
-      <HelpCircle className="h-6 w-6" />
+      <PlayCircle className="h-7 w-7" />
     </Button>
   );
 }

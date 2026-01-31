@@ -164,6 +164,14 @@ export function Navbar() {
                   <span>Conversations</span>
                 </DropdownMenuItem>
               </Link>
+              <DropdownMenuSeparator className="bg-border" />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Support</DropdownMenuLabel>
+              <Link href="/ai-support">
+                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
+                  <Sparkles className="w-4 h-4 mr-2 text-purple-400" />
+                  <span>AI Support</span>
+                </DropdownMenuItem>
+              </Link>
             </DropdownMenuContent>
           </DropdownMenu>
 
