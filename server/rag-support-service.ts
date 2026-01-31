@@ -167,10 +167,17 @@ interface SupportMessage {
   content: string;
 }
 
+interface NavigationStep {
+  path: string;
+  label: string;
+  action: string;
+}
+
 interface SupportResponse {
   answer: string;
   relatedTopics?: string[];
   suggestedActions?: string[];
+  navigationSteps?: NavigationStep[];
 }
 
 export class RAGSupportService {
@@ -204,17 +211,38 @@ ${PLATFORM_KNOWLEDGE_BASE}
 
 Guidelines:
 - Be concise and helpful
-- Provide step-by-step instructions when applicable
-- Reference specific page paths when directing users
+- Provide step-by-step numbered instructions when applicable
+- ALWAYS include the exact page path in parentheses when mentioning pages (e.g., "Go to HR Command (/hr-dashboard)")
 - If you don't know something, say so honestly
 - Suggest related topics the user might find helpful
 - Always be professional and friendly
 
+Available page paths to reference:
+- /hr-dashboard - HR Command Centre (create jobs, manage recruitment)
+- /executive-dashboard-custom - Executive Dashboard (add charts)
+- /recruitment-agent - AI Recruitment (search candidates)
+- /candidates-list - Candidates List (upload CVs)
+- /pipeline-board - Candidate Pipeline
+- /interview-console - Interview Console
+- /interview/face-to-face - Face to Face Interview
+- /interview/voice - Voice Interview
+- /interview/video - Video Interview
+- /offer-setup - Offer Setup (download templates)
+- /onboarding-setup - Onboarding Setup
+- /integrity-setup - Integrity Setup
+- /document-automation - Document Automation
+- /document-library - Document Library
+- /kpi-management - KPI Management
+- /kpi-review - My KPI Review
+- /workforce-intelligence - Workforce Intelligence
+- /recommendations - AI Recommendations
+
 Format your response as JSON:
 {
-  "answer": "<your helpful response>",
+  "answer": "<your helpful response with page paths in parentheses>",
   "relatedTopics": ["<topic1>", "<topic2>"],
-  "suggestedActions": ["<action1>", "<action2>"]
+  "suggestedActions": ["<action1>", "<action2>"],
+  "navigationSteps": [{"path": "/page-path", "label": "Page Name", "action": "What to do there"}]
 }`
         },
         ...history.map(msg => ({

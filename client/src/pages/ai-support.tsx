@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,10 +13,20 @@ import {
   User,
   Sparkles,
   RotateCcw,
-  ArrowRight
+  ArrowRight,
+  Navigation,
+  MapPin,
+  CheckCircle2
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+
+interface NavigationHint {
+  path: string;
+  label: string;
+  selector?: string;
+  step?: number;
+}
 
 interface Message {
   id: string;
@@ -23,6 +34,132 @@ interface Message {
   content: string;
   relatedTopics?: string[];
   suggestedActions?: string[];
+  navigationHints?: NavigationHint[];
+}
+
+const PAGE_MAPPINGS: Record<string, { label: string; selector?: string; description?: string }> = {
+  "/hr-dashboard": { 
+    label: "HR Command Centre", 
+    selector: "[data-testid='button-create-job-dialog']",
+    description: "Create new jobs and manage recruitment"
+  },
+  "/executive-dashboard-custom": { 
+    label: "Executive Dashboard", 
+    selector: "[data-testid='button-add-chart']",
+    description: "Add custom analytics charts"
+  },
+  "/recruitment-agent": { 
+    label: "AI Recruitment",
+    description: "Search for candidates with AI"
+  },
+  "/candidates-list": { 
+    label: "Candidates List",
+    description: "Upload and manage candidate CVs"
+  },
+  "/pipeline-board": { 
+    label: "Candidate Pipeline",
+    description: "View candidates across pipeline stages"
+  },
+  "/interview-console": { 
+    label: "Interview Console",
+    description: "Manage all interviews"
+  },
+  "/interview/face-to-face": { 
+    label: "Face to Face Interview",
+    description: "Schedule in-person interviews"
+  },
+  "/interview/voice": { 
+    label: "Voice Interview",
+    description: "Start AI voice interviews"
+  },
+  "/interview/video": { 
+    label: "Video Interview",
+    description: "Start video interviews with AI avatar"
+  },
+  "/offer-setup": { 
+    label: "Offer Setup",
+    description: "Download and manage offer templates"
+  },
+  "/onboarding-setup": { 
+    label: "Onboarding Setup",
+    description: "Download onboarding templates"
+  },
+  "/integrity-setup": { 
+    label: "Integrity Setup",
+    description: "Configure background check settings"
+  },
+  "/document-automation": { 
+    label: "Document Automation",
+    description: "Generate documents with AI"
+  },
+  "/document-library": { 
+    label: "Document Library",
+    description: "Browse all documents"
+  },
+  "/kpi-management": { 
+    label: "KPI Management",
+    description: "Create and manage KPIs"
+  },
+  "/kpi-review": { 
+    label: "My KPI Review",
+    description: "Submit self-review"
+  },
+  "/workforce-intelligence": { 
+    label: "Workforce Intelligence",
+    description: "View workforce analytics"
+  },
+  "/recommendations": { 
+    label: "AI Recommendations",
+    description: "View AI-generated recommendations"
+  },
+};
+
+function extractNavigationHints(content: string): NavigationHint[] {
+  const hints: NavigationHint[] = [];
+  const pathRegex = /\(?(\/[a-z-]+(?:\/[a-z-]+)?)\)?/gi;
+  const seenPaths = new Set<string>();
+  
+  let match;
+  let stepNum = 1;
+  while ((match = pathRegex.exec(content)) !== null) {
+    const path = match[1];
+    if (PAGE_MAPPINGS[path] && !seenPaths.has(path)) {
+      seenPaths.add(path);
+      hints.push({
+        path,
+        label: PAGE_MAPPINGS[path].label,
+        selector: PAGE_MAPPINGS[path].selector,
+        step: stepNum++
+      });
+    }
+  }
+  
+  return hints;
+}
+
+function highlightElement(selector: string) {
+  document.querySelectorAll('.highlight-pulse').forEach(el => {
+    el.classList.remove('highlight-pulse');
+  });
+  
+  const selectors = selector.split(',').map(s => s.trim());
+  
+  for (const sel of selectors) {
+    try {
+      const element = document.querySelector(sel);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.classList.add('highlight-pulse');
+        setTimeout(() => {
+          element.classList.remove('highlight-pulse');
+        }, 5000);
+        return true;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return false;
 }
 
 export default function AISupport() {
@@ -32,6 +169,7 @@ export default function AISupport() {
   const [sessionId] = useState(() => `session_${Date.now()}`);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -44,6 +182,21 @@ export default function AISupport() {
       inputRef.current.focus();
     }
   }, []);
+
+  const handleNavigate = (hint: NavigationHint) => {
+    setLocation(hint.path);
+    
+    if (hint.selector) {
+      setTimeout(() => {
+        highlightElement(hint.selector!);
+      }, 800);
+    }
+    
+    toast({
+      title: `Navigating to ${hint.label}`,
+      description: hint.selector ? "I'll highlight the relevant area for you." : undefined,
+    });
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -64,12 +217,30 @@ export default function AISupport() {
         sessionId
       });
 
+      const answerContent = response.data.answer || "I'm not sure how to help with that. Please try rephrasing your question.";
+      
+      let navigationHints = extractNavigationHints(answerContent);
+      
+      if (response.data.navigationSteps && response.data.navigationSteps.length > 0) {
+        const apiHints: NavigationHint[] = response.data.navigationSteps.map((step: { path: string; label: string; action: string }, index: number) => {
+          const mapping = PAGE_MAPPINGS[step.path];
+          return {
+            path: step.path,
+            label: step.label || mapping?.label || step.path,
+            selector: mapping?.selector,
+            step: index + 1
+          };
+        });
+        navigationHints = apiHints.length > 0 ? apiHints : navigationHints;
+      }
+
       const assistantMessage: Message = {
         id: `assistant_${Date.now()}`,
         role: "assistant",
-        content: response.data.answer || "I'm not sure how to help with that. Please try rephrasing your question.",
+        content: answerContent,
         relatedTopics: response.data.relatedTopics,
-        suggestedActions: response.data.suggestedActions
+        suggestedActions: response.data.suggestedActions,
+        navigationHints
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -123,7 +294,7 @@ export default function AISupport() {
           AI Support Assistant
         </h1>
         <p className="text-muted-foreground mt-2">
-          Ask me anything about how to use the Avatar Human Capital platform. I'm here to help!
+          Ask me anything about how to use the Avatar Human Capital platform. I'll guide you step-by-step with highlighted navigation!
         </p>
       </div>
 
@@ -152,7 +323,7 @@ export default function AISupport() {
                   <Sparkles className="w-16 h-16 mx-auto text-primary/30 mb-4" />
                   <h3 className="text-xl font-semibold mb-2">How can I help you today?</h3>
                   <p className="text-muted-foreground">
-                    Ask me about any feature in the platform and I'll guide you through it.
+                    Ask me about any feature and I'll show you exactly where to go with highlighted guidance.
                   </p>
                 </div>
                 <div className="space-y-3">
@@ -202,12 +373,43 @@ export default function AISupport() {
                     >
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                       
+                      {message.role === "assistant" && message.navigationHints && message.navigationHints.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-border/50">
+                          <p className="text-xs font-medium mb-2 flex items-center gap-1">
+                            <Navigation className="w-3 h-3" />
+                            Quick Navigation (click to go there & highlight):
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {message.navigationHints.map((hint, i) => (
+                              <Button
+                                key={i}
+                                variant="secondary"
+                                size="sm"
+                                className="h-auto py-2 px-3 gap-2"
+                                onClick={() => handleNavigate(hint)}
+                                data-testid={`button-navigate-${hint.path.replace(/\//g, '-')}`}
+                              >
+                                <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+                                  {hint.step}
+                                </div>
+                                <MapPin className="w-3 h-3" />
+                                <span className="text-xs">{hint.label}</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
                       {message.role === "assistant" && message.suggestedActions && message.suggestedActions.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-border/50">
-                          <p className="text-xs font-medium mb-2 opacity-70">Suggested actions:</p>
+                          <p className="text-xs font-medium mb-2 opacity-70 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Suggested actions:
+                          </p>
                           <div className="flex flex-wrap gap-1">
                             {message.suggestedActions.map((action, i) => (
-                              <Badge key={i} variant="secondary" className="text-xs">
+                              <Badge key={i} variant="secondary" className="text-xs" data-testid={`action-badge-${i}`}>
                                 <ArrowRight className="w-3 h-3 mr-1" />
                                 {action}
                               </Badge>
@@ -225,6 +427,7 @@ export default function AISupport() {
                                 variant="outline" 
                                 className="text-xs cursor-pointer hover:bg-accent"
                                 onClick={() => handleQuickQuestion(topic)}
+                                data-testid={`topic-badge-${i}`}
                               >
                                 {topic}
                               </Badge>
