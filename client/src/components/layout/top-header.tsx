@@ -48,11 +48,6 @@ export function TopHeader() {
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
         <h1 className="text-lg font-semibold text-foreground">{getPageTitle()}</h1>
-        {tenant && (
-          <span className="px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-md">
-            {tenant.companyName}
-          </span>
-        )}
       </div>
 
       <div className="flex items-center gap-4">
