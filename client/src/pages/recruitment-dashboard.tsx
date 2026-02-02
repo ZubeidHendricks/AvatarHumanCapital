@@ -239,6 +239,26 @@ export default function RecruitmentDashboard() {
           </div>
         </div>
 
+        {/* Customizable Charts Section - At Top */}
+        <div className="mb-8">
+          <Card className="bg-zinc-900/50 border-border dark:border-white/10">
+            <CardHeader>
+              <CardTitle className="text-xl text-white">Custom Analytics</CardTitle>
+              <CardDescription className="text-gray-400">
+                Build your own charts by selecting data sources and fields
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CustomizableDashboard
+                dataSources={dataSources}
+                getData={getData}
+                storageKey="recruitment-dashboard-charts"
+                columns={2}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <Card 
@@ -779,26 +799,6 @@ export default function RecruitmentDashboard() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Customizable Charts Section */}
-      <div className="mt-8">
-        <Card className="bg-zinc-900/50 border-border dark:border-white/10">
-          <CardHeader>
-            <CardTitle className="text-xl text-white">Custom Analytics</CardTitle>
-            <CardDescription className="text-gray-400">
-              Build your own charts by selecting data sources and fields
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CustomizableDashboard
-              dataSources={dataSources}
-              getData={getData}
-              storageKey="recruitment-dashboard-charts"
-              columns={2}
-            />
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

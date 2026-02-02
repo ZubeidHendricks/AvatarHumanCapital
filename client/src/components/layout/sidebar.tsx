@@ -52,6 +52,13 @@ export function Sidebar() {
 
   const sections: NavSection[] = [
     {
+      title: "INTELLIGENCE",
+      items: [
+        { name: "Workforce Intelligence", href: "/workforce-intelligence", icon: TrendingUp },
+        { name: "AI Recommendations", href: "/recommendations", icon: Sparkles },
+      ]
+    },
+    {
       title: "HR COMMAND CENTRE",
       items: [
         { name: "HR Command", href: "/hr-dashboard", icon: Users, module: "hr_management" },
@@ -60,8 +67,6 @@ export function Sidebar() {
         { name: "Integrity Setup", href: "/integrity-setup", icon: Shield, module: "integrity" },
         { name: "Offer Setup", href: "/offer-setup", icon: FileText },
         { name: "Employee Onboarding Setup", href: "/onboarding-setup", icon: Building2, module: "onboarding" },
-        { name: "Workforce Intelligence", href: "/workforce-intelligence", icon: TrendingUp },
-        { name: "AI Recommendations", href: "/recommendations", icon: Sparkles },
       ]
     },
     {
@@ -69,15 +74,13 @@ export function Sidebar() {
       items: [
         { name: "Recruitment Dashboard", href: "/recruitment-dashboard", icon: TrendingUp },
         { name: "AI Recruitment", href: "/recruitment-agent", icon: UserSearch, module: "recruitment" },
-        { name: "Candidate Pipeline", href: "/pipeline-board", icon: LayoutGrid },
-        { name: "Candidate Status", href: "/candidate-pipeline", icon: Briefcase },
-        { name: "Import Candidates", href: "/external-candidates", icon: UserPlus },
+        { name: "Pipeline Board", href: "/pipeline-board", icon: LayoutGrid },
+        { name: "Interview Console", href: "/interview-console", icon: ClipboardList },
       ]
     },
     {
       title: "INTERVIEWS",
       items: [
-        { name: "Interview Console", href: "/interview-console", icon: ClipboardList },
         { name: "Face to Face Interview", href: "/interview/face-to-face", icon: Users },
         { name: "Voice Interview", href: "/interview/voice", icon: Mic },
         { name: "Video Interview", href: "/interview/video", icon: Video },

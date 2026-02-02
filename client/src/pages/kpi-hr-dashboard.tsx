@@ -844,6 +844,24 @@ export default function KPIHRDashboard() {
           </div>
         </div>
 
+        {/* Customizable Charts Section - At Top */}
+        <Card className="mb-8 bg-gray-900/50 border-border dark:border-white/10">
+          <CardHeader>
+            <CardTitle className="text-xl text-white">Custom Analytics</CardTitle>
+            <CardDescription className="text-gray-400">
+              Build your own charts by selecting data sources and fields
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CustomizableDashboard
+              dataSources={chartDataSources}
+              getData={getChartData}
+              storageKey="kpi-hr-dashboard-charts"
+              columns={2}
+            />
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             title="Total Employees"
@@ -1102,24 +1120,6 @@ export default function KPIHRDashboard() {
             cycleName={selectedCycle?.name || "Review Cycle"}
           />
         )}
-
-        {/* Customizable Charts Section */}
-        <Card className="mt-8 bg-gray-900/50 border-border dark:border-white/10">
-          <CardHeader>
-            <CardTitle className="text-xl text-white">Custom Analytics</CardTitle>
-            <CardDescription className="text-gray-400">
-              Build your own charts by selecting data sources and fields
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CustomizableDashboard
-              dataSources={chartDataSources}
-              getData={getChartData}
-              storageKey="kpi-hr-dashboard-charts"
-              columns={2}
-            />
-          </CardContent>
-        </Card>
       </main>
     </div>
   );
