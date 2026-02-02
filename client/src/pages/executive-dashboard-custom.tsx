@@ -413,7 +413,7 @@ export default function ExecutiveDashboardCustom() {
         break;
     }
 
-    if (!data.length) return [];
+    if (!Array.isArray(data) || !data.length) return [];
 
     const grouped = data.reduce((acc: Record<string, any[]>, item: any) => {
       const key = item[xField] || "Unknown";
