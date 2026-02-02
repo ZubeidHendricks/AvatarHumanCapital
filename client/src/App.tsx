@@ -72,6 +72,7 @@ import OfferManagement from "@/pages/offer-management";
 import EmployeeOnboarding from "@/pages/employee-onboarding";
 import TemplatesPage from "@/pages/templates";
 import AISupport from "@/pages/ai-support";
+import DemoShowcase from "@/pages/demo-showcase";
 
 function Router() {
   return (
@@ -141,6 +142,7 @@ function Router() {
       <Route path="/employee-onboarding" component={EmployeeOnboarding} />
       <Route path="/onboarding-setup" component={OnboardingSetup} />
       <Route path="/ai-support" component={AISupport} />
+      <Route path="/demo" component={DemoShowcase} />
       <Route component={NotFound} />
     </Switch>
   );

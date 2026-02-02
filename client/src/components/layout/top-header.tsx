@@ -40,6 +40,7 @@ export function TopHeader() {
       '/admin-dashboard': 'System Administration',
       '/tenant-management': 'Tenant Management',
       '/platform-docs': 'Platform Documentation',
+      '/demo': 'D8taVision Product Suite',
     };
     return titles[location] || 'Dashboard';
   };
