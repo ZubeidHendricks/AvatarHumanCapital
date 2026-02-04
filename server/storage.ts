@@ -254,6 +254,7 @@ export interface IStorage {
   
   getTenantConfig(): Promise<TenantConfig | undefined>;
   getAllTenantConfigs(): Promise<TenantConfig[]>;
+  getTenantById(id: string): Promise<TenantConfig | undefined>;
   createTenantConfig(config: InsertTenantConfig): Promise<TenantConfig>;
   updateTenantConfig(id: string, config: Partial<InsertTenantConfig>): Promise<TenantConfig | undefined>;
   

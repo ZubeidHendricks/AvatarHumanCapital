@@ -76,11 +76,37 @@ export class IntegrityOrchestrator {
       throw new Error(`Candidate ${candidateId} not found`);
     }
 
+    // Get tenant's configured integrity checks from Integrity Setup
+    const tenant = await this.storage.getTenantById(tenantId);
+    const integrityConfig = (tenant?.apiKeysConfigured as any)?.integrity || {};
+    const checksConfig = integrityConfig.checks || {};
+    
+    // Map config IDs to agent types
+    const configToAgentMap: Record<string, AgentType> = {
+      'criminal': 'criminal',
+      'credit': 'credit',
+      'id-verification': 'biometric',
+      'qualification': 'education',
+      'employment': 'employment'
+    };
+    
+    // Filter agent sequence based on enabled checks from Integrity Setup
+    const enabledAgents = this.agentSequence.filter(agentType => {
+      const configKey = Object.entries(configToAgentMap).find(([_, agent]) => agent === agentType)?.[0];
+      if (!configKey) return true; // Run reference checks by default
+      
+      // Default enabled checks: criminal, credit, id-verification
+      const defaultEnabled = ['criminal', 'credit', 'id-verification'].includes(configKey);
+      return checksConfig[configKey]?.enabled ?? defaultEnabled;
+    });
+    
+    console.log(`[IntegrityOrchestrator] Enabled checks for tenant ${tenantId}: ${enabledAgents.join(', ')}`);
+
     const progress: OrchestrationProgress = {
       checkId,
       currentAgent: null,
       completedAgents: [],
-      totalAgents: this.agentSequence.length,
+      totalAgents: enabledAgents.length,
       status: "running",
       results: {} as Record<AgentType, any>,
     };
@@ -88,8 +114,8 @@ export class IntegrityOrchestrator {
     let overallRiskScore = 0;
     let allFindings: Record<string, any> = {};
 
-    // Execute each agent sequentially
-    for (const agentType of this.agentSequence) {
+    // Execute each enabled agent sequentially
+    for (const agentType of enabledAgents) {
       progress.currentAgent = agentType;
       
       // Update check status with progress tracking (don't overwrite findings)
