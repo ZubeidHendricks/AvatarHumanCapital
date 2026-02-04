@@ -127,6 +127,26 @@ export default function RecruitmentAgent() {
     },
   });
 
+  // Fetch enabled recruitment platforms from configuration
+  const { data: platformConfigs } = useQuery<Array<{ id: string; enabled: boolean; connected: boolean }>>({
+    queryKey: ['recruitment-platforms'],
+    queryFn: async () => {
+      const response = await api.get("/recruitment/platforms");
+      return response.data;
+    },
+  });
+
+  // Filter specialists based on enabled platforms
+  const enabledSpecialists = SOURCING_SPECIALISTS.filter(specialist => {
+    if (!platformConfigs) return true; // Show all if config not loaded
+    const platformId = specialist.platform.toLowerCase();
+    const config = platformConfigs.find(p => p.id === platformId);
+    return config?.enabled && config?.connected;
+  });
+  
+  // If no platforms configured, show message about configuration needed
+  const hasEnabledPlatforms = platformConfigs?.some(p => p.enabled && p.connected) ?? false;
+
   const startRecruitmentMutation = useMutation({
     mutationFn: async (params: { jobId: string; maxCandidates: number; minMatchScore: number }) => {
       const response = await api.post("/recruitment-sessions", params);
@@ -405,7 +425,18 @@ export default function RecruitmentAgent() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {SOURCING_SPECIALISTS.map((specialist, index) => {
+                  {!hasEnabledPlatforms && platformConfigs ? (
+                    <div className="text-center py-4">
+                      <AlertCircle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                      <p className="text-sm text-zinc-400 mb-2">No recruitment platforms configured</p>
+                      <Link href="/recruitment-setup">
+                        <Button variant="outline" size="sm" className="gap-2" data-testid="link-configure-platforms">
+                          <Zap className="h-4 w-4" />
+                          Configure Platforms
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : enabledSpecialists.map((specialist, index) => {
                     const IconComponent = specialist.icon;
                     const isActive = effectiveStep === 1;
                     const isComplete = effectiveStep > 1;
