@@ -1246,6 +1246,459 @@ export class LinkedInJobsScraper {
   }
 }
 
+// ========== EXECUTIVE & C-SUITE SOURCING AGENTS ==========
+
+export class CompanyLeadershipSourcer {
+  name = "Company Leadership Sourcer";
+  platform = "CompanyLeadership";
+  
+  // Scrapes public company websites for executive bios from About/Leadership pages
+  
+  async search(job: Job, limit: number = 10): Promise<ScraperResult> {
+    console.log(`[CompanyLeadershipSourcer] Searching executive bios for: ${job.title}`);
+    
+    const candidates: ScrapedCandidate[] = [];
+    
+    // Target companies with public leadership pages
+    const targetCompanies = this.getTargetCompanies(job);
+    
+    let page: Page | null = null;
+    
+    try {
+      const browser = await getBrowser();
+      page = await browser.newPage();
+      
+      await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+      
+      for (const company of targetCompanies.slice(0, 5)) {
+        try {
+          // Common leadership page patterns
+          const leadershipUrls = [
+            `https://${company.domain}/about/leadership`,
+            `https://${company.domain}/about-us/team`,
+            `https://${company.domain}/about/our-team`,
+            `https://${company.domain}/leadership`,
+            `https://${company.domain}/team`,
+            `https://${company.domain}/about`
+          ];
+          
+          for (const url of leadershipUrls) {
+            try {
+              console.log(`[CompanyLeadershipSourcer] Trying: ${url}`);
+              
+              await page.goto(url, { 
+                waitUntil: "domcontentloaded",
+                timeout: 10000 
+              });
+              
+              await new Promise(r => setTimeout(r, 1000));
+              
+              const pageContent = await page.evaluate(() => {
+                const selectors = [
+                  '.leadership', '.team', '.executive', '.management',
+                  '[class*="leader"]', '[class*="team"]', '[class*="exec"]',
+                  '.about-team', '.our-team', '.board'
+                ];
+                
+                let text = '';
+                for (const selector of selectors) {
+                  document.querySelectorAll(selector).forEach(el => {
+                    text += el.textContent + '\n';
+                  });
+                }
+                
+                if (text.length < 100) {
+                  text = document.body.innerText;
+                }
+                
+                return text.substring(0, 15000);
+              });
+              
+              if (pageContent.length > 200) {
+                const extractedCandidates = await this.extractExecutives(pageContent, company.name, url);
+                candidates.push(...extractedCandidates);
+                break;
+              }
+            } catch (urlError) {
+              continue;
+            }
+          }
+          
+          await new Promise(r => setTimeout(r, 500));
+        } catch (companyError) {
+          console.log(`[CompanyLeadershipSourcer] Error with ${company.name}:`, companyError);
+        }
+      }
+      
+      const uniqueCandidates = this.deduplicateCandidates(candidates).slice(0, limit);
+      
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: uniqueCandidates,
+        scrapedAt: new Date(),
+        status: uniqueCandidates.length > 0 ? "success" : "partial"
+      };
+    } catch (error) {
+      console.error(`[CompanyLeadershipSourcer] Error:`, error);
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: [],
+        scrapedAt: new Date(),
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    } finally {
+      if (page) await page.close();
+    }
+  }
+  
+  private getTargetCompanies(job: Job): { name: string; domain: string }[] {
+    // South African companies with public leadership pages
+    return [
+      { name: "Standard Bank", domain: "www.standardbank.com" },
+      { name: "Naspers", domain: "www.naspers.com" },
+      { name: "MTN Group", domain: "www.mtn.com" },
+      { name: "Sasol", domain: "www.sasol.com" },
+      { name: "Discovery", domain: "www.discovery.co.za" },
+      { name: "Shoprite", domain: "www.shopriteholdings.co.za" },
+      { name: "FirstRand", domain: "www.firstrand.co.za" },
+      { name: "Vodacom", domain: "www.vodacom.com" },
+      { name: "Capitec", domain: "www.capitecbank.co.za" },
+      { name: "Anglo American", domain: "www.angloamerican.com" }
+    ];
+  }
+  
+  private async extractExecutives(text: string, companyName: string, sourceUrl: string): Promise<ScrapedCandidate[]> {
+    try {
+      const completion = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: `Extract executive/leadership information from company website content. 
+Return a JSON array of executives with: name, title, bio_summary.
+Only include C-suite and senior leadership (CEO, CFO, CTO, COO, VP, Director, Head of, etc).
+Return [] if no executives found.`
+          },
+          {
+            role: "user",
+            content: `Company: ${companyName}\n\nWebsite content:\n${text.substring(0, 8000)}`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 2000
+      });
+      
+      const content = completion.choices[0]?.message?.content || "[]";
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) return [];
+      
+      const executives = JSON.parse(jsonMatch[0]);
+      
+      return executives.map((exec: any) => ({
+        name: exec.name,
+        title: exec.title || "Executive",
+        skills: ["Leadership", "Executive Management"],
+        experience: exec.bio_summary || `Executive at ${companyName}`,
+        location: "South Africa",
+        contact: undefined,
+        source: this.platform,
+        sourceUrl,
+        matchScore: 85
+      }));
+    } catch (error) {
+      console.error(`[CompanyLeadershipSourcer] AI extraction error:`, error);
+      return [];
+    }
+  }
+  
+  private deduplicateCandidates(candidates: ScrapedCandidate[]): ScrapedCandidate[] {
+    const seen = new Set<string>();
+    return candidates.filter(c => {
+      const key = c.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+}
+
+export class NewsExecutiveSourcer {
+  name = "News & Press Release Sourcer";
+  platform = "ExecutiveNews";
+  
+  // Finds executive appointments from news and press releases
+  
+  async search(job: Job, limit: number = 10): Promise<ScraperResult> {
+    console.log(`[NewsExecutiveSourcer] Searching executive news for: ${job.title}`);
+    
+    const candidates: ScrapedCandidate[] = [];
+    
+    try {
+      // Use multiple free news sources
+      const searchTerms = this.buildSearchTerms(job);
+      
+      for (const term of searchTerms.slice(0, 3)) {
+        // DuckDuckGo HTML search (doesn't require API key)
+        const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(term)}`;
+        
+        console.log(`[NewsExecutiveSourcer] Searching: ${term}`);
+        
+        try {
+          const response = await fetch(searchUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+          });
+          
+          if (response.ok) {
+            const html = await response.text();
+            const extractedCandidates = await this.extractFromNews(html, term);
+            candidates.push(...extractedCandidates);
+          }
+        } catch (searchError) {
+          console.log(`[NewsExecutiveSourcer] Search error for ${term}:`, searchError);
+        }
+        
+        await new Promise(r => setTimeout(r, 500));
+      }
+      
+      const uniqueCandidates = this.deduplicateCandidates(candidates).slice(0, limit);
+      
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: uniqueCandidates,
+        scrapedAt: new Date(),
+        status: uniqueCandidates.length > 0 ? "success" : "partial"
+      };
+    } catch (error) {
+      console.error(`[NewsExecutiveSourcer] Error:`, error);
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: [],
+        scrapedAt: new Date(),
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    }
+  }
+  
+  private buildSearchTerms(job: Job): string[] {
+    const baseTerms = [
+      "CEO appointed South Africa 2024",
+      "CFO joins South Africa company",
+      "executive appointment South Africa",
+      "new CTO South Africa tech",
+      "managing director appointed Johannesburg"
+    ];
+    
+    const jobTitle = job.title.toLowerCase();
+    if (jobTitle.includes('ceo')) {
+      return ["CEO appointed South Africa", "chief executive officer South Africa new", ...baseTerms.slice(0, 2)];
+    }
+    if (jobTitle.includes('cfo') || jobTitle.includes('finance')) {
+      return ["CFO appointed South Africa", "chief financial officer South Africa new", ...baseTerms.slice(0, 2)];
+    }
+    if (jobTitle.includes('cto') || jobTitle.includes('technology')) {
+      return ["CTO appointed South Africa", "chief technology officer South Africa new", ...baseTerms.slice(0, 2)];
+    }
+    
+    return baseTerms;
+  }
+  
+  private async extractFromNews(html: string, searchTerm: string): Promise<ScrapedCandidate[]> {
+    try {
+      // Extract text content from HTML
+      const textContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 10000);
+      
+      const completion = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: `Extract executive appointment information from news search results.
+Return a JSON array of people mentioned with new executive roles.
+Format: [{"name": "...", "title": "...", "company": "...", "context": "..."}]
+Only include real executive appointments. Return [] if none found.`
+          },
+          {
+            role: "user",
+            content: `Search term: ${searchTerm}\n\nNews content:\n${textContent}`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 1500
+      });
+      
+      const content = completion.choices[0]?.message?.content || "[]";
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) return [];
+      
+      const appointments = JSON.parse(jsonMatch[0]);
+      
+      return appointments.map((appt: any) => ({
+        name: appt.name,
+        title: appt.title || "Executive",
+        skills: ["Executive Leadership", "C-Suite"],
+        experience: appt.context || `${appt.title} at ${appt.company}`,
+        location: "South Africa",
+        contact: undefined,
+        source: this.platform,
+        sourceUrl: "News/Press Release",
+        matchScore: 80
+      }));
+    } catch (error) {
+      console.error(`[NewsExecutiveSourcer] Extraction error:`, error);
+      return [];
+    }
+  }
+  
+  private deduplicateCandidates(candidates: ScrapedCandidate[]): ScrapedCandidate[] {
+    const seen = new Set<string>();
+    return candidates.filter(c => {
+      const key = c.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+}
+
+export class CIPCDirectorSourcer {
+  name = "CIPC Director Sourcer";
+  platform = "CIPC";
+  
+  // Sources South African company directors from public records
+  // CIPC (Companies and Intellectual Property Commission) maintains public director records
+  
+  async search(job: Job, limit: number = 10): Promise<ScraperResult> {
+    console.log(`[CIPCDirectorSourcer] Searching CIPC director records for: ${job.title}`);
+    
+    const candidates: ScrapedCandidate[] = [];
+    
+    try {
+      // CIPC doesn't have a public API, but we can search via their web interface
+      // For now, we'll use alternative public data sources
+      
+      // Check if this is a director/executive level position
+      const executiveKeywords = ['CEO', 'CFO', 'CTO', 'COO', 'Director', 'Managing Director', 'Chief', 'Head of', 'VP', 'President'];
+      const isExecutiveRole = executiveKeywords.some(kw => 
+        job.title.toLowerCase().includes(kw.toLowerCase())
+      );
+      
+      if (!isExecutiveRole) {
+        return {
+          platform: this.platform,
+          query: job.title,
+          candidates: [],
+          scrapedAt: new Date(),
+          status: "partial",
+          error: "CIPC sourcing is best for director-level positions"
+        };
+      }
+      
+      // Use JSE listed company data (public information)
+      const jseCompanies = await this.searchJSEDirectors(job);
+      candidates.push(...jseCompanies);
+      
+      const uniqueCandidates = this.deduplicateCandidates(candidates).slice(0, limit);
+      
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: uniqueCandidates,
+        scrapedAt: new Date(),
+        status: uniqueCandidates.length > 0 ? "success" : "partial",
+        error: uniqueCandidates.length === 0 ? "Limited public director data available" : undefined
+      };
+    } catch (error) {
+      console.error(`[CIPCDirectorSourcer] Error:`, error);
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: [],
+        scrapedAt: new Date(),
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    }
+  }
+  
+  private async searchJSEDirectors(job: Job): Promise<ScrapedCandidate[]> {
+    // JSE listed companies publish director information publicly
+    // This is a simplified implementation - real version would scrape SENS announcements
+    
+    try {
+      // Search for director announcements
+      const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent("site:jse.co.za director appointed")}`;
+      
+      const response = await fetch(searchUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      
+      if (!response.ok) return [];
+      
+      const html = await response.text();
+      const textContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 8000);
+      
+      const completion = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: `Extract director appointment information from JSE/South African company announcements.
+Return a JSON array: [{"name": "...", "title": "...", "company": "..."}]
+Only include board directors and executives. Return [] if none found.`
+          },
+          {
+            role: "user",
+            content: `Search results:\n${textContent}`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 1500
+      });
+      
+      const content = completion.choices[0]?.message?.content || "[]";
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) return [];
+      
+      const directors = JSON.parse(jsonMatch[0]);
+      
+      return directors.map((dir: any) => ({
+        name: dir.name,
+        title: dir.title || "Director",
+        skills: ["Board Director", "Corporate Governance"],
+        experience: `Director at ${dir.company}`,
+        location: "South Africa",
+        contact: undefined,
+        source: this.platform,
+        sourceUrl: "CIPC/JSE Public Records",
+        matchScore: 75
+      }));
+    } catch (error) {
+      console.error(`[CIPCDirectorSourcer] JSE search error:`, error);
+      return [];
+    }
+  }
+  
+  private deduplicateCandidates(candidates: ScrapedCandidate[]): ScrapedCandidate[] {
+    const seen = new Set<string>();
+    return candidates.filter(c => {
+      const key = c.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+}
+
 export class ScraperOrchestrator {
   private scrapers = [
     // API-based sourcers (reliable, no scraping blocks)
@@ -1253,6 +1706,10 @@ export class ScraperOrchestrator {
     new DevToSourcer(),
     new ExecutiveSourcer(),
     new CandidateAPISourcer(),
+    // Executive/C-Suite sourcing agents
+    new CompanyLeadershipSourcer(),
+    new NewsExecutiveSourcer(),
+    new CIPCDirectorSourcer(),
     // Web scrapers (may have anti-bot issues)
     new GumtreeScraper(),
     new IndeedScraper(),
