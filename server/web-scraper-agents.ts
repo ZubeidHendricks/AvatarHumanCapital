@@ -162,10 +162,11 @@ export class GumtreeScraper {
   platform = "Gumtree South Africa";
 
   async search(job: Job, limit: number = 10): Promise<ScraperResult> {
-    console.log(`[GumtreeScraper] Searching for: ${job.title}`);
+    console.log(`[GumtreeScraper] Searching for job seekers: ${job.title}`);
     
     const query = generateSearchQuery(job);
     let page: Page | null = null;
+    const allCandidates: ScrapedCandidate[] = [];
     
     try {
       const browser = await getBrowser();
@@ -174,40 +175,107 @@ export class GumtreeScraper {
       await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
       await page.setViewport({ width: 1920, height: 1080 });
       
-      const encodedQuery = encodeURIComponent(query);
-      const searchUrl = `https://www.gumtree.co.za/s-services/${encodedQuery}`;
+      // Search in CVs/Services section where job seekers post
+      const searchUrls = [
+        `https://www.gumtree.co.za/s-cvs-resumes/${encodeURIComponent(query)}`,
+        `https://www.gumtree.co.za/s-services/it-services/${encodeURIComponent(query)}`,
+        `https://www.gumtree.co.za/s-jobs-offered/${encodeURIComponent(query)}`
+      ];
       
-      console.log(`[GumtreeScraper] Navigating to: ${searchUrl}`);
-      
-      await page.goto(searchUrl, { 
-        waitUntil: "domcontentloaded",
-        timeout: 30000 
-      });
-      
-      await page.waitForSelector("body", { timeout: 10000 });
-      
-      const pageContent = await page.evaluate(() => {
-        const listings = document.querySelectorAll('[class*="listing"], [class*="result"], article, .ad-listing');
-        let text = "";
-        listings.forEach(el => {
-          text += el.textContent + "\n\n";
-        });
-        if (!text) {
-          text = document.body.innerText;
+      for (const searchUrl of searchUrls) {
+        try {
+          console.log(`[GumtreeScraper] Trying: ${searchUrl}`);
+          
+          await page.goto(searchUrl, { 
+            waitUntil: "networkidle2",
+            timeout: 30000 
+          });
+          
+          await new Promise(r => setTimeout(r, 2000));
+          
+          // Extract listing details
+          const listingData = await page.evaluate(() => {
+            const listings: any[] = [];
+            
+            // Gumtree listing selectors
+            const listingElements = document.querySelectorAll('.tileV1, .result, article, [class*="listing"], [class*="tile"]');
+            
+            listingElements.forEach((el) => {
+              const titleEl = el.querySelector('.tile-title, h2, h3, .title, [class*="title"]');
+              const descEl = el.querySelector('.tile-desc, .description, p');
+              const locationEl = el.querySelector('.tile-location, .location, [class*="location"]');
+              const priceEl = el.querySelector('.tile-price, .price, [class*="price"]');
+              const linkEl = el.querySelector('a[href]');
+              
+              if (titleEl) {
+                listings.push({
+                  title: titleEl.textContent?.trim() || '',
+                  description: descEl?.textContent?.trim() || '',
+                  location: locationEl?.textContent?.trim() || '',
+                  price: priceEl?.textContent?.trim() || '',
+                  url: linkEl?.getAttribute('href') || '',
+                  fullText: el.textContent?.slice(0, 500) || ''
+                });
+              }
+            });
+            
+            return {
+              listings,
+              pageContent: document.body.innerText.slice(0, 12000)
+            };
+          });
+          
+          console.log(`[GumtreeScraper] Found ${listingData.listings.length} listings`);
+          
+          // Process each listing as a potential candidate
+          for (const listing of listingData.listings) {
+            // Check if this looks like someone offering their services/CV
+            const text = `${listing.title} ${listing.description} ${listing.fullText}`.toLowerCase();
+            if (text.includes('cv') || text.includes('resume') || text.includes('seeking') || 
+                text.includes('available') || text.includes('experience') || text.includes('developer') ||
+                text.includes('looking for') || text.includes('qualified')) {
+              
+              // Use AI to extract candidate info from this listing
+              const candidates = await extractCandidatesWithAI(
+                `Title: ${listing.title}\nDescription: ${listing.description}\nLocation: ${listing.location}\nDetails: ${listing.fullText}`,
+                job,
+                this.platform
+              );
+              
+              candidates.forEach(c => {
+                c.sourceUrl = listing.url.startsWith('http') ? listing.url : `https://www.gumtree.co.za${listing.url}`;
+              });
+              
+              allCandidates.push(...candidates);
+            }
+          }
+          
+          // Also try to extract from full page content
+          if (allCandidates.length < limit && listingData.pageContent.length > 500) {
+            const pageCandidates = await extractCandidatesWithAI(listingData.pageContent, job, this.platform);
+            allCandidates.push(...pageCandidates);
+          }
+          
+          if (allCandidates.length >= limit) break;
+          
+        } catch (urlError) {
+          console.log(`[GumtreeScraper] URL failed: ${searchUrl}`, urlError);
         }
-        return text;
-      });
+      }
       
-      console.log(`[GumtreeScraper] Scraped ${pageContent.length} characters`);
+      // Deduplicate
+      const uniqueCandidates = allCandidates.filter((c, i, arr) => 
+        arr.findIndex(x => x.name.toLowerCase() === c.name.toLowerCase()) === i
+      );
       
-      const candidates = await extractCandidatesWithAI(pageContent, job, this.platform);
+      console.log(`[GumtreeScraper] Total candidates: ${uniqueCandidates.length}`);
       
       return {
         platform: this.platform,
         query,
-        candidates: candidates.slice(0, limit),
+        candidates: uniqueCandidates.slice(0, limit),
         scrapedAt: new Date(),
-        status: candidates.length > 0 ? "success" : "partial"
+        status: uniqueCandidates.length > 0 ? "success" : "partial"
       };
     } catch (error) {
       console.error(`[GumtreeScraper] Error:`, error);
@@ -362,42 +430,129 @@ export class PNetScraper {
   platform = "PNet";
 
   async search(job: Job, limit: number = 10): Promise<ScraperResult> {
-    console.log(`[PNetScraper] Searching for: ${job.title}`);
+    console.log(`[PNetScraper] Searching for candidates: ${job.title}`);
     
     const query = generateSearchQuery(job);
     let page: Page | null = null;
+    const allCandidates: ScrapedCandidate[] = [];
     
     try {
       const browser = await getBrowser();
       page = await browser.newPage();
       
       await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+      await page.setViewport({ width: 1920, height: 1080 });
       
-      const searchUrl = `https://www.pnet.co.za/jobs/${encodeURIComponent(query.replace(/\s+/g, '-'))}-jobs`;
+      // PNet has a talent/CV search section for recruiters
+      const searchUrls = [
+        `https://www.pnet.co.za/5/candidate-search.html?keywords=${encodeURIComponent(query)}`,
+        `https://www.pnet.co.za/5/job-seekers-search/?keywords=${encodeURIComponent(query)}`,
+        `https://www.pnet.co.za/recruiters/candidate-search?q=${encodeURIComponent(query)}`
+      ];
       
-      console.log(`[PNetScraper] Navigating to: ${searchUrl}`);
+      for (const searchUrl of searchUrls) {
+        try {
+          console.log(`[PNetScraper] Trying: ${searchUrl}`);
+          
+          await page.goto(searchUrl, { 
+            waitUntil: "networkidle2",
+            timeout: 30000 
+          });
+          
+          await new Promise(r => setTimeout(r, 3000));
+          
+          // Extract candidate cards/profiles
+          const candidateData = await page.evaluate(() => {
+            const candidates: any[] = [];
+            
+            // Look for candidate profile cards
+            const profileSelectors = [
+              '.candidate-card',
+              '.profile-card', 
+              '.cv-result',
+              '.talent-card',
+              '[class*="candidate"]',
+              '[class*="profile"]',
+              '.search-result-item',
+              'article',
+              '.listing'
+            ];
+            
+            for (const selector of profileSelectors) {
+              const elements = document.querySelectorAll(selector);
+              elements.forEach((el) => {
+                const text = el.textContent || '';
+                if (text.length > 50) {
+                  // Try to extract structured data
+                  const nameEl = el.querySelector('h2, h3, h4, .name, [class*="name"], .title');
+                  const locationEl = el.querySelector('.location, [class*="location"], .city');
+                  const skillsEl = el.querySelector('.skills, [class*="skill"]');
+                  
+                  candidates.push({
+                    name: nameEl?.textContent?.trim() || '',
+                    location: locationEl?.textContent?.trim() || '',
+                    skills: skillsEl?.textContent?.trim() || '',
+                    rawText: text.slice(0, 1000)
+                  });
+                }
+              });
+            }
+            
+            // If no structured data, get full page content
+            if (candidates.length === 0) {
+              return { 
+                candidates: [],
+                pageContent: document.body.innerText.slice(0, 15000)
+              };
+            }
+            
+            return { candidates, pageContent: '' };
+          });
+          
+          console.log(`[PNetScraper] Found ${candidateData.candidates.length} candidate elements`);
+          
+          // Process structured candidates
+          if (candidateData.candidates.length > 0) {
+            for (const c of candidateData.candidates) {
+              if (c.name && c.name.length > 2) {
+                allCandidates.push({
+                  name: c.name,
+                  location: c.location || undefined,
+                  skills: c.skills ? c.skills.split(/[,;]/).map((s: string) => s.trim()).filter(Boolean) : [],
+                  source: this.platform,
+                  rawText: c.rawText,
+                  matchScore: 70
+                });
+              }
+            }
+          }
+          
+          // Use AI to extract from page content
+          if (candidateData.pageContent && candidateData.pageContent.length > 200) {
+            const aiCandidates = await extractCandidatesWithAI(candidateData.pageContent, job, this.platform);
+            allCandidates.push(...aiCandidates);
+          }
+          
+          if (allCandidates.length >= limit) break;
+          
+        } catch (urlError) {
+          console.log(`[PNetScraper] URL failed: ${searchUrl}`);
+        }
+      }
       
-      await page.goto(searchUrl, { 
-        waitUntil: "domcontentloaded",
-        timeout: 30000 
-      });
+      // Deduplicate by name
+      const uniqueCandidates = allCandidates.filter((c, i, arr) => 
+        arr.findIndex(x => x.name.toLowerCase() === c.name.toLowerCase()) === i
+      );
       
-      await new Promise(r => setTimeout(r, 2000));
-      
-      const pageContent = await page.evaluate(() => {
-        return document.body.innerText;
-      });
-      
-      console.log(`[PNetScraper] Scraped ${pageContent.length} characters`);
-      
-      const candidates = await extractCandidatesWithAI(pageContent, job, this.platform);
+      console.log(`[PNetScraper] Total unique candidates: ${uniqueCandidates.length}`);
       
       return {
         platform: this.platform,
         query,
-        candidates: candidates.slice(0, limit),
+        candidates: uniqueCandidates.slice(0, limit),
         scrapedAt: new Date(),
-        status: candidates.length > 0 ? "success" : "partial"
+        status: uniqueCandidates.length > 0 ? "success" : "partial"
       };
     } catch (error) {
       console.error(`[PNetScraper] Error:`, error);
