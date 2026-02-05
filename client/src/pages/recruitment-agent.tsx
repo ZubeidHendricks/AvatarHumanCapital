@@ -49,28 +49,36 @@ const AGENT_MESSAGES = [
   { agent: "System", message: "Sourcing complete! Top candidates ready for review.", type: "complete" },
 ];
 
+// Platform metadata for display
+const PLATFORM_META: Record<string, { icon: any; color: string; category: string; description: string }> = {
+  // Tech Sourcing
+  "GitHub": { icon: Users, color: "bg-gray-800", category: "Tech", description: "Open source developers from GitHub" },
+  "Dev.to": { icon: FileText, color: "bg-black", category: "Tech", description: "Technical writers & developers" },
+  "StackOverflow": { icon: Brain, color: "bg-orange-500", category: "Tech", description: "Top developers by reputation" },
+  "HackerNews": { icon: Zap, color: "bg-orange-600", category: "Tech", description: "Who's Hiring thread candidates" },
+  "Kaggle": { icon: TrendingUp, color: "bg-blue-500", category: "Tech", description: "Data scientists & ML engineers" },
+  // Executive
+  "Executive": { icon: Award, color: "bg-amber-600", category: "Executive", description: "C-suite from executive networks" },
+  "CandidateAPI": { icon: Search, color: "bg-indigo-600", category: "Executive", description: "Premium candidate databases" },
+  "CompanyLeadership": { icon: Building2, color: "bg-slate-700", category: "Executive", description: "Leaders from company websites" },
+  "ExecutiveNews": { icon: FileSearch, color: "bg-red-600", category: "Executive", description: "Executive appointments from news" },
+  "CIPC": { icon: Briefcase, color: "bg-green-700", category: "Executive", description: "SA company directors (CIPC/JSE)" },
+  // Blue Collar
+  "OLX": { icon: Users, color: "bg-teal-600", category: "Blue Collar", description: "Trade workers & job seekers" },
+  "TradeForums": { icon: Users, color: "bg-yellow-600", category: "Blue Collar", description: "Skilled tradespeople" },
+  // Job Boards
+  "Gumtree South Africa": { icon: Search, color: "bg-green-500", category: "Job Boards", description: "SA classifieds & job listings" },
+  "Indeed South Africa": { icon: Search, color: "bg-purple-600", category: "Job Boards", description: "Global job board - SA section" },
+  "Careers24": { icon: FileSearch, color: "bg-blue-600", category: "Job Boards", description: "SA career portal" },
+  "PNet": { icon: FileSearch, color: "bg-green-600", category: "Job Boards", description: "SA's largest recruitment portal" },
+  "LinkedIn": { icon: Linkedin, color: "bg-blue-700", category: "Job Boards", description: "Professional network" },
+};
+
+// Fallback for legacy code
 const SOURCING_SPECIALISTS = [
-  { 
-    name: "LinkedIn Specialist", 
-    platform: "LinkedIn",
-    icon: Linkedin,
-    color: "bg-blue-600",
-    description: "Passive candidates from professional network" 
-  },
-  { 
-    name: "PNet Specialist", 
-    platform: "PNet",
-    icon: FileSearch,
-    color: "bg-green-600",
-    description: "Active job seekers from SA's largest portal" 
-  },
-  { 
-    name: "Indeed Specialist", 
-    platform: "Indeed",
-    icon: Search,
-    color: "bg-purple-600",
-    description: "Diverse candidates from resume database" 
-  },
+  { name: "LinkedIn Specialist", platform: "LinkedIn", icon: Linkedin, color: "bg-blue-600", description: "Passive candidates from professional network" },
+  { name: "PNet Specialist", platform: "PNet", icon: FileSearch, color: "bg-green-600", description: "Active job seekers from SA's largest portal" },
+  { name: "Indeed Specialist", platform: "Indeed South Africa", icon: Search, color: "bg-purple-600", description: "Diverse candidates from resume database" },
 ];
 
 
@@ -135,6 +143,24 @@ export default function RecruitmentAgent() {
       return response.data;
     },
   });
+
+  // Fetch all available sourcing agents
+  const { data: sourcingAgents } = useQuery<Array<{ name: string; platform: string }>>({
+    queryKey: ['sourcing-agents'],
+    queryFn: async () => {
+      const response = await api.get("/scrapers");
+      return response.data;
+    },
+  });
+
+  // Organize agents by category
+  const agentsByCategory = sourcingAgents?.reduce((acc, agent) => {
+    const meta = PLATFORM_META[agent.platform] || { category: "Other", icon: Search, color: "bg-gray-500", description: agent.name };
+    const category = meta.category;
+    if (!acc[category]) acc[category] = [];
+    acc[category].push({ ...agent, ...meta });
+    return acc;
+  }, {} as Record<string, Array<{ name: string; platform: string; icon: any; color: string; description: string }>>) || {};
 
   // Filter specialists based on enabled platforms
   const enabledSpecialists = SOURCING_SPECIALISTS.filter(specialist => {
@@ -425,80 +451,90 @@ export default function RecruitmentAgent() {
                 </CardContent>
               </Card>
 
-              {/* Sourcing Specialists - Status Display */}
+              {/* Sourcing Agents - All Categories */}
               <Card className="bg-zinc-900/50 border-zinc-800">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Users className="h-5 w-5 text-blue-400" />
-                    Sourcing Specialists
+                    AI Sourcing Agents
+                    <Badge variant="outline" className="ml-2 border-blue-500 text-blue-400">
+                      {sourcingAgents?.length || 0} agents
+                    </Badge>
                   </CardTitle>
                   <CardDescription>
-                    {effectiveStep === 1 ? "Specialists searching in parallel..." : "Run via Deploy AI Agents workflow"}
+                    {effectiveStep === 1 ? "AI agents searching across all platforms..." : "Intelligent talent acquisition powered by LLaMA 3.1 70B via Groq"}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {!hasEnabledPlatforms && platformConfigs ? (
+                <CardContent className="space-y-4">
+                  {Object.entries(agentsByCategory).length === 0 ? (
                     <div className="text-center py-4">
-                      <AlertCircle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
-                      <p className="text-sm text-zinc-400 mb-2">No recruitment platforms configured</p>
-                      <Link href="/recruitment-setup">
-                        <Button variant="outline" size="sm" className="gap-2" data-testid="link-configure-platforms">
-                          <Zap className="h-4 w-4" />
-                          Configure Platforms
-                        </Button>
-                      </Link>
+                      <Loader2 className="h-8 w-8 text-zinc-400 mx-auto mb-2 animate-spin" />
+                      <p className="text-sm text-zinc-400">Loading sourcing agents...</p>
                     </div>
-                  ) : enabledSpecialists.map((specialist, index) => {
-                    const IconComponent = specialist.icon;
-                    const isActive = effectiveStep === 1;
-                    const isComplete = effectiveStep > 1;
-                    
-                    // Get real result from session data
-                    const sessionResult = specialistResultsFromSession.find(
-                      (r: any) => r.specialist === specialist.name
-                    );
-                    const hasResult = sessionResult && sessionResult.found > 0;
-                    
-                    return (
-                      <div 
-                        key={specialist.name}
-                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
-                          isActive 
-                            ? 'bg-purple-500/10 border-purple-500/50' 
-                            : isComplete || hasResult
-                              ? 'bg-green-500/10 border-green-500/30'
-                              : 'bg-zinc-800/50 border-zinc-700/50'
-                        }`}
-                        data-testid={`specialist-${specialist.platform.toLowerCase()}`}
-                      >
-                        <div className={`p-2 rounded-lg ${specialist.color}`}>
-                          {isActive ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : isComplete || hasResult ? (
-                            <CheckCircle className="h-4 w-4" />
-                          ) : (
-                            <IconComponent className="h-4 w-4" />
-                          )}
+                  ) : (
+                    Object.entries(agentsByCategory).map(([category, agents]) => (
+                      <div key={category} className="space-y-2">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {category}
+                          </Badge>
+                          <span className="text-xs text-zinc-500">{agents.length} agents</span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{specialist.name}</p>
-                          <p className="text-xs text-zinc-500">{specialist.description}</p>
-                          {sessionResult && (
-                            <p className="text-xs text-green-400 mt-1">
-                              Found {sessionResult.found} candidates ({sessionResult.status})
-                            </p>
-                          )}
+                        <div className="grid grid-cols-1 gap-2">
+                          {agents.map((agent) => {
+                            const IconComponent = agent.icon || Search;
+                            const isActive = effectiveStep === 1;
+                            const isComplete = effectiveStep > 1;
+                            
+                            const sessionResult = specialistResultsFromSession.find(
+                              (r: any) => r.platform === agent.platform || r.specialist === agent.name
+                            );
+                            const hasResult = sessionResult && sessionResult.found > 0;
+                            
+                            return (
+                              <div 
+                                key={agent.platform}
+                                className={`flex items-center gap-3 p-2 rounded-lg border transition-all ${
+                                  isActive 
+                                    ? 'bg-purple-500/10 border-purple-500/50' 
+                                    : hasResult
+                                      ? 'bg-green-500/10 border-green-500/30'
+                                      : 'bg-zinc-800/30 border-zinc-700/30'
+                                }`}
+                                data-testid={`agent-${agent.platform.toLowerCase().replace(/\s+/g, '-')}`}
+                              >
+                                <div className={`p-1.5 rounded ${agent.color}`}>
+                                  {isActive ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : hasResult ? (
+                                    <CheckCircle className="h-3 w-3" />
+                                  ) : (
+                                    <IconComponent className="h-3 w-3" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-xs truncate">{agent.name}</p>
+                                  <p className="text-[10px] text-zinc-500 truncate">{agent.description}</p>
+                                  {sessionResult && (
+                                    <p className="text-[10px] text-green-400">
+                                      {sessionResult.found} found
+                                    </p>
+                                  )}
+                                </div>
+                                <Badge variant="outline" className={`shrink-0 text-[10px] px-1.5 py-0 ${
+                                  isActive ? 'border-purple-500 text-purple-400' :
+                                  hasResult ? 'border-green-500 text-green-400' :
+                                  'border-zinc-600 text-zinc-400'
+                                }`}>
+                                  {isActive ? '...' : hasResult ? 'Done' : 'Ready'}
+                                </Badge>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <Badge variant="outline" className={`shrink-0 ${
-                          isActive ? 'border-purple-500 text-purple-400' :
-                          isComplete || hasResult ? 'border-green-500 text-green-400' :
-                          'border-zinc-600 text-zinc-400'
-                        }`}>
-                          {isActive ? 'Searching...' : isComplete || hasResult ? 'Done' : 'Ready'}
-                        </Badge>
                       </div>
-                    );
-                  })}
+                    ))
+                  )}
                   
                   {/* Show total from AI search if available */}
                   {sessionResults?.aiSearchFound && (
