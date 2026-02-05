@@ -1,0 +1,146 @@
+* Ideal for *apps, dashboards, or developer integrations*.
+* Provide *leadership profile data* and *executive insights* programmatically.
+
+---
+
+If you can tell me **what you want to build** (e.g., search tool, CRM enrichment, analytics dashboard), I can help you choose the *best API and design an integration plan* for it!
+
+[1]: https://members.theceocircle.com/the-circles/?utm_source=chatgpt.com "C-Suite Forums - Leadership Development | The CEO Circle"
+[2]: https://c-suitenexus.com/?utm_source=chatgpt.com "C-Suite Nexus"
+[3]: https://topexecutive.co.za/?utm_source=chatgpt.com "TOP EXECUTIVE – Exclusive Network of C-level Executives and Leaders – South Africa thought leadership, strategic insights, and high-level executive networking platform"
+[4]: https://afsug.com/afsug-c-suite-connect-forum/?utm_source=chatgpt.com "AFSUG C-SUITE CONNECT FORUM - AFSUG"
+[5]: https://southernafricaceoforum.com/?utm_source=chatgpt.com "The Southern Africa CEO Forum"
+[6]: https://cio-sa.co.za/articles/executives-communities-provides-leaders-across-africa-with-a-platform-for-high-level-networking-and-knowledge-sharing/?utm_source=chatgpt.com "Executives Communities provides leaders across Africa with a platform for high-level networking and knowledge sharing · CIO South Africa"
+[7]: https://www.c-suiteconnections.com/?utm_source=chatgpt.com "C-Suite Connections"
+[8]: https://pages.c-suitenetwork.com/speakers-council?utm_source=chatgpt.com "Corporate Speakers Council"
+[9]: https://executiveplatforms.tv/?utm_source=chatgpt.com "Executive Platforms"
+[10]: https://en.wikipedia.org/wiki/Chief_%28women%27s_network%29?utm_source=chatgpt.com "Chief (women's network)"
+[11]: https://www.theofficialboard.com/info/rest-api?utm_source=chatgpt.com "Introduction to our REST API - The Official Board"
+[12]: https://www.interzoid.com/apis/get-executive-profile?utm_source=chatgpt.com "Get Executive Profile API - Corporate Leadership Intelligence"
+[13]: https://en.wikipedia.org/wiki/BoardEx?utm_source=chatgpt.com "BoardEx"
+[14]: https://tradefeeds.com/company-information-api/?utm_source=chatgpt.com "Company Information API"
+[15]: https://site.financialmodelingprep.com/datasets/company-profile?utm_source=chatgpt.com "Company Profile & Executive Data APIs | FMP"
+[16]: https://sec-api.io/docs/directors-and-board-members-data-api?utm_source=chatgpt.com "Directors & Board Members Data API - SEC API"
+
+### Short answer
+
+**Almost none of the platforms we discussed (jobs, candidates, C-suite data) are open source.**
+They are **commercial data businesses**.
+
+But 👇 here’s the clear breakdown so you know exactly where you stand.
+
+---
+
+## ✅ **Actually Open Source (you can self-host / modify)**
+
+These are **frameworks, engines, or building blocks**, not data providers.
+
+### 🧠 Recruiting / Talent Tech (Open Source)
+
+* **OpenCATS** – Open-source ATS (older but real)
+* **HireHive OSS forks** – Community-maintained ATS variants
+* **ERPNext HR** – Open-source HR + recruitment module
+* **Odoo Community Edition** – Recruitment module (core is OSS)
+
+👉 These manage **your own candidates**, not external ones.
+
+---
+
+### 🔍 Search / Matching / Parsing (Open Source)
+
+* **Elasticsearch / OpenSearch** – Candidate & executive search
+* **spaCy** – NLP for CV parsing
+* **Apache Tika** – Resume document parsing
+* **Haystack** – Semantic search / matching
+* **MLflow** – ML pipelines for candidate scoring
+
+---
+
+### 🕸️ Scraping / Data Collection (Open Source)
+
+* **Scrapy** – Web scraping framework
+* **Playwright** – Browser automation
+* **Puppeteer**
+* **Selenium**
+
+⚠️ Legal to use, but **what you scrape may not be legal to redistribute**.
+
+---
+
+## ❌ **NOT Open Source (Commercial / Closed)**
+
+### 🚫 Job APIs
+
+* APIJobs
+* jobdataAPI
+* Indeed
+* Adzuna
+
+➡️ **Paid access, proprietary datasets**
+
+---
+
+### 🚫 Candidate Databases
+
+* Pearch AI
+* DataVertex
+* BoardEx
+* LinkedIn data (via any provider)
+
+➡️ These sell **access to people**, which is why they’re never open source.
+
+---
+
+### 🚫 C-Suite Networks & Forums
+
+* CEO Circle
+* C-Suite Nexus
+* Top Executive
+* Southern Africa CEO Forum
+
+➡️ **Membership-based communities**, not software.
+
+---
+
+## 🧩 The Important Reality (Straight talk)
+
+> **Open source ≠ free data**
+
+* Software can be open source
+* **Data about people almost never is** (privacy, POPIA, GDPR, commercial value)
+
+That’s why:
+
+* Job boards sell access
+* Candidate databases are closed
+* Executive data is licensed, not shared
+
+---
+
+## 🧠 What *is* realistically open-source in your space?
+
+If your goal is something like **wefindjobs / candidate + executive intelligence**, the winning pattern is:
+
+### 🏗️ Open-source engine + licensed data
+
+Example:
+
+* OpenSearch (OSS)
+* Your own AI matching layer
+* Scrapy / Playwright for *your allowed sources*
+* Public data only (company sites, press releases, public bios)
+
+Then optionally:
+
+* Plug in **paid APIs later** when revenue exists
+
+---
+
+## 🔥 If you want, I can help you:
+
+* Design a **fully open-source candidate/job engine**
+* Identify **legal public data sources in South Africa**
+* Build a **Bright Data–style architecture without Bright Data**
+* Decide **what must be paid vs what you can own**
+
+Just tell me **what you’re trying to build** (product, internal tool, marketplace, AI platform).
