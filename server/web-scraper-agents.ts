@@ -1045,6 +1045,592 @@ export class DevToSourcer {
   }
 }
 
+// ========== TECH ROLE SOURCING AGENTS ==========
+
+export class StackOverflowSourcer {
+  name = "Stack Overflow Developer Sourcer";
+  platform = "StackOverflow";
+  
+  async search(job: Job, limit: number = 10): Promise<ScraperResult> {
+    console.log(`[StackOverflowSourcer] Searching developers for: ${job.title}`);
+    
+    const candidates: ScrapedCandidate[] = [];
+    
+    try {
+      // Stack Overflow public API - search top users
+      const tags = this.extractTags(job);
+      
+      for (const tag of tags.slice(0, 3)) {
+        // Use top-answerers endpoint which is more reliable
+        const url = `https://api.stackexchange.com/2.3/tags/${encodeURIComponent(tag)}/top-answerers/all_time?site=stackoverflow&pagesize=10`;
+        
+        console.log(`[StackOverflowSourcer] Fetching users for tag: ${tag}`);
+        
+        const response = await fetch(url, {
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (!response.ok) continue;
+        
+        const data = await response.json();
+        
+        for (const item of (data.items || []).slice(0, 5)) {
+          const user = item.user;
+          if (!user || !user.display_name) continue;
+          
+          candidates.push({
+            name: user.display_name,
+            title: `${tag} Developer`,
+            skills: [tag, ...this.extractTags(job).slice(0, 3)],
+            experience: `${user.reputation?.toLocaleString() || 0} reputation, ${item.post_count || 0} answers in ${tag}`,
+            location: user.location || "Remote",
+            contact: user.website_url || undefined,
+            source: this.platform,
+            sourceUrl: user.link || `https://stackoverflow.com/users/${user.user_id}`,
+            matchScore: Math.min(95, 50 + Math.floor((user.reputation || 0) / 1000))
+          });
+        }
+        
+        await new Promise(r => setTimeout(r, 200));
+      }
+      
+      const uniqueCandidates = this.deduplicateCandidates(candidates).slice(0, limit);
+      
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: uniqueCandidates,
+        scrapedAt: new Date(),
+        status: uniqueCandidates.length > 0 ? "success" : "partial"
+      };
+    } catch (error) {
+      console.error(`[StackOverflowSourcer] Error:`, error);
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: [],
+        scrapedAt: new Date(),
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    }
+  }
+  
+  private extractTags(job: Job): string[] {
+    const tagMap: Record<string, string> = {
+      'javascript': 'javascript', 'typescript': 'typescript', 'python': 'python',
+      'java': 'java', 'react': 'reactjs', 'angular': 'angular', 'vue': 'vue.js',
+      'node': 'node.js', 'django': 'django', 'flask': 'flask', 'spring': 'spring',
+      'docker': 'docker', 'kubernetes': 'kubernetes', 'aws': 'amazon-web-services',
+      'azure': 'azure', 'sql': 'sql', 'mongodb': 'mongodb', 'postgresql': 'postgresql',
+      'c#': 'c#', 'c++': 'c++', 'go': 'go', 'rust': 'rust', 'php': 'php',
+      'ruby': 'ruby', 'swift': 'swift', 'kotlin': 'kotlin', 'flutter': 'flutter'
+    };
+    
+    const text = `${job.title} ${job.description || ''}`.toLowerCase();
+    const found: string[] = [];
+    
+    for (const [keyword, tag] of Object.entries(tagMap)) {
+      if (text.includes(keyword) && !found.includes(tag)) {
+        found.push(tag);
+      }
+    }
+    
+    return found.length > 0 ? found : ['javascript', 'python', 'java'];
+  }
+  
+  private deduplicateCandidates(candidates: ScrapedCandidate[]): ScrapedCandidate[] {
+    const seen = new Set<string>();
+    return candidates.filter(c => {
+      const key = c.sourceUrl || c.name;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+}
+
+export class HackerNewsSourcer {
+  name = "HackerNews Who's Hiring Sourcer";
+  platform = "HackerNews";
+  
+  async search(job: Job, limit: number = 10): Promise<ScraperResult> {
+    console.log(`[HackerNewsSourcer] Searching Who's Hiring threads for: ${job.title}`);
+    
+    const candidates: ScrapedCandidate[] = [];
+    
+    try {
+      // Search HackerNews Algolia API for "Who is hiring" and "Who wants to be hired" posts
+      const searchTerms = this.buildSearchTerms(job);
+      
+      for (const term of searchTerms.slice(0, 2)) {
+        const url = `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(term)}&tags=comment&hitsPerPage=20`;
+        
+        console.log(`[HackerNewsSourcer] Searching: ${term}`);
+        
+        const response = await fetch(url, {
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (!response.ok) continue;
+        
+        const data = await response.json();
+        
+        for (const hit of (data.hits || []).slice(0, 10)) {
+          if (!hit.comment_text || hit.comment_text.length < 50) continue;
+          
+          // Extract candidate info from comment
+          const extracted = this.extractFromComment(hit.comment_text, hit.author);
+          if (extracted) {
+            candidates.push({
+              ...extracted,
+              source: this.platform,
+              sourceUrl: `https://news.ycombinator.com/item?id=${hit.objectID}`,
+              matchScore: 70
+            });
+          }
+        }
+        
+        await new Promise(r => setTimeout(r, 200));
+      }
+      
+      const uniqueCandidates = this.deduplicateCandidates(candidates).slice(0, limit);
+      
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: uniqueCandidates,
+        scrapedAt: new Date(),
+        status: uniqueCandidates.length > 0 ? "success" : "partial"
+      };
+    } catch (error) {
+      console.error(`[HackerNewsSourcer] Error:`, error);
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: [],
+        scrapedAt: new Date(),
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    }
+  }
+  
+  private buildSearchTerms(job: Job): string[] {
+    const baseTerms = ["looking for work", "available for hire", "seeking opportunities"];
+    const skills = this.extractSkills(job);
+    
+    if (skills.length > 0) {
+      return [`${skills[0]} developer looking`, `${skills[0]} engineer available`, ...baseTerms.slice(0, 1)];
+    }
+    
+    return baseTerms;
+  }
+  
+  private extractSkills(job: Job): string[] {
+    const skills = ['javascript', 'python', 'java', 'react', 'node', 'typescript', 'go', 'rust'];
+    const text = `${job.title} ${job.description || ''}`.toLowerCase();
+    return skills.filter(s => text.includes(s));
+  }
+  
+  private extractFromComment(text: string, author: string): Partial<ScrapedCandidate> | null {
+    const lines = text.split('\n').filter(l => l.trim());
+    if (lines.length === 0) return null;
+    
+    // Look for common patterns in "Who wants to be hired" posts
+    const locationMatch = text.match(/Location:\s*([^\n]+)/i) || text.match(/Based in\s*([^\n,]+)/i);
+    const techMatch = text.match(/Technologies?:\s*([^\n]+)/i) || text.match(/Skills?:\s*([^\n]+)/i);
+    const emailMatch = text.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    
+    return {
+      name: author,
+      title: "Developer (HN)",
+      skills: techMatch ? techMatch[1].split(/[,|\/]/).map(s => s.trim()).slice(0, 5) : ["Software Development"],
+      experience: lines[0].substring(0, 200),
+      location: locationMatch ? locationMatch[1].trim() : "Remote",
+      contact: emailMatch ? emailMatch[1] : undefined
+    };
+  }
+  
+  private deduplicateCandidates(candidates: ScrapedCandidate[]): ScrapedCandidate[] {
+    const seen = new Set<string>();
+    return candidates.filter(c => {
+      const key = c.sourceUrl || c.name;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+}
+
+export class KaggleSourcer {
+  name = "Kaggle Data Science Sourcer";
+  platform = "Kaggle";
+  
+  async search(job: Job, limit: number = 10): Promise<ScraperResult> {
+    console.log(`[KaggleSourcer] Searching data scientists for: ${job.title}`);
+    
+    // Check if this is a data science related role
+    const dataKeywords = ['data', 'scientist', 'machine learning', 'ml', 'ai', 'artificial intelligence', 
+                          'analytics', 'analyst', 'deep learning', 'nlp', 'computer vision'];
+    const isDataRole = dataKeywords.some(kw => 
+      job.title.toLowerCase().includes(kw) || (job.description || '').toLowerCase().includes(kw)
+    );
+    
+    if (!isDataRole) {
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: [],
+        scrapedAt: new Date(),
+        status: "partial",
+        error: "Kaggle sourcing is optimized for data science roles"
+      };
+    }
+    
+    const candidates: ScrapedCandidate[] = [];
+    
+    try {
+      // Kaggle doesn't have a public user search API, but we can scrape competition leaderboards
+      // For now, use DuckDuckGo to find Kaggle profiles
+      const searchUrl = `https://html.duckduckgo.com/html/?q=site:kaggle.com+"data+scientist"+South+Africa`;
+      
+      console.log(`[KaggleSourcer] Searching Kaggle profiles...`);
+      
+      const response = await fetch(searchUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      });
+      
+      if (response.ok) {
+        const html = await response.text();
+        const extracted = await this.extractFromSearch(html);
+        candidates.push(...extracted);
+      }
+      
+      const uniqueCandidates = this.deduplicateCandidates(candidates).slice(0, limit);
+      
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: uniqueCandidates,
+        scrapedAt: new Date(),
+        status: uniqueCandidates.length > 0 ? "success" : "partial"
+      };
+    } catch (error) {
+      console.error(`[KaggleSourcer] Error:`, error);
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: [],
+        scrapedAt: new Date(),
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    }
+  }
+  
+  private async extractFromSearch(html: string): Promise<ScrapedCandidate[]> {
+    try {
+      const textContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 8000);
+      
+      const completion = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: `Extract Kaggle user profiles from search results.
+Return a JSON array: [{"name": "...", "username": "...", "bio": "...", "location": "..."}]
+Only include data scientists/ML engineers. Return [] if none found.`
+          },
+          {
+            role: "user",
+            content: `Search results:\n${textContent}`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 1500
+      });
+      
+      const content = completion.choices[0]?.message?.content || "[]";
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) return [];
+      
+      const profiles = JSON.parse(jsonMatch[0]);
+      
+      return profiles.map((p: any) => ({
+        name: p.name || p.username,
+        title: "Data Scientist / ML Engineer",
+        skills: ["Machine Learning", "Python", "Data Science", "Deep Learning"],
+        experience: p.bio || "Kaggle Contributor",
+        location: p.location || "Remote",
+        source: this.platform,
+        sourceUrl: p.username ? `https://kaggle.com/${p.username}` : "Kaggle",
+        matchScore: 75
+      }));
+    } catch (error) {
+      console.error(`[KaggleSourcer] Extraction error:`, error);
+      return [];
+    }
+  }
+  
+  private deduplicateCandidates(candidates: ScrapedCandidate[]): ScrapedCandidate[] {
+    const seen = new Set<string>();
+    return candidates.filter(c => {
+      const key = c.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+}
+
+// ========== BLUE COLLAR SOURCING AGENTS ==========
+
+export class OLXSourcer {
+  name = "OLX South Africa Sourcer";
+  platform = "OLX";
+  
+  async search(job: Job, limit: number = 10): Promise<ScraperResult> {
+    console.log(`[OLXSourcer] Searching blue collar candidates for: ${job.title}`);
+    
+    const candidates: ScrapedCandidate[] = [];
+    let page: Page | null = null;
+    
+    try {
+      const searchTerm = this.buildSearchTerm(job);
+      const browser = await getBrowser();
+      page = await browser.newPage();
+      
+      await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+      
+      // OLX South Africa job seekers section
+      const searchUrl = `https://www.olx.co.za/jobs/q-${encodeURIComponent(searchTerm)}`;
+      
+      console.log(`[OLXSourcer] Navigating to: ${searchUrl}`);
+      
+      await page.goto(searchUrl, { 
+        waitUntil: "domcontentloaded",
+        timeout: 15000 
+      });
+      
+      await new Promise(r => setTimeout(r, 2000));
+      
+      const pageContent = await page.evaluate(() => {
+        const listings = document.querySelectorAll('[data-aut-id="itemBox"], .EIR5N, [class*="listing"]');
+        let text = "";
+        listings.forEach(el => {
+          text += el.textContent + "\n\n";
+        });
+        if (text.length < 100) {
+          text = document.body.innerText;
+        }
+        return text.substring(0, 15000);
+      });
+      
+      if (pageContent.length > 200) {
+        const extracted = await extractCandidatesWithAI(pageContent, job, this.platform);
+        candidates.push(...extracted);
+      }
+      
+      const uniqueCandidates = this.deduplicateCandidates(candidates).slice(0, limit);
+      
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: uniqueCandidates,
+        scrapedAt: new Date(),
+        status: uniqueCandidates.length > 0 ? "success" : "partial"
+      };
+    } catch (error) {
+      console.error(`[OLXSourcer] Error:`, error);
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: [],
+        scrapedAt: new Date(),
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    } finally {
+      if (page) await page.close();
+    }
+  }
+  
+  private buildSearchTerm(job: Job): string {
+    const title = job.title.toLowerCase();
+    
+    // Blue collar job mappings
+    const mappings: Record<string, string> = {
+      'driver': 'driver cv',
+      'welder': 'welder seeking work',
+      'electrician': 'electrician available',
+      'plumber': 'plumber cv',
+      'mechanic': 'mechanic looking for work',
+      'cleaner': 'cleaner available',
+      'security': 'security guard cv',
+      'construction': 'construction worker',
+      'factory': 'factory worker cv',
+      'warehouse': 'warehouse worker',
+      'forklift': 'forklift operator',
+      'truck': 'truck driver cv',
+      'artisan': 'artisan cv',
+      'technician': 'technician cv',
+      'handyman': 'handyman services'
+    };
+    
+    for (const [keyword, query] of Object.entries(mappings)) {
+      if (title.includes(keyword)) {
+        return query;
+      }
+    }
+    
+    return job.title.split(/\s+/).slice(0, 3).join(' ') + ' cv';
+  }
+  
+  private deduplicateCandidates(candidates: ScrapedCandidate[]): ScrapedCandidate[] {
+    const seen = new Set<string>();
+    return candidates.filter(c => {
+      const key = c.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+}
+
+export class TradeForumSourcer {
+  name = "Trade & Skills Forum Sourcer";
+  platform = "TradeForums";
+  
+  async search(job: Job, limit: number = 10): Promise<ScraperResult> {
+    console.log(`[TradeForumSourcer] Searching trade workers for: ${job.title}`);
+    
+    const candidates: ScrapedCandidate[] = [];
+    
+    try {
+      // Search for trade workers on public forums and classifieds
+      const searchTerms = this.buildSearchTerms(job);
+      
+      for (const term of searchTerms.slice(0, 2)) {
+        const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(term)}`;
+        
+        console.log(`[TradeForumSourcer] Searching: ${term}`);
+        
+        const response = await fetch(searchUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+        });
+        
+        if (response.ok) {
+          const html = await response.text();
+          const extracted = await this.extractFromSearch(html, term);
+          candidates.push(...extracted);
+        }
+        
+        await new Promise(r => setTimeout(r, 500));
+      }
+      
+      const uniqueCandidates = this.deduplicateCandidates(candidates).slice(0, limit);
+      
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: uniqueCandidates,
+        scrapedAt: new Date(),
+        status: uniqueCandidates.length > 0 ? "success" : "partial"
+      };
+    } catch (error) {
+      console.error(`[TradeForumSourcer] Error:`, error);
+      return {
+        platform: this.platform,
+        query: job.title,
+        candidates: [],
+        scrapedAt: new Date(),
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    }
+  }
+  
+  private buildSearchTerms(job: Job): string[] {
+    const title = job.title.toLowerCase();
+    
+    const tradeTerms = [
+      'electrician', 'plumber', 'welder', 'mechanic', 'carpenter', 
+      'driver', 'security', 'cleaner', 'construction', 'artisan'
+    ];
+    
+    const matchedTrade = tradeTerms.find(t => title.includes(t));
+    
+    if (matchedTrade) {
+      return [
+        `${matchedTrade} available South Africa`,
+        `${matchedTrade} looking for work Johannesburg`,
+        `qualified ${matchedTrade} CV South Africa`
+      ];
+    }
+    
+    return [
+      `${job.title} available South Africa`,
+      `${job.title} CV Johannesburg`
+    ];
+  }
+  
+  private async extractFromSearch(html: string, term: string): Promise<ScrapedCandidate[]> {
+    try {
+      const textContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 8000);
+      
+      const completion = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: `Extract people offering trade/blue collar services from search results.
+Return a JSON array: [{"name": "...", "trade": "...", "location": "...", "contact": "...", "experience": "..."}]
+Only include people offering their services. Return [] if none found.`
+          },
+          {
+            role: "user",
+            content: `Search term: ${term}\n\nResults:\n${textContent}`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 1500
+      });
+      
+      const content = completion.choices[0]?.message?.content || "[]";
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) return [];
+      
+      const workers = JSON.parse(jsonMatch[0]);
+      
+      return workers.map((w: any) => ({
+        name: w.name || "Trade Worker",
+        title: w.trade || "Skilled Worker",
+        skills: [w.trade || "Trade Skills"],
+        experience: w.experience || "Experienced tradesperson",
+        location: w.location || "South Africa",
+        contact: w.contact,
+        source: this.platform,
+        sourceUrl: "Trade Forums/Classifieds",
+        matchScore: 70
+      }));
+    } catch (error) {
+      console.error(`[TradeForumSourcer] Extraction error:`, error);
+      return [];
+    }
+  }
+  
+  private deduplicateCandidates(candidates: ScrapedCandidate[]): ScrapedCandidate[] {
+    const seen = new Set<string>();
+    return candidates.filter(c => {
+      const key = c.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+}
+
 export class ExecutiveSourcer {
   name = "Executive Network Sourcer";
   platform = "Executive";
@@ -1701,15 +2287,21 @@ Only include board directors and executives. Return [] if none found.`
 
 export class ScraperOrchestrator {
   private scrapers = [
-    // API-based sourcers (reliable, no scraping blocks)
+    // API-based tech sourcers (reliable, no scraping blocks)
     new GitHubDeveloperSourcer(),
     new DevToSourcer(),
+    new StackOverflowSourcer(),
+    new HackerNewsSourcer(),
+    new KaggleSourcer(),
+    // Executive/C-Suite sourcing agents
     new ExecutiveSourcer(),
     new CandidateAPISourcer(),
-    // Executive/C-Suite sourcing agents
     new CompanyLeadershipSourcer(),
     new NewsExecutiveSourcer(),
     new CIPCDirectorSourcer(),
+    // Blue collar sourcing agents
+    new OLXSourcer(),
+    new TradeForumSourcer(),
     // Web scrapers (may have anti-bot issues)
     new GumtreeScraper(),
     new IndeedScraper(),
