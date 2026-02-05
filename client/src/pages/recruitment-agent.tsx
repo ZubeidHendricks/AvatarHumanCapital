@@ -566,112 +566,111 @@ export default function RecruitmentAgent() {
                 </CardContent>
               </Card>
 
-              {/* Sourcing Agents - All Categories */}
+              {/* Sourcing Agents - Workflow Style */}
               <Card className="bg-zinc-900/50 border-zinc-800">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-400" />
-                    AI Sourcing Agents
-                    <Badge variant="outline" className="ml-2 border-blue-500 text-blue-400">
-                      {sourcingAgents?.length || 0} agents
-                    </Badge>
+                    <Bot className="h-5 w-5 text-purple-400" />
+                    AI Agent Workflow
                   </CardTitle>
                   <CardDescription>
-                    {effectiveStep === 1 ? "AI agents searching across all platforms..." : "Intelligent talent acquisition powered by LLaMA 3.1 70B via Groq"}
+                    {effectiveStep === 1 ? "Executing sourcing workflow..." : "Intelligent talent acquisition powered by LLaMA 3.1 70B"}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {Object.entries(agentsByCategory).length === 0 ? (
-                    <div className="text-center py-4">
-                      <Loader2 className="h-8 w-8 text-zinc-400 mx-auto mb-2 animate-spin" />
-                      <p className="text-sm text-zinc-400">Loading sourcing agents...</p>
-                    </div>
-                  ) : (
-                    Object.entries(agentsByCategory).map(([category, agents]) => (
-                      <div key={category} className="space-y-2">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {category}
-                          </Badge>
-                          <span className="text-xs text-zinc-500">{agents.length} agents</span>
+                <CardContent className="p-0">
+                  <div className="flex">
+                    {/* Left: Category Steps */}
+                    <div className="w-48 border-r border-zinc-800 py-4">
+                      {Object.entries(agentsByCategory).length === 0 ? (
+                        <div className="px-4 py-8 text-center">
+                          <Loader2 className="h-6 w-6 text-zinc-500 mx-auto animate-spin" />
                         </div>
-                        <div className="grid grid-cols-1 gap-2">
-                          {agents.map((agent) => {
-                            const IconComponent = agent.icon || Search;
-                            const isActive = effectiveStep === 1;
-                            const isComplete = effectiveStep > 1;
-                            
-                            const sessionResult = specialistResultsFromSession.find(
-                              (r: any) => r.platform === agent.platform || r.specialist === agent.name
-                            );
-                            const hasResult = sessionResult && sessionResult.found > 0;
-                            
-                            return (
-                              <div 
-                                key={agent.platform}
-                                className={`flex items-center gap-3 p-2 rounded-lg border transition-all ${
-                                  isActive 
-                                    ? 'bg-purple-500/10 border-purple-500/50' 
-                                    : hasResult
-                                      ? 'bg-green-500/10 border-green-500/30'
-                                      : 'bg-zinc-800/30 border-zinc-700/30'
-                                }`}
-                                data-testid={`agent-${agent.platform.toLowerCase().replace(/\s+/g, '-')}`}
-                              >
-                                <div className={`p-1.5 rounded ${agent.color}`}>
-                                  {isActive ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : hasResult ? (
-                                    <CheckCircle className="h-3 w-3" />
-                                  ) : (
-                                    <IconComponent className="h-3 w-3" />
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-xs truncate">{agent.name}</p>
-                                  <p className="text-[10px] text-zinc-500 truncate">{agent.description}</p>
-                                  {sessionResult && (
-                                    <p className="text-[10px] text-green-400">
-                                      {sessionResult.found} found
-                                    </p>
-                                  )}
-                                </div>
-                                <Badge variant="outline" className={`shrink-0 text-[10px] px-1.5 py-0 ${
-                                  isActive ? 'border-purple-500 text-purple-400' :
-                                  hasResult ? 'border-green-500 text-green-400' :
-                                  'border-zinc-600 text-zinc-400'
-                                }`}>
-                                  {isActive ? '...' : hasResult ? 'Done' : 'Ready'}
-                                </Badge>
+                      ) : (
+                        Object.keys(agentsByCategory).map((category, idx) => {
+                          const categoryActive = effectiveStep === 1;
+                          const categoryComplete = effectiveStep > 1;
+                          return (
+                            <div 
+                              key={category}
+                              className={`flex items-center gap-3 px-4 py-3 border-l-2 transition-all ${
+                                categoryActive 
+                                  ? 'border-l-purple-500 bg-purple-500/5' 
+                                  : categoryComplete 
+                                    ? 'border-l-green-500' 
+                                    : 'border-l-transparent'
+                              }`}
+                            >
+                              <span className={`text-sm font-mono ${categoryActive ? 'text-purple-400' : categoryComplete ? 'text-green-400' : 'text-zinc-500'}`}>
+                                {String(idx + 1).padStart(2, '0')}
+                              </span>
+                              <span className={`text-sm font-medium ${categoryActive ? 'text-white' : 'text-zinc-400'}`}>
+                                {category}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                    
+                    {/* Right: Agent Actions */}
+                    <div className="flex-1 py-4 px-4 space-y-2 max-h-80 overflow-y-auto">
+                      {Object.entries(agentsByCategory).flatMap(([category, agents]) => 
+                        agents.map((agent) => {
+                          const isActive = effectiveStep === 1;
+                          const sessionResult = specialistResultsFromSession.find(
+                            (r: any) => r.platform === agent.platform || r.specialist === agent.name
+                          );
+                          const hasResult = sessionResult && sessionResult.found > 0;
+                          const estimatedTime = Math.floor(Math.random() * 4) + 2;
+                          
+                          return (
+                            <div 
+                              key={agent.platform}
+                              className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
+                                isActive 
+                                  ? 'bg-purple-500/10' 
+                                  : hasResult
+                                    ? 'bg-zinc-800/30'
+                                    : 'bg-zinc-800/20'
+                              }`}
+                              data-testid={`agent-${agent.platform.toLowerCase().replace(/\s+/g, '-')}`}
+                            >
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                                isActive ? 'bg-purple-500' : hasResult ? 'bg-green-500' : 'bg-zinc-700'
+                              }`}>
+                                {isActive ? (
+                                  <Loader2 className="h-3 w-3 animate-spin text-white" />
+                                ) : hasResult ? (
+                                  <CheckCircle className="h-3 w-3 text-white" />
+                                ) : (
+                                  <div className="w-2 h-2 rounded-full bg-zinc-500" />
+                                )}
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  
-                  {/* Show total from AI search if available */}
-                  {sessionResults?.aiSearchFound && (
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
-                      <div className="p-2 rounded-lg bg-cyan-500">
-                        <Search className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">AI Search Augmentation</p>
-                        <p className="text-xs text-cyan-400">
-                          Found {sessionResults.aiSearchFound} additional candidates
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="border-cyan-500 text-cyan-400">Done</Badge>
+                              <span className={`flex-1 text-sm ${isActive ? 'text-white' : hasResult ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                                {agent.name}
+                              </span>
+                              <Badge className={`text-xs px-2 py-0.5 ${
+                                isActive ? 'bg-purple-500/20 text-purple-300' : 
+                                hasResult ? 'bg-green-500/20 text-green-300' : 
+                                'bg-zinc-700 text-zinc-400'
+                              }`}>
+                                {isActive ? `${estimatedTime}s` : hasResult ? `${sessionResult?.found || 0}` : `${estimatedTime}s`}
+                              </Badge>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
-                  )}
-                  
-                  <div className="text-xs text-zinc-500 text-center pt-2">
-                    Specialists run automatically when you deploy AI agents
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Workflow Description */}
+              <div className="px-2">
+                <p className="text-sm text-zinc-500 leading-relaxed">
+                  Extract candidate data from multiple sources including APIs, job boards, and professional networks, then rank using AI matching algorithms.
+                </p>
+              </div>
 
               {/* Workflow Steps */}
               <Card className="bg-zinc-900/50 border-zinc-800">
