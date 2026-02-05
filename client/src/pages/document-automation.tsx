@@ -379,11 +379,11 @@ export default function DocumentAutomation() {
     switch (status) {
       case "processed":
       case "completed":
-        return <CheckCircle2 className="h-4 w-4 text-green-400" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />;
       case "failed":
-        return <XCircle className="h-4 w-4 text-red-400" />;
+        return <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />;
       case "processing":
-        return <Loader2 className="h-4 w-4 text-amber-400 animate-spin" />;
+        return <Loader2 className="h-4 w-4 text-amber-600 dark:text-amber-400 animate-spin" />;
       default:
         return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
@@ -391,12 +391,12 @@ export default function DocumentAutomation() {
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      processed: "bg-green-500/20 text-green-400 border-green-500/30",
-      completed: "bg-green-500/20 text-green-400 border-green-500/30",
-      failed: "bg-red-500/20 text-red-400 border-red-500/30",
-      processing: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-      partially_completed: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-      uploaded: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+      processed: "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30",
+      completed: "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30",
+      failed: "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30",
+      processing: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30",
+      partially_completed: "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
+      uploaded: "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30",
     };
     return colors[status] || "bg-muted text-muted-foreground border-border";
   };
@@ -418,23 +418,23 @@ export default function DocumentAutomation() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-muted border border-border">
-            <TabsTrigger value="upload" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400" data-testid="tab-upload">
+            <TabsTrigger value="upload" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-600 dark:text-amber-400" data-testid="tab-upload">
               <Upload className="h-4 w-4 mr-2" />
               Upload
             </TabsTrigger>
-            <TabsTrigger value="cvs" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400" data-testid="tab-cv-library">
+            <TabsTrigger value="cvs" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-600 dark:text-amber-400" data-testid="tab-cv-library">
               <Users className="h-4 w-4 mr-2" />
               CV Library
             </TabsTrigger>
-            <TabsTrigger value="job-specs" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400" data-testid="tab-job-specs-library">
+            <TabsTrigger value="job-specs" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-600 dark:text-amber-400" data-testid="tab-job-specs-library">
               <Briefcase className="h-4 w-4 mr-2" />
               Job Specs
             </TabsTrigger>
-            <TabsTrigger value="batches" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400" data-testid="tab-upload-history">
+            <TabsTrigger value="batches" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-600 dark:text-amber-400" data-testid="tab-upload-history">
               <FolderOpen className="h-4 w-4 mr-2" />
               Upload History
             </TabsTrigger>
-            <TabsTrigger value="templates" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400" data-testid="tab-templates">
+            <TabsTrigger value="templates" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-600 dark:text-amber-400" data-testid="tab-templates">
               <FileText className="h-4 w-4 mr-2" />
               Templates
             </TabsTrigger>
@@ -457,7 +457,7 @@ export default function DocumentAutomation() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-3 rounded-full bg-blue-500/20">
-                        <Users className="h-6 w-6 text-blue-400" />
+                        <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
                         <CardTitle className="text-lg">Upload CVs</CardTitle>
@@ -465,7 +465,7 @@ export default function DocumentAutomation() {
                       </div>
                     </div>
                     {uploadType === "cvs" && (
-                      <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Selected</Badge>
+                      <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">Selected</Badge>
                     )}
                   </div>
                 </CardHeader>
@@ -514,7 +514,7 @@ export default function DocumentAutomation() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-3 rounded-full bg-purple-500/20">
-                        <Briefcase className="h-6 w-6 text-purple-400" />
+                        <Briefcase className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                       </div>
                       <div>
                         <CardTitle className="text-lg">Upload Job Specs</CardTitle>
@@ -522,7 +522,7 @@ export default function DocumentAutomation() {
                       </div>
                     </div>
                     {uploadType === "job-specs" && (
-                      <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Selected</Badge>
+                      <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">Selected</Badge>
                     )}
                   </div>
                 </CardHeader>
@@ -563,7 +563,7 @@ export default function DocumentAutomation() {
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <div className="p-3 rounded-full bg-blue-500/20">
-                      <FileArchive className="h-6 w-6 text-blue-400" />
+                      <FileArchive className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">Bulk CV Upload</CardTitle>
@@ -573,7 +573,7 @@ export default function DocumentAutomation() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-center py-6 border border-dashed border-blue-500/30 rounded-lg bg-blue-500/5">
-                    <Users className="h-10 w-10 text-blue-400 mx-auto mb-3" />
+                    <Users className="h-10 w-10 text-blue-600 dark:text-blue-400 mx-auto mb-3" />
                     <p className="text-muted-foreground mb-2 text-sm">Upload ZIP with CV PDFs</p>
                     <p className="text-xs text-muted-foreground mb-4">All PDFs will be extracted and candidates created</p>
                     <label>
@@ -586,7 +586,7 @@ export default function DocumentAutomation() {
                       />
                       <Button 
                         variant="outline" 
-                        className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
+                        className="border-blue-500/50 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
                         disabled={isUploading}
                         asChild
                         data-testid="button-browse-cv-zip"
@@ -605,7 +605,7 @@ export default function DocumentAutomation() {
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <div className="p-3 rounded-full bg-purple-500/20">
-                      <FileArchive className="h-6 w-6 text-purple-400" />
+                      <FileArchive className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">Bulk Job Specs Upload</CardTitle>
@@ -615,7 +615,7 @@ export default function DocumentAutomation() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-center py-6 border border-dashed border-purple-500/30 rounded-lg bg-purple-500/5">
-                    <Briefcase className="h-10 w-10 text-purple-400 mx-auto mb-3" />
+                    <Briefcase className="h-10 w-10 text-purple-600 dark:text-purple-400 mx-auto mb-3" />
                     <p className="text-muted-foreground mb-2 text-sm">Upload ZIP with job spec documents</p>
                     <p className="text-xs text-muted-foreground mb-4">PDF, DOC, DOCX, TXT files will be processed</p>
                     <label>
@@ -628,7 +628,7 @@ export default function DocumentAutomation() {
                       />
                       <Button 
                         variant="outline" 
-                        className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                        className="border-purple-500/50 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10"
                         disabled={isUploading}
                         asChild
                         data-testid="button-browse-job-spec-zip"
@@ -648,7 +648,7 @@ export default function DocumentAutomation() {
               <Card className="bg-card border-border">
                 <CardContent className="py-6">
                   <div className="flex items-center gap-4">
-                    <Loader2 className="h-6 w-6 text-amber-400 animate-spin" />
+                    <Loader2 className="h-6 w-6 text-amber-600 dark:text-amber-400 animate-spin" />
                     <div className="flex-1">
                       <p className="text-foreground font-medium mb-2">Processing documents...</p>
                       <Progress value={uploadProgress} className="h-2" />
@@ -666,7 +666,7 @@ export default function DocumentAutomation() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <Users className="h-5 w-5 text-amber-400" />
+                      <Users className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                       CV Library
                     </CardTitle>
                     <CardDescription>Extracted candidate profiles from uploaded CVs</CardDescription>
@@ -677,7 +677,7 @@ export default function DocumentAutomation() {
                         variant={viewMode === "grid" ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setViewMode("grid")}
-                        className={viewMode === "grid" ? "bg-amber-500/20 text-amber-400" : "text-muted-foreground"}
+                        className={viewMode === "grid" ? "bg-amber-500/20 text-amber-600 dark:text-amber-400" : "text-muted-foreground"}
                       >
                         <Grid3X3 className="h-4 w-4" />
                       </Button>
@@ -685,7 +685,7 @@ export default function DocumentAutomation() {
                         variant={viewMode === "list" ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setViewMode("list")}
-                        className={viewMode === "list" ? "bg-amber-500/20 text-amber-400" : "text-muted-foreground"}
+                        className={viewMode === "list" ? "bg-amber-500/20 text-amber-600 dark:text-amber-400" : "text-muted-foreground"}
                       >
                         <List className="h-4 w-4" />
                       </Button>
@@ -694,7 +694,7 @@ export default function DocumentAutomation() {
                       {cvDocuments.length} CVs
                     </Badge>
                     <Link href="/hr-dashboard">
-                      <Button variant="outline" size="sm" className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10">
+                      <Button variant="outline" size="sm" className="border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10">
                         <Users className="h-4 w-4 mr-2" />
                         View All Candidates
                         <ArrowRight className="h-4 w-4 ml-2" />
@@ -706,7 +706,7 @@ export default function DocumentAutomation() {
               <CardContent>
                 {documentsLoading ? (
                   <div className="text-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-amber-400 mx-auto" />
+                    <Loader2 className="h-8 w-8 animate-spin text-amber-600 dark:text-amber-400 mx-auto" />
                   </div>
                 ) : cvDocuments.length === 0 ? (
                   <div className="text-center py-12">
@@ -715,7 +715,7 @@ export default function DocumentAutomation() {
                     <p className="text-muted-foreground mb-4">Upload CVs to see them here</p>
                     <Button 
                       variant="outline" 
-                      className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
+                      className="border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
                       onClick={() => setActiveTab("upload")}
                     >
                       <Upload className="h-4 w-4 mr-2" />
@@ -757,7 +757,7 @@ export default function DocumentAutomation() {
                                   {extracted?.fullName || doc.originalFilename}
                                 </h3>
                                 {extracted?.role && (
-                                  <p className="text-amber-400 text-sm truncate">{extracted.role}</p>
+                                  <p className="text-amber-600 dark:text-amber-400 text-sm truncate">{extracted.role}</p>
                                 )}
                               </div>
                             </div>
@@ -787,7 +787,7 @@ export default function DocumentAutomation() {
                                   href={extracted.linkedinUrl.startsWith('http') ? extracted.linkedinUrl : `https://${extracted.linkedinUrl}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300"
+                                  className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-300"
                                 >
                                   <Linkedin className="h-3 w-3 flex-shrink-0" />
                                   <span className="truncate">LinkedIn Profile</span>
@@ -846,7 +846,7 @@ export default function DocumentAutomation() {
                                     size="sm"
                                     onClick={() => downloadCvTemplate(doc.linkedCandidateId!, extracted?.fullName || "Candidate")}
                                     disabled={downloadingCvId === doc.linkedCandidateId}
-                                    className="h-7 px-2 text-green-400 hover:text-green-300"
+                                    className="h-7 px-2 text-green-600 dark:text-green-400 hover:text-green-300"
                                     title="Download CV Template"
                                     data-testid={`button-download-cv-${doc.id}`}
                                   >
@@ -861,7 +861,7 @@ export default function DocumentAutomation() {
                                   <Button 
                                     variant="ghost" 
                                     size="sm"
-                                    className="h-7 px-2 text-amber-400 hover:text-amber-300"
+                                    className="h-7 px-2 text-amber-600 dark:text-amber-400 hover:text-amber-300"
                                     title="View in HR Dashboard"
                                   >
                                     <ArrowRight className="h-3.5 w-3.5" />
@@ -870,7 +870,7 @@ export default function DocumentAutomation() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
-                                  className="h-7 px-2 text-red-400 hover:text-red-300"
+                                  className="h-7 px-2 text-red-600 dark:text-red-400 hover:text-red-300"
                                   onClick={() => deleteMutation.mutate(doc.id)}
                                   title="Delete"
                                 >
@@ -915,7 +915,7 @@ export default function DocumentAutomation() {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span className="text-amber-400 text-sm">{extracted?.role || '-'}</span>
+                                  <span className="text-amber-600 dark:text-amber-400 text-sm">{extracted?.role || '-'}</span>
                                 </td>
                                 <td className="px-4 py-3">
                                   <span className="text-muted-foreground text-sm">{extracted?.location || '-'}</span>
@@ -934,7 +934,7 @@ export default function DocumentAutomation() {
                                     )}
                                     {extracted?.linkedinUrl && (
                                       <a href={extracted.linkedinUrl.startsWith('http') ? extracted.linkedinUrl : `https://${extracted.linkedinUrl}`} target="_blank" rel="noopener noreferrer" title="LinkedIn Profile">
-                                        <Linkedin className="h-3.5 w-3.5 text-blue-400 hover:text-blue-300" />
+                                        <Linkedin className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 hover:text-blue-300" />
                                       </a>
                                     )}
                                     {!extracted?.email && !extracted?.phone && !extracted?.linkedinUrl && (
@@ -968,7 +968,7 @@ export default function DocumentAutomation() {
                                         size="sm" 
                                         onClick={() => downloadCvTemplate(doc.linkedCandidateId!, extracted?.fullName || "Candidate")}
                                         disabled={downloadingCvId === doc.linkedCandidateId}
-                                        className="h-7 px-2 text-green-400 hover:text-green-300"
+                                        className="h-7 px-2 text-green-600 dark:text-green-400 hover:text-green-300"
                                         title="Download CV Template"
                                         data-testid={`button-download-cv-list-${doc.id}`}
                                       >
@@ -980,11 +980,11 @@ export default function DocumentAutomation() {
                                       </Button>
                                     )}
                                     <Link href="/hr-dashboard">
-                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-amber-400" title="View in HR Dashboard">
+                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-amber-600 dark:text-amber-400" title="View in HR Dashboard">
                                         <ArrowRight className="h-3.5 w-3.5" />
                                       </Button>
                                     </Link>
-                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-red-400" onClick={() => deleteMutation.mutate(doc.id)} title="Delete">
+                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-red-600 dark:text-red-400" onClick={() => deleteMutation.mutate(doc.id)} title="Delete">
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   </div>
@@ -1007,7 +1007,7 @@ export default function DocumentAutomation() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg text-foreground flex items-center gap-2">
-                      <Briefcase className="h-5 w-5 text-purple-400" />
+                      <Briefcase className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                       Job Specifications Library
                     </CardTitle>
                     <CardDescription>Extracted job requirements from uploaded specifications</CardDescription>
@@ -1018,7 +1018,7 @@ export default function DocumentAutomation() {
                         variant={jobSpecViewMode === "grid" ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setJobSpecViewMode("grid")}
-                        className={jobSpecViewMode === "grid" ? "bg-purple-500/20 text-purple-400" : "text-muted-foreground"}
+                        className={jobSpecViewMode === "grid" ? "bg-purple-500/20 text-purple-600 dark:text-purple-400" : "text-muted-foreground"}
                       >
                         <Grid3X3 className="h-4 w-4" />
                       </Button>
@@ -1026,7 +1026,7 @@ export default function DocumentAutomation() {
                         variant={jobSpecViewMode === "list" ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setJobSpecViewMode("list")}
-                        className={jobSpecViewMode === "list" ? "bg-purple-500/20 text-purple-400" : "text-muted-foreground"}
+                        className={jobSpecViewMode === "list" ? "bg-purple-500/20 text-purple-600 dark:text-purple-400" : "text-muted-foreground"}
                       >
                         <List className="h-4 w-4" />
                       </Button>
@@ -1035,7 +1035,7 @@ export default function DocumentAutomation() {
                       {jobSpecDocuments.length} Jobs
                     </Badge>
                     <Link href="/recruitment-dashboard">
-                      <Button variant="outline" size="sm" className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10">
+                      <Button variant="outline" size="sm" className="border-purple-500/50 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10">
                         <Briefcase className="h-4 w-4 mr-2" />
                         View Recruitment
                         <ArrowRight className="h-4 w-4 ml-2" />
@@ -1047,7 +1047,7 @@ export default function DocumentAutomation() {
               <CardContent>
                 {documentsLoading ? (
                   <div className="text-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-purple-400 mx-auto" />
+                    <Loader2 className="h-8 w-8 animate-spin text-purple-600 dark:text-purple-400 mx-auto" />
                   </div>
                 ) : jobSpecDocuments.length === 0 ? (
                   <div className="text-center py-12">
@@ -1056,7 +1056,7 @@ export default function DocumentAutomation() {
                     <p className="text-muted-foreground mb-4">Upload job specifications to see them here</p>
                     <Button 
                       variant="outline" 
-                      className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                      className="border-purple-500/50 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10"
                       onClick={() => setActiveTab("upload")}
                     >
                       <Upload className="h-4 w-4 mr-2" />
@@ -1083,7 +1083,7 @@ export default function DocumentAutomation() {
                                   {extracted?.title || extracted?.jobTitle || doc.originalFilename}
                                 </h3>
                                 {extracted?.company && (
-                                  <p className="text-purple-400 text-sm truncate flex items-center gap-1">
+                                  <p className="text-purple-600 dark:text-purple-400 text-sm truncate flex items-center gap-1">
                                     <Building2 className="h-3 w-3" />
                                     {extracted.company}
                                   </p>
@@ -1111,7 +1111,7 @@ export default function DocumentAutomation() {
                                 </div>
                               )}
                               {(extracted?.salaryRange || extracted?.salary) && (
-                                <div className="flex items-center gap-2 text-xs text-green-400">
+                                <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
                                   <Award className="h-3 w-3 flex-shrink-0" />
                                   <span>{extracted.salaryRange || extracted.salary}</span>
                                 </div>
@@ -1161,7 +1161,7 @@ export default function DocumentAutomation() {
                                   <Button 
                                     variant="ghost" 
                                     size="sm"
-                                    className="h-7 px-2 text-purple-400 hover:text-purple-300"
+                                    className="h-7 px-2 text-purple-600 dark:text-purple-400 hover:text-purple-300"
                                   >
                                     <ArrowRight className="h-3.5 w-3.5" />
                                   </Button>
@@ -1169,7 +1169,7 @@ export default function DocumentAutomation() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
-                                  className="h-7 px-2 text-red-400 hover:text-red-300"
+                                  className="h-7 px-2 text-red-600 dark:text-red-400 hover:text-red-300"
                                   onClick={() => deleteMutation.mutate(doc.id)}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -1212,7 +1212,7 @@ export default function DocumentAutomation() {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span className="text-purple-400 text-sm">{extracted?.company || '-'}</span>
+                                  <span className="text-purple-600 dark:text-purple-400 text-sm">{extracted?.company || '-'}</span>
                                 </td>
                                 <td className="px-4 py-3">
                                   <span className="text-muted-foreground text-sm">{extracted?.location || '-'}</span>
@@ -1241,11 +1241,11 @@ export default function DocumentAutomation() {
                                       <Eye className="h-3.5 w-3.5" />
                                     </Button>
                                     <Link href="/recruitment-dashboard">
-                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-purple-400">
+                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-purple-600 dark:text-purple-400">
                                         <ArrowRight className="h-3.5 w-3.5" />
                                       </Button>
                                     </Link>
-                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-red-400" onClick={() => deleteMutation.mutate(doc.id)}>
+                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-red-600 dark:text-red-400" onClick={() => deleteMutation.mutate(doc.id)}>
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   </div>
@@ -1297,9 +1297,9 @@ export default function DocumentAutomation() {
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
                             {batch.type === "cvs" ? (
-                              <Users className="h-5 w-5 text-blue-400" />
+                              <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                             ) : (
-                              <Briefcase className="h-5 w-5 text-purple-400" />
+                              <Briefcase className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                             )}
                             <div>
                               <p className="font-medium text-foreground">{batch.name}</p>
@@ -1318,12 +1318,12 @@ export default function DocumentAutomation() {
                             <FileText className="h-4 w-4" />
                             <span>{batch.totalDocuments} files</span>
                           </div>
-                          <div className="flex items-center gap-1 text-green-400">
+                          <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
                             <CheckCircle2 className="h-4 w-4" />
                             <span>{batch.processedDocuments} processed</span>
                           </div>
                           {batch.failedDocuments > 0 && (
-                            <div className="flex items-center gap-1 text-red-400">
+                            <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
                               <XCircle className="h-4 w-4" />
                               <span>{batch.failedDocuments} failed</span>
                             </div>
@@ -1354,7 +1354,7 @@ export default function DocumentAutomation() {
                   <div className="p-4 rounded-lg bg-muted border border-border hover:border-green-500/50 transition-colors">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 rounded-lg bg-green-500/20">
-                        <FileText className="h-5 w-5 text-green-400" />
+                        <FileText className="h-5 w-5 text-green-600 dark:text-green-400" />
                       </div>
                       <div>
                         <h4 className="font-medium text-foreground">Offer Letter</h4>
@@ -1370,7 +1370,7 @@ export default function DocumentAutomation() {
                   <div className="p-4 rounded-lg bg-muted border border-border hover:border-blue-500/50 transition-colors">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 rounded-lg bg-blue-500/20">
-                        <Mail className="h-5 w-5 text-blue-400" />
+                        <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
                         <h4 className="font-medium text-foreground">Welcome Letter</h4>
@@ -1386,7 +1386,7 @@ export default function DocumentAutomation() {
                   <div className="p-4 rounded-lg bg-muted border border-border hover:border-purple-500/50 transition-colors">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 rounded-lg bg-purple-500/20">
-                        <FolderOpen className="h-5 w-5 text-purple-400" />
+                        <FolderOpen className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                       </div>
                       <div>
                         <h4 className="font-medium text-foreground">Employee Handbook</h4>
@@ -1402,7 +1402,7 @@ export default function DocumentAutomation() {
                   <div className="p-4 rounded-lg bg-muted border border-border hover:border-amber-500/50 transition-colors">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 rounded-lg bg-amber-500/20">
-                        <FileText className="h-5 w-5 text-amber-400" />
+                        <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                       </div>
                       <div>
                         <h4 className="font-medium text-foreground">CV Template</h4>
@@ -1418,7 +1418,7 @@ export default function DocumentAutomation() {
                   <div className="p-4 rounded-lg bg-muted border border-border hover:border-red-500/50 transition-colors">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 rounded-lg bg-red-500/20">
-                        <FileText className="h-5 w-5 text-red-400" />
+                        <FileText className="h-5 w-5 text-red-600 dark:text-red-400" />
                       </div>
                       <div>
                         <h4 className="font-medium text-foreground">NDA Agreement</h4>
@@ -1434,7 +1434,7 @@ export default function DocumentAutomation() {
                   <div className="p-4 rounded-lg bg-muted border border-border hover:border-cyan-500/50 transition-colors">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 rounded-lg bg-cyan-500/20">
-                        <FileText className="h-5 w-5 text-cyan-400" />
+                        <FileText className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
                       </div>
                       <div>
                         <h4 className="font-medium text-foreground">Employment Contract</h4>
@@ -1458,9 +1458,9 @@ export default function DocumentAutomation() {
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
               {selectedDocument?.type === "job_spec" ? (
-                <Briefcase className="h-5 w-5 text-purple-400" />
+                <Briefcase className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               ) : (
-                <File className="h-5 w-5 text-amber-400" />
+                <File className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               )}
               {selectedDocument?.originalFilename}
             </DialogTitle>
@@ -1487,13 +1487,13 @@ export default function DocumentAutomation() {
                         <span className="text-muted-foreground text-sm">{formatFileSize(selectedDocument.fileSize)}</span>
                       </div>
                       {selectedDocument.linkedCandidateId && (
-                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                        <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
                           Candidate Created
                         </Badge>
                       )}
                       {(selectedDocument as any).linkedJobId && (
-                        <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                        <Badge className="bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
                           Job Created
                         </Badge>
@@ -1505,7 +1505,7 @@ export default function DocumentAutomation() {
                         {/* Job Information */}
                         <div className="space-y-3">
                           <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                            <Briefcase className="h-5 w-5 text-purple-400" />
+                            <Briefcase className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                             Job Information
                           </h3>
                           <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
@@ -1515,7 +1515,7 @@ export default function DocumentAutomation() {
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Company</p>
-                              <p className="text-purple-400">{data.company || "N/A"}</p>
+                              <p className="text-purple-600 dark:text-purple-400">{data.company || "N/A"}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Department</p>
@@ -1531,7 +1531,7 @@ export default function DocumentAutomation() {
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Salary Range</p>
-                              <p className="text-green-400">{data.salaryRange || data.salary || "N/A"}</p>
+                              <p className="text-green-600 dark:text-green-400">{data.salaryRange || data.salary || "N/A"}</p>
                             </div>
                           </div>
                         </div>
@@ -1540,7 +1540,7 @@ export default function DocumentAutomation() {
                         {data.experienceRequired && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <Clock className="h-5 w-5 text-blue-400" />
+                              <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                               Experience Required
                             </h3>
                             <p className="text-foreground text-sm leading-relaxed p-4 bg-muted/50 rounded-lg">
@@ -1553,7 +1553,7 @@ export default function DocumentAutomation() {
                         {data.description && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <FileText className="h-5 w-5 text-amber-400" />
+                              <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                               Job Description
                             </h3>
                             <p className="text-foreground text-sm leading-relaxed p-4 bg-muted/50 rounded-lg whitespace-pre-wrap">
@@ -1566,7 +1566,7 @@ export default function DocumentAutomation() {
                         {data.requiredSkills && data.requiredSkills.length > 0 && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <Award className="h-5 w-5 text-blue-400" />
+                              <Award className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                               Required Skills ({data.requiredSkills.length})
                             </h3>
                             <div className="flex flex-wrap gap-2 p-4 bg-muted/50 rounded-lg">
@@ -1583,14 +1583,14 @@ export default function DocumentAutomation() {
                         {data.responsibilities && data.responsibilities.length > 0 && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <Target className="h-5 w-5 text-green-400" />
+                              <Target className="h-5 w-5 text-green-600 dark:text-green-400" />
                               Responsibilities ({data.responsibilities.length})
                             </h3>
                             <div className="p-4 bg-muted/50 rounded-lg">
                               <ul className="space-y-2">
                                 {data.responsibilities.map((resp: string, i: number) => (
                                   <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                                    <span className="text-green-400 mt-1">•</span>
+                                    <span className="text-green-600 dark:text-green-400 mt-1">•</span>
                                     {resp}
                                   </li>
                                 ))}
@@ -1603,14 +1603,14 @@ export default function DocumentAutomation() {
                         {data.qualifications && data.qualifications.length > 0 && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <GraduationCap className="h-5 w-5 text-orange-400" />
+                              <GraduationCap className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                               Qualifications ({data.qualifications.length})
                             </h3>
                             <div className="p-4 bg-muted/50 rounded-lg">
                               <ul className="space-y-2">
                                 {data.qualifications.map((qual: string, i: number) => (
                                   <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                                    <span className="text-orange-400 mt-1">•</span>
+                                    <span className="text-orange-600 dark:text-orange-400 mt-1">•</span>
                                     {qual}
                                   </li>
                                 ))}
@@ -1623,7 +1623,7 @@ export default function DocumentAutomation() {
                         {data.benefits && data.benefits.length > 0 && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <Star className="h-5 w-5 text-yellow-400" />
+                              <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                               Benefits ({data.benefits.length})
                             </h3>
                             <div className="flex flex-wrap gap-2 p-4 bg-muted/50 rounded-lg">
@@ -1641,7 +1641,7 @@ export default function DocumentAutomation() {
                         {/* Personal Information - For CVs */}
                         <div className="space-y-3">
                           <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                            <Users className="h-5 w-5 text-amber-400" />
+                            <Users className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                             Personal Information
                           </h3>
                           <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
@@ -1651,7 +1651,7 @@ export default function DocumentAutomation() {
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Role/Title</p>
-                              <p className="text-amber-400">{data.role || "N/A"}</p>
+                              <p className="text-amber-600 dark:text-amber-400">{data.role || "N/A"}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Email</p>
@@ -1676,7 +1676,7 @@ export default function DocumentAutomation() {
                         {data.summary && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <Sparkles className="h-5 w-5 text-purple-400" />
+                              <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                               Professional Summary
                             </h3>
                             <p className="text-foreground text-sm leading-relaxed p-4 bg-muted/50 rounded-lg">
@@ -1689,7 +1689,7 @@ export default function DocumentAutomation() {
                         {data.skills && data.skills.length > 0 && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <Award className="h-5 w-5 text-blue-400" />
+                              <Award className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                               Skills ({data.skills.length})
                             </h3>
                             <div className="flex flex-wrap gap-2 p-4 bg-muted/50 rounded-lg">
@@ -1706,7 +1706,7 @@ export default function DocumentAutomation() {
                         {data.experience && data.experience.length > 0 && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <Building2 className="h-5 w-5 text-green-400" />
+                              <Building2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                               Experience ({data.experience.length})
                             </h3>
                             <div className="space-y-3">
@@ -1715,7 +1715,7 @@ export default function DocumentAutomation() {
                                   <div className="flex items-start justify-between mb-2">
                                     <div>
                                       <p className="font-medium text-foreground">{exp.title}</p>
-                                      <p className="text-amber-400 text-sm">{exp.company}</p>
+                                      <p className="text-amber-600 dark:text-amber-400 text-sm">{exp.company}</p>
                                     </div>
                                     <div className="text-right text-sm text-muted-foreground">
                                       <p>{exp.duration}</p>
@@ -1726,7 +1726,7 @@ export default function DocumentAutomation() {
                                     <ul className="text-sm text-foreground space-y-1 mt-2">
                                       {exp.responsibilities.slice(0, 3).map((resp: string, j: number) => (
                                         <li key={j} className="flex items-start gap-2">
-                                          <span className="text-green-400 mt-1">•</span>
+                                          <span className="text-green-600 dark:text-green-400 mt-1">•</span>
                                           {resp}
                                         </li>
                                       ))}
@@ -1747,14 +1747,14 @@ export default function DocumentAutomation() {
                         {data.education && data.education.length > 0 && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <GraduationCap className="h-5 w-5 text-orange-400" />
+                              <GraduationCap className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                               Education ({data.education.length})
                             </h3>
                             <div className="space-y-2">
                               {data.education.map((edu: any, i: number) => (
                                 <div key={i} className="p-4 bg-muted/50 rounded-lg border-l-2 border-orange-500/50">
                                   <p className="font-medium text-foreground">{edu.degree}</p>
-                                  <p className="text-amber-400 text-sm">{edu.institution}</p>
+                                  <p className="text-amber-600 dark:text-amber-400 text-sm">{edu.institution}</p>
                                   <div className="flex gap-3 text-sm text-muted-foreground mt-1">
                                     {edu.year && <span>{edu.year}</span>}
                                     {edu.location && <span>• {edu.location}</span>}
@@ -1770,7 +1770,7 @@ export default function DocumentAutomation() {
                           {data.languages && data.languages.length > 0 && (
                             <div className="space-y-2">
                               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                <Languages className="h-4 w-4 text-cyan-400" />
+                                <Languages className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
                                 Languages
                               </h3>
                               <div className="flex flex-wrap gap-1">
@@ -1785,7 +1785,7 @@ export default function DocumentAutomation() {
                           {data.certifications && data.certifications.length > 0 && (
                             <div className="space-y-2">
                               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                <Award className="h-4 w-4 text-yellow-400" />
+                                <Award className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                                 Certifications
                               </h3>
                               <div className="flex flex-wrap gap-1">
@@ -1804,7 +1804,7 @@ export default function DocumentAutomation() {
                     {/* Error Message */}
                     {selectedDocument.errorMessage && (
                       <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                        <p className="text-sm text-red-400">{selectedDocument.errorMessage}</p>
+                        <p className="text-sm text-red-600 dark:text-red-400">{selectedDocument.errorMessage}</p>
                       </div>
                     )}
 

@@ -129,9 +129,9 @@ export default function DataSourceDetailPage() {
 
   const getStatusBadge = (status: string) => {
     const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: any; color: string }> = {
-      active: { variant: "default", icon: CheckCircle, color: "text-green-400" },
-      pending: { variant: "secondary", icon: Clock, color: "text-yellow-400" },
-      error: { variant: "destructive", icon: XCircle, color: "text-red-400" },
+      active: { variant: "default", icon: CheckCircle, color: "text-green-600 dark:text-green-400" },
+      pending: { variant: "secondary", icon: Clock, color: "text-yellow-600 dark:text-yellow-400" },
+      error: { variant: "destructive", icon: XCircle, color: "text-red-600 dark:text-red-400" },
       inactive: { variant: "outline", icon: AlertCircle, color: "text-gray-400" },
     };
     const { variant, icon: Icon, color } = config[status] || config.inactive;
@@ -145,10 +145,10 @@ export default function DataSourceDetailPage() {
 
   const getSyncStatusBadge = (status: string) => {
     const config: Record<string, { color: string; icon: any }> = {
-      success: { color: "text-green-400 bg-green-500/10", icon: CheckCircle },
-      failed: { color: "text-red-400 bg-red-500/10", icon: XCircle },
-      running: { color: "text-blue-400 bg-blue-500/10", icon: Loader2 },
-      partial: { color: "text-yellow-400 bg-yellow-500/10", icon: AlertCircle },
+      success: { color: "text-green-600 dark:text-green-400 bg-green-500/10", icon: CheckCircle },
+      failed: { color: "text-red-600 dark:text-red-400 bg-red-500/10", icon: XCircle },
+      running: { color: "text-blue-600 dark:text-blue-400 bg-blue-500/10", icon: Loader2 },
+      partial: { color: "text-yellow-600 dark:text-yellow-400 bg-yellow-500/10", icon: AlertCircle },
     };
     const { color, icon: Icon } = config[status] || config.running;
     return (
@@ -205,7 +205,7 @@ export default function DataSourceDetailPage() {
             <div>
               <h1 className="text-2xl font-bold text-white flex items-center gap-3" data-testid="page-title">
                 <div className="p-2 bg-blue-500/10 rounded-lg">
-                  <Database className="h-6 w-6 text-blue-400" />
+                  <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 {source.name}
               </h1>
@@ -253,7 +253,7 @@ export default function DataSourceDetailPage() {
                   <p className="text-2xl font-bold text-white" data-testid="stat-health">{source.healthScore || 0}%</p>
                 </div>
                 <div className="p-3 bg-purple-500/10 rounded-lg">
-                  <Activity className="h-6 w-6 text-purple-400" />
+                  <Activity className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
               <Progress value={source.healthScore || 0} className="mt-2 h-2" />
@@ -272,7 +272,7 @@ export default function DataSourceDetailPage() {
                   </p>
                 </div>
                 <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <Calendar className="h-6 w-6 text-blue-400" />
+                  <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             </CardContent>
@@ -288,7 +288,7 @@ export default function DataSourceDetailPage() {
                   </p>
                 </div>
                 <div className="p-3 bg-green-500/10 rounded-lg">
-                  <RefreshCw className="h-6 w-6 text-green-400" />
+                  <RefreshCw className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
             </CardContent>
@@ -302,7 +302,7 @@ export default function DataSourceDetailPage() {
                   <p className="text-2xl font-bold text-white" data-testid="stat-kpis">{linkedKpis.length}</p>
                 </div>
                 <div className="p-3 bg-orange-500/10 rounded-lg">
-                  <Target className="h-6 w-6 text-orange-400" />
+                  <Target className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                 </div>
               </div>
             </CardContent>
@@ -340,7 +340,7 @@ export default function DataSourceDetailPage() {
               <Card className="bg-gray-900/50 border-gray-800">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-400" />
+                    <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     Source Details
                   </CardTitle>
                 </CardHeader>
@@ -379,7 +379,7 @@ export default function DataSourceDetailPage() {
               <Card className="bg-gray-900/50 border-gray-800">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-green-400" />
+                    <Activity className="h-5 w-5 text-green-600 dark:text-green-400" />
                     Last Sync Status
                   </CardTitle>
                 </CardHeader>
@@ -424,7 +424,7 @@ export default function DataSourceDetailPage() {
             <Card className="bg-gray-900/50 border-gray-800">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
-                  <History className="h-5 w-5 text-blue-400" />
+                  <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   Sync History
                 </CardTitle>
                 <CardDescription className="text-gray-400">
@@ -464,15 +464,15 @@ export default function DataSourceDetailPage() {
                               Processed: <span className="text-white">{entry.recordsProcessed || 0}</span>
                             </span>
                             <span className="text-gray-400">
-                              Created: <span className="text-green-400">{entry.recordsCreated || 0}</span>
+                              Created: <span className="text-green-600 dark:text-green-400">{entry.recordsCreated || 0}</span>
                             </span>
                             <span className="text-gray-400">
-                              Updated: <span className="text-blue-400">{entry.recordsUpdated || 0}</span>
+                              Updated: <span className="text-blue-600 dark:text-blue-400">{entry.recordsUpdated || 0}</span>
                             </span>
                           </div>
                         )}
                         {entry.errorMessage && (
-                          <p className="mt-2 text-red-400 text-sm">{entry.errorMessage}</p>
+                          <p className="mt-2 text-red-600 dark:text-red-400 text-sm">{entry.errorMessage}</p>
                         )}
                       </div>
                     ))}
@@ -486,7 +486,7 @@ export default function DataSourceDetailPage() {
             <Card className="bg-gray-900/50 border-gray-800">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
-                  <Target className="h-5 w-5 text-orange-400" />
+                  <Target className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   Linked KPI Templates
                 </CardTitle>
                 <CardDescription className="text-gray-400">
@@ -550,7 +550,7 @@ export default function DataSourceDetailPage() {
               <Card className="bg-gray-900/50 border-gray-800">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
-                    <Edit2 className="h-5 w-5 text-purple-400" />
+                    <Edit2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                     Manual Data Entry
                   </CardTitle>
                   <CardDescription className="text-gray-400">
@@ -590,12 +590,12 @@ export default function DataSourceDetailPage() {
                                   </span>
                                   {kpi.currentValue !== null && kpi.currentValue !== undefined && (
                                     <span className="text-gray-500">
-                                      Current: <span className="text-green-400 font-medium">{kpi.currentValue}</span>
+                                      Current: <span className="text-green-600 dark:text-green-400 font-medium">{kpi.currentValue}</span>
                                     </span>
                                   )}
                                   {kpi.targetValue !== null && kpi.targetValue !== undefined && (
                                     <span className="text-gray-500">
-                                      Target: <span className="text-blue-400">{kpi.targetValue}</span>
+                                      Target: <span className="text-blue-600 dark:text-blue-400">{kpi.targetValue}</span>
                                     </span>
                                   )}
                                   {kpi.lastMeasuredAt && (
@@ -699,7 +699,7 @@ export default function DataSourceDetailPage() {
                   </Link>
                   <Button
                     variant="outline"
-                    className="border-red-700 text-red-400 hover:bg-red-500/10"
+                    className="border-red-700 text-red-600 dark:text-red-400 hover:bg-red-500/10"
                     disabled
                   >
                     Delete Data Source

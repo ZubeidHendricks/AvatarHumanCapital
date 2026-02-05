@@ -106,11 +106,11 @@ export default function ShortlistedCandidates() {
   // Helper function to get source color
   const getSourceColor = (source: string) => {
     const sourceColors: Record<string, string> = {
-      "Recruited": "text-blue-400 bg-blue-400/10",
-      "Uploaded": "text-green-400 bg-green-400/10",
-      "Referral": "text-purple-400 bg-purple-400/10",
+      "Recruited": "text-blue-600 dark:text-blue-400 bg-blue-400/10",
+      "Uploaded": "text-green-600 dark:text-green-400 bg-green-400/10",
+      "Referral": "text-purple-600 dark:text-purple-400 bg-purple-400/10",
       "LinkedIn": "text-blue-500 bg-blue-500/10",
-      "Direct": "text-yellow-400 bg-yellow-400/10"
+      "Direct": "text-yellow-600 dark:text-yellow-400 bg-yellow-400/10"
     };
     return sourceColors[source] || "text-gray-400 bg-gray-400/10";
   };
@@ -118,9 +118,9 @@ export default function ShortlistedCandidates() {
   // Helper function to get match badge color
   const getMatchColor = (match: number | null | undefined) => {
     if (!match) return "text-gray-400 bg-gray-400/10";
-    if (match >= 80) return "text-green-400 bg-green-400/10";
-    if (match >= 60) return "text-yellow-400 bg-yellow-400/10";
-    return "text-red-400 bg-red-400/10";
+    if (match >= 80) return "text-green-600 dark:text-green-400 bg-green-400/10";
+    if (match >= 60) return "text-yellow-600 dark:text-yellow-400 bg-yellow-400/10";
+    return "text-red-600 dark:text-red-400 bg-red-400/10";
   };
 
   return (
@@ -232,7 +232,7 @@ export default function ShortlistedCandidates() {
                           {candidate.match}% Match
                         </Badge>
                       )}
-                      <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                      <Star className="h-4 w-4 text-yellow-600 dark:text-yellow-400 fill-yellow-400" />
                     </div>
 
                     {/* Right: Contact Icons & Actions */}

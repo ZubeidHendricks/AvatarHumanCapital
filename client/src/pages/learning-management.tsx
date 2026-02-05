@@ -360,10 +360,10 @@ export default function LearningManagement() {
 
   const getDifficultyColor = (difficulty: string | null) => {
     switch (difficulty) {
-      case "beginner": return "bg-green-500/10 text-green-400 border-green-500/20";
-      case "intermediate": return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
-      case "advanced": return "bg-red-500/10 text-red-400 border-red-500/20";
-      default: return "bg-gray-500/10 text-gray-400 border-gray-500/20";
+      case "beginner": return "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20";
+      case "intermediate": return "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20";
+      case "advanced": return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
+      default: return "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20";
     }
   };
 

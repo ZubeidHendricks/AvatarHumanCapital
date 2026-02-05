@@ -209,7 +209,7 @@ export default function PipelineBoard() {
                   <Badge variant="outline" className="bg-primary/10 border-primary/30">
                     {selectedJob.department}
                   </Badge>
-                  <Badge variant="outline" className="bg-green-500/10 border-green-500/30 text-green-400">
+                  <Badge variant="outline" className="bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400">
                     {selectedJob.status}
                   </Badge>
                 </div>
@@ -283,8 +283,8 @@ export default function PipelineBoard() {
                                     
                                     {candidate.match !== null && candidate.match !== undefined && (
                                       <div className="flex items-center gap-1 mb-2 ml-6">
-                                        <Star className="h-3 w-3 text-yellow-400" />
-                                        <span className="text-xs text-yellow-400">{candidate.match}% match</span>
+                                        <Star className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />
+                                        <span className="text-xs text-yellow-600 dark:text-yellow-400">{candidate.match}% match</span>
                                       </div>
                                     )}
 
@@ -321,7 +321,7 @@ export default function PipelineBoard() {
                                     </div>
 
                                     {isLastStage && (
-                                      <div className="flex items-center justify-center gap-1 text-green-400 text-xs mt-2 ml-6">
+                                      <div className="flex items-center justify-center gap-1 text-green-600 dark:text-green-400 text-xs mt-2 ml-6">
                                         <CheckCircle2 className="h-3 w-3" />
                                         Completed
                                       </div>
@@ -410,8 +410,8 @@ export default function PipelineBoard() {
                   </div>
                   {selectedCandidate.match !== null && selectedCandidate.match !== undefined && (
                     <div className="flex items-center gap-2 text-sm">
-                      <Star className="h-4 w-4 text-yellow-400" />
-                      <span className="text-yellow-400">{selectedCandidate.match}% match</span>
+                      <Star className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                      <span className="text-yellow-600 dark:text-yellow-400">{selectedCandidate.match}% match</span>
                     </div>
                   )}
                   <div className="flex items-center gap-2 text-sm">

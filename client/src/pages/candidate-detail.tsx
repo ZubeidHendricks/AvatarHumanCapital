@@ -946,7 +946,7 @@ export default function CandidateDetail() {
                                   {session.status}
                                 </Badge>
                                 {session.overallScore && (
-                                  <Badge variant="secondary" className="bg-purple-500/20 text-purple-400">
+                                  <Badge variant="secondary" className="bg-purple-500/20 text-purple-600 dark:text-purple-400">
                                     Score: {session.overallScore}%
                                   </Badge>
                                 )}
@@ -999,7 +999,7 @@ export default function CandidateDetail() {
                                     >
                                       {msg.role !== 'user' && (
                                         <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-                                          <Bot className="h-3 w-3 text-purple-400" />
+                                          <Bot className="h-3 w-3 text-purple-600 dark:text-purple-400" />
                                         </div>
                                       )}
                                       <div className={`max-w-[80%] rounded-lg px-3 py-2 ${

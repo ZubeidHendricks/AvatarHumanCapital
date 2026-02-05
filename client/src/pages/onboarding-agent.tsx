@@ -417,9 +417,9 @@ export default function OnboardingAgent() {
                             }`}>
                               <div className="flex items-start justify-between mb-1">
                                 <div className="flex items-center gap-2">
-                                  {doc.type === "document" ? <FileSignature className="w-3 h-3 text-blue-400" /> : 
-                                   doc.type === "asset" ? <Laptop className="w-3 h-3 text-amber-400" /> : 
-                                   <Mail className="w-3 h-3 text-purple-400" />}
+                                  {doc.type === "document" ? <FileSignature className="w-3 h-3 text-blue-600 dark:text-blue-400" /> : 
+                                   doc.type === "asset" ? <Laptop className="w-3 h-3 text-amber-600 dark:text-amber-400" /> : 
+                                   <Mail className="w-3 h-3 text-purple-600 dark:text-purple-400" />}
                                   <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-white/10">{doc.type}</Badge>
                                 </div>
                                 {doc.status === "pending" ? (
@@ -427,7 +427,7 @@ export default function OnboardingAgent() {
                                     <Loader2 className="w-3 h-3 animate-spin" /> PENDING
                                   </span>
                                 ) : (
-                                  <span className="text-[10px] text-green-400 font-mono flex items-center gap-1 uppercase">
+                                  <span className="text-[10px] text-green-600 dark:text-green-400 font-mono flex items-center gap-1 uppercase">
                                     <CheckCircle2 className="w-3 h-3" /> {doc.status}
                                   </span>
                                 )}

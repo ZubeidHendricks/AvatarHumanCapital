@@ -147,10 +147,10 @@ export default function PlatformDocumentation() {
             Complete guide to the multi-tenant SaaS platform with payment tracking and subscription management
           </p>
           <div className="flex items-center justify-center gap-2">
-            <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/20">
+            <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
               Version 1.0.0
             </Badge>
-            <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">
               Production Ready
             </Badge>
           </div>
@@ -266,27 +266,27 @@ export default function PlatformDocumentation() {
                   <div className="p-6 rounded-lg bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-border dark:border-white/5">
                     <div className="text-center space-y-6">
                       <div className="inline-block p-4 rounded-lg bg-black/40">
-                        <Users className="w-8 h-8 text-blue-400" />
+                        <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                         <p className="text-white mt-2 font-semibold">Multiple Tenants</p>
                       </div>
                       <div className="text-2xl text-white">↓</div>
                       <div className="inline-block p-4 rounded-lg bg-black/40">
-                        <Shield className="w-8 h-8 text-purple-400" />
+                        <Shield className="w-8 h-8 text-purple-600 dark:text-purple-400" />
                         <p className="text-white mt-2 font-semibold">Tenant Middleware</p>
                         <p className="text-xs text-muted-foreground">Resolves subdomain</p>
                       </div>
                       <div className="text-2xl text-white">↓</div>
                       <div className="grid grid-cols-3 gap-4">
                         <div className="p-4 rounded-lg bg-black/40">
-                          <Database className="w-6 h-6 text-green-400 mx-auto" />
+                          <Database className="w-6 h-6 text-green-600 dark:text-green-400 mx-auto" />
                           <p className="text-white mt-2 text-sm">Isolated Data</p>
                         </div>
                         <div className="p-4 rounded-lg bg-black/40">
-                          <Settings className="w-6 h-6 text-orange-400 mx-auto" />
+                          <Settings className="w-6 h-6 text-orange-600 dark:text-orange-400 mx-auto" />
                           <p className="text-white mt-2 text-sm">Module Access</p>
                         </div>
                         <div className="p-4 rounded-lg bg-black/40">
-                          <TrendingUp className="w-6 h-6 text-blue-400 mx-auto" />
+                          <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400 mx-auto" />
                           <p className="text-white mt-2 text-sm">Analytics</p>
                         </div>
                       </div>
@@ -760,7 +760,7 @@ export default function PlatformDocumentation() {
                   <div>
                     <h3 className="text-white font-semibold mb-2">Step 1: Run Migration Script</h3>
                     <div className="p-4 rounded-lg bg-black/40 border border-border dark:border-white/10">
-                      <code className="text-green-400 text-sm">
+                      <code className="text-green-600 dark:text-green-400 text-sm">
                         psql -U postgres -d your_database -f migrations/add-subscription-tracking.sql
                       </code>
                     </div>
@@ -770,7 +770,7 @@ export default function PlatformDocumentation() {
                     <h3 className="text-white font-semibold mb-2">Step 2: Verify Tables Created</h3>
                     <div className="p-4 rounded-lg bg-black/40 border border-border dark:border-white/10 space-y-2">
                       <p className="text-muted-foreground text-sm">Check these tables exist:</p>
-                      <ul className="list-disc list-inside text-green-400 text-sm space-y-1">
+                      <ul className="list-disc list-inside text-green-600 dark:text-green-400 text-sm space-y-1">
                         <li>tenant_payments</li>
                         <li>subscription_plans</li>
                         <li>tenant_config (with new columns)</li>
@@ -828,13 +828,13 @@ export default function PlatformDocumentation() {
               <CardContent>
                 <div className="space-y-3">
                   <div className="p-3 rounded-lg bg-black/20 border border-border dark:border-white/5">
-                    <code className="text-green-400">ADMIN_API_KEY</code>
+                    <code className="text-green-600 dark:text-green-400">ADMIN_API_KEY</code>
                     <p className="text-sm text-muted-foreground mt-1">
                       Required for admin endpoint authentication. Set to a strong random key.
                     </p>
                   </div>
                   <div className="p-3 rounded-lg bg-black/20 border border-border dark:border-white/5">
-                    <code className="text-green-400">DATABASE_URL</code>
+                    <code className="text-green-600 dark:text-green-400">DATABASE_URL</code>
                     <p className="text-sm text-muted-foreground mt-1">
                       PostgreSQL database connection string.
                     </p>

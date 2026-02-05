@@ -152,7 +152,7 @@ export function Sidebar() {
       <div className="h-16 flex items-center justify-between px-4 border-b border-border">
         {!collapsed && (
           <Link href="/">
-            <div className="bg-zinc-900 rounded-lg px-3 py-1.5">
+            <div className="bg-gray-100 dark:bg-zinc-900 rounded-lg px-3 py-1.5">
               <img 
                 src="/logos/light-logo.png" 
                 alt="AHC" 

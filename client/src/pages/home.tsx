@@ -101,7 +101,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="bg-zinc-900 border-t border-zinc-800 py-12">
+      <footer className="bg-gray-100 dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 py-12">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
             
@@ -139,7 +139,7 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="border-t border-zinc-800 mt-12 pt-8 text-center text-sm text-gray-500">
+          <div className="border-t border-gray-200 dark:border-zinc-800 mt-12 pt-8 text-center text-sm text-gray-500">
             © {new Date().getFullYear()} Avatar Human Capital. All rights reserved.
           </div>
         </div>

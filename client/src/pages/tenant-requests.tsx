@@ -252,7 +252,7 @@ export default function TenantRequests() {
 
                       {request.adminNotes && (
                         <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                          <p className="text-sm text-blue-400 mb-1">Admin Notes:</p>
+                          <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">Admin Notes:</p>
                           <p className="text-sm">{request.adminNotes}</p>
                         </div>
                       )}

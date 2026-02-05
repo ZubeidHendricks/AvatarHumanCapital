@@ -99,10 +99,10 @@ const documentTypeLabels: Record<string, string> = {
 };
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  received: { label: "Received", color: "bg-blue-500/20 text-blue-400 border-blue-500/30", icon: <Clock className="h-3 w-3" /> },
-  verified: { label: "Verified", color: "bg-green-500/20 text-green-400 border-green-500/30", icon: <CheckCircle className="h-3 w-3" /> },
-  rejected: { label: "Rejected", color: "bg-red-500/20 text-red-400 border-red-500/30", icon: <XCircle className="h-3 w-3" /> },
-  expired: { label: "Expired", color: "bg-orange-500/20 text-orange-400 border-orange-500/30", icon: <AlertCircle className="h-3 w-3" /> },
+  received: { label: "Received", color: "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30", icon: <Clock className="h-3 w-3" /> },
+  verified: { label: "Verified", color: "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30", icon: <CheckCircle className="h-3 w-3" /> },
+  rejected: { label: "Rejected", color: "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30", icon: <XCircle className="h-3 w-3" /> },
+  expired: { label: "Expired", color: "bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/30", icon: <AlertCircle className="h-3 w-3" /> },
 };
 
 const collectedViaLabels: Record<string, string> = {
@@ -237,7 +237,7 @@ export default function DocumentLibrary() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-3" data-testid="text-page-title">
-              <FileCheck className="h-7 w-7 text-purple-400" />
+              <FileCheck className="h-7 w-7 text-purple-600 dark:text-purple-400" />
               Document Library
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
@@ -250,7 +250,7 @@ export default function DocumentLibrary() {
           <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <FileText className="h-6 w-6 text-purple-400" />
+                <FileText className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground" data-testid="stat-total">{stats.total}</p>
@@ -262,7 +262,7 @@ export default function DocumentLibrary() {
           <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                <CheckCircle className="h-6 w-6 text-green-400" />
+                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground" data-testid="stat-verified">{stats.verified}</p>
@@ -274,7 +274,7 @@ export default function DocumentLibrary() {
           <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-blue-400" />
+                <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground" data-testid="stat-pending">{stats.pending}</p>
@@ -286,7 +286,7 @@ export default function DocumentLibrary() {
           <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
-                <XCircle className="h-6 w-6 text-red-400" />
+                <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground" data-testid="stat-rejected">{stats.rejected}</p>
@@ -300,7 +300,7 @@ export default function DocumentLibrary() {
           <CardHeader className="border-b border-border">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <CardTitle className="text-foreground flex items-center gap-2">
-                <Shield className="h-5 w-5 text-purple-400" />
+                <Shield className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 All Documents
               </CardTitle>
               
@@ -358,7 +358,7 @@ export default function DocumentLibrary() {
           <CardContent className="p-0">
             {isLoading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
+                <Loader2 className="h-8 w-8 animate-spin text-purple-600 dark:text-purple-400" />
               </div>
             ) : documents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
@@ -416,7 +416,7 @@ export default function DocumentLibrary() {
                           </TableCell>
                           <TableCell>
                             {doc.referenceCode ? (
-                              <code className="text-xs bg-background px-2 py-1 rounded text-cyan-400">
+                              <code className="text-xs bg-background px-2 py-1 rounded text-cyan-600 dark:text-cyan-400">
                                 {doc.referenceCode}
                               </code>
                             ) : (
@@ -459,7 +459,7 @@ export default function DocumentLibrary() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-purple-400"
+                                className="h-8 w-8 text-muted-foreground hover:text-purple-600 dark:text-purple-400"
                                 onClick={() => handleDownload(doc)}
                                 data-testid={`button-download-${doc.id}`}
                               >
@@ -477,14 +477,14 @@ export default function DocumentLibrary() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-muted border-border">
                                   <DropdownMenuItem
-                                    className="text-green-400 hover:bg-muted"
+                                    className="text-green-600 dark:text-green-400 hover:bg-muted"
                                     onClick={() => verifyMutation.mutate({ id: doc.id, status: "verified" })}
                                   >
                                     <CheckCircle className="h-4 w-4 mr-2" />
                                     Mark as Verified
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
-                                    className="text-red-400 hover:bg-muted"
+                                    className="text-red-600 dark:text-red-400 hover:bg-muted"
                                     onClick={() => verifyMutation.mutate({ id: doc.id, status: "rejected" })}
                                   >
                                     <XCircle className="h-4 w-4 mr-2" />
@@ -508,7 +508,7 @@ export default function DocumentLibrary() {
           <DialogContent className="bg-background border-border max-w-2xl">
             <DialogHeader>
               <DialogTitle className="text-foreground flex items-center gap-2">
-                <FileText className="h-5 w-5 text-purple-400" />
+                <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 Document Details
               </DialogTitle>
             </DialogHeader>
@@ -538,7 +538,7 @@ export default function DocumentLibrary() {
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Reference Code</p>
-                    <p className="text-cyan-400 font-mono">
+                    <p className="text-cyan-600 dark:text-cyan-400 font-mono">
                       {selectedDocument.referenceCode || "-"}
                     </p>
                   </div>
@@ -575,9 +575,9 @@ export default function DocumentLibrary() {
                     <div className="bg-muted/50 p-3 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         {selectedDocument.aiVerification.verified ? (
-                          <Badge className="bg-green-500/20 text-green-400">AI Verified</Badge>
+                          <Badge className="bg-green-500/20 text-green-600 dark:text-green-400">AI Verified</Badge>
                         ) : (
-                          <Badge className="bg-orange-500/20 text-orange-400">Needs Review</Badge>
+                          <Badge className="bg-orange-500/20 text-orange-600 dark:text-orange-400">Needs Review</Badge>
                         )}
                         {selectedDocument.aiVerification.confidence && (
                           <span className="text-sm text-muted-foreground">

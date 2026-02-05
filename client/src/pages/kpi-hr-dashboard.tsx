@@ -143,11 +143,11 @@ function StatCard({
   };
 
   const iconColors = {
-    blue: "text-blue-400",
-    green: "text-green-400",
-    amber: "text-amber-400",
-    purple: "text-purple-400",
-    rose: "text-rose-400",
+    blue: "text-blue-600 dark:text-blue-400",
+    green: "text-green-600 dark:text-green-400",
+    amber: "text-amber-600 dark:text-amber-400",
+    purple: "text-purple-600 dark:text-purple-400",
+    rose: "text-rose-600 dark:text-rose-400",
   };
 
   return (
@@ -161,7 +161,7 @@ function StatCard({
             {trend && (
               <div className={cn(
                 "flex items-center gap-1 mt-2 text-sm",
-                trend.positive ? "text-green-400" : "text-rose-400"
+                trend.positive ? "text-green-600 dark:text-green-400" : "text-rose-600 dark:text-rose-400"
               )}>
                 {trend.positive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                 <span>{trend.value}% vs last cycle</span>
@@ -253,7 +253,7 @@ HR Team`);
       <DialogContent className="max-w-2xl bg-gray-900 border-border dark:border-white/10">
         <DialogHeader>
           <DialogTitle className="text-xl text-white flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-blue-400" />
+            <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Send Review Reminders
           </DialogTitle>
           <DialogDescription>
@@ -322,7 +322,7 @@ HR Team`);
               ))}
             </div>
             {employeesWithContact.length < selectedEmployees.length && (
-              <p className="text-amber-400 text-xs mt-2">
+              <p className="text-amber-600 dark:text-amber-400 text-xs mt-2">
                 {selectedEmployees.length - employeesWithContact.length} employee(s) don't have {channel} contact info
               </p>
             )}
@@ -406,7 +406,7 @@ function EmployeeDetailDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-border dark:border-white/10">
         <DialogHeader>
           <DialogTitle className="text-xl text-white flex items-center gap-2">
-            <User className="w-5 h-5 text-blue-400" />
+            <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             {submission.employee?.name || `Employee #${submission.employeeId}`}
           </DialogTitle>
           <DialogDescription>
@@ -422,10 +422,10 @@ function EmployeeDetailDialog({
                 <p className={cn(
                   "text-3xl font-bold mt-1",
                   submission.finalScore && parseFloat(submission.finalScore) >= 80 
-                    ? "text-green-400" 
+                    ? "text-green-600 dark:text-green-400" 
                     : submission.finalScore && parseFloat(submission.finalScore) >= 60
-                    ? "text-amber-400"
-                    : "text-rose-400"
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-rose-600 dark:text-rose-400"
                 )}>
                   {submission.finalScore ? `${submission.finalScore}%` : "-"}
                 </p>
@@ -453,7 +453,7 @@ function EmployeeDetailDialog({
             <h3 className="text-lg font-semibold text-white mb-3">KPI Breakdown</h3>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+                <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
               </div>
             ) : assignments.length === 0 ? (
               <p className="text-gray-400 text-center py-4">No KPIs assigned</p>
@@ -483,13 +483,13 @@ function EmployeeDetailDialog({
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                          <Star className="w-4 h-4 text-yellow-600 dark:text-yellow-400 fill-yellow-400" />
                           <span className="text-white">{assignment.score?.selfScore || "-"}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-green-400 fill-green-400" />
+                          <Star className="w-4 h-4 text-green-600 dark:text-green-400 fill-green-400" />
                           <span className="text-white">{assignment.score?.managerScore || "-"}</span>
                         </div>
                       </TableCell>
@@ -790,7 +790,7 @@ export default function KPIHRDashboard() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white flex items-center gap-3" data-testid="page-title">
-              <BarChart3 className="w-8 h-8 text-blue-400" />
+              <BarChart3 className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               HR Performance Dashboard
             </h1>
             <p className="text-gray-400 mt-2">
@@ -959,7 +959,7 @@ export default function KPIHRDashboard() {
           <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
               </div>
             ) : filteredSubmissions.length === 0 ? (
               <div className="text-center py-12">
@@ -1010,7 +1010,7 @@ export default function KPIHRDashboard() {
                       <TableCell onClick={() => setSelectedSubmission(submission)}>
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                            <User className="w-4 h-4 text-blue-400" />
+                            <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                           </div>
                           <div>
                             <p className="font-medium text-white">
@@ -1046,10 +1046,10 @@ export default function KPIHRDashboard() {
                           <span className={cn(
                             "text-lg font-bold",
                             parseFloat(submission.finalScore) >= 80 
-                              ? "text-green-400" 
+                              ? "text-green-600 dark:text-green-400" 
                               : parseFloat(submission.finalScore) >= 60
-                              ? "text-amber-400"
-                              : "text-rose-400"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-rose-600 dark:text-rose-400"
                           )}>
                             {submission.finalScore}%
                           </span>
@@ -1072,7 +1072,7 @@ export default function KPIHRDashboard() {
                                 });
                               }}
                               disabled={sendingLinkFor === submission.id}
-                              className="text-blue-400 hover:text-blue-300"
+                              className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
                               data-testid={`send-link-${submission.id}`}
                             >
                               {sendingLinkFor === submission.id ? (

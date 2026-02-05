@@ -253,7 +253,7 @@ export default function InterviewInvite() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-card/80 backdrop-blur border-border dark:border-white/10">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-12 w-12 animate-spin text-purple-400 mb-4" />
+            <Loader2 className="h-12 w-12 animate-spin text-purple-600 dark:text-purple-400 mb-4" />
             <p className="text-muted-foreground">Loading your interview...</p>
           </CardContent>
         </Card>
@@ -266,7 +266,7 @@ export default function InterviewInvite() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900/20 to-slate-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-card/80 backdrop-blur border-border dark:border-white/10">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
+            <AlertCircle className="h-12 w-12 text-red-600 dark:text-red-400 mb-4" />
             <h2 className="text-xl font-bold text-white mb-2">Unable to Load Interview</h2>
             <p className="text-muted-foreground text-center">{errorMessage}</p>
           </CardContent>
@@ -285,7 +285,7 @@ export default function InterviewInvite() {
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 200, damping: 10 }}
             >
-              <CheckCircle2 className="h-16 w-16 text-green-400 mb-4" />
+              <CheckCircle2 className="h-16 w-16 text-green-600 dark:text-green-400 mb-4" />
             </motion.div>
             <h2 className="text-2xl font-bold text-white mb-2">Interview Complete!</h2>
             <p className="text-muted-foreground text-center mb-4">
@@ -309,7 +309,7 @@ export default function InterviewInvite() {
             {candidateName && <p className="text-sm text-muted-foreground">{candidateName}</p>}
           </div>
           {isConnected && (
-            <Badge variant="outline" className="border-green-500/50 text-green-400">
+            <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400">
               {formatDuration(duration)}
             </Badge>
           )}
@@ -327,7 +327,7 @@ export default function InterviewInvite() {
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-6">
               <div className="w-32 h-32 rounded-full bg-purple-500/20 border-2 border-purple-500/50 flex items-center justify-center">
-                <Mic className="h-12 w-12 text-purple-400" />
+                <Mic className="h-12 w-12 text-purple-600 dark:text-purple-400" />
               </div>
               <div className="text-center text-sm text-muted-foreground space-y-1">
                 <p>Make sure you're in a quiet environment</p>
@@ -378,7 +378,7 @@ export default function InterviewInvite() {
                           exit={{ scale: 0 }}
                           className="flex items-center gap-1"
                         >
-                          <Volume2 className="h-4 w-4 text-purple-400" />
+                          <Volume2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                         </motion.div>
                       )}
                     </AnimatePresence>

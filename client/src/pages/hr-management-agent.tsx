@@ -342,9 +342,9 @@ export default function HRManagementAgent() {
                             }`} />
                             <div className="text-xs flex justify-end">
                               {metric.trend === "up" ? (
-                                <span className="text-green-400 flex items-center gap-1">Trending Up <TrendingUp className="w-3 h-3" /></span>
+                                <span className="text-green-600 dark:text-green-400 flex items-center gap-1">Trending Up <TrendingUp className="w-3 h-3" /></span>
                               ) : metric.trend === "down" ? (
-                                <span className="text-red-400 flex items-center gap-1">Needs Attention <TrendingUp className="w-3 h-3 rotate-180" /></span>
+                                <span className="text-red-600 dark:text-red-400 flex items-center gap-1">Needs Attention <TrendingUp className="w-3 h-3 rotate-180" /></span>
                               ) : (
                                 <span className="text-muted-foreground">Stable</span>
                               )}

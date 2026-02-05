@@ -112,9 +112,9 @@ function TemplateCard({
 
   const getFileIcon = (mimeType: string) => {
     if (mimeType === "application/pdf") {
-      return <FileText className="w-8 h-8 text-red-400" />;
+      return <FileText className="w-8 h-8 text-red-600 dark:text-red-400" />;
     }
-    return <FileType className="w-8 h-8 text-blue-400" />;
+    return <FileType className="w-8 h-8 text-blue-600 dark:text-blue-400" />;
   };
 
   const isActive = isCvTemplate 
@@ -135,7 +135,7 @@ function TemplateCard({
                 {template.name}
               </CardTitle>
               {isActive ? (
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 shrink-0" data-testid={`badge-active-${template.id}`}>
+                <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30 shrink-0" data-testid={`badge-active-${template.id}`}>
                   <CheckCircle2 className="w-3 h-3 mr-1" />
                   Active
                 </Badge>

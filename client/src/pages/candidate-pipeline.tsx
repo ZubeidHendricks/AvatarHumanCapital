@@ -281,9 +281,9 @@ export default function CandidatePipeline() {
 
   const getStatusBadge = (status: DocumentStatus) => {
     const styles = {
-      complete: "bg-green-500/10 text-green-400 border-green-500/30",
-      pending: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
-      missing: "bg-red-500/10 text-red-400 border-red-500/30",
+      complete: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30",
+      pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
+      missing: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30",
     };
     return styles[status];
   };
@@ -319,7 +319,7 @@ export default function CandidatePipeline() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Docs Complete</p>
-                  <p className="text-2xl font-bold text-green-400">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                     {totalDocsComplete}
                   </p>
                 </div>
@@ -335,7 +335,7 @@ export default function CandidatePipeline() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Docs Pending</p>
-                  <p className="text-2xl font-bold text-yellow-400">
+                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                     {totalDocsPending}
                   </p>
                 </div>
@@ -351,7 +351,7 @@ export default function CandidatePipeline() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Docs Missing</p>
-                  <p className="text-2xl font-bold text-red-400">
+                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                     {totalDocsMissing}
                   </p>
                 </div>
@@ -406,15 +406,15 @@ export default function CandidatePipeline() {
                     
                     {/* Contact Details - Prominently Displayed */}
                     <div className="mt-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
-                      <p className="text-xs font-medium text-blue-400 mb-2 uppercase tracking-wide">Contact Details</p>
+                      <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-2 uppercase tracking-wide">Contact Details</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {candidate.email ? (
                           <a 
                             href={`mailto:${candidate.email}`} 
-                            className="flex items-center gap-2 text-sm text-white hover:text-blue-400 transition-colors"
+                            className="flex items-center gap-2 text-sm text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                             data-testid={`email-${candidate.id}`}
                           >
-                            <Mail className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                            <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                             <span className="truncate">{candidate.email}</span>
                           </a>
                         ) : (
@@ -426,10 +426,10 @@ export default function CandidatePipeline() {
                         {candidate.phone ? (
                           <a 
                             href={`tel:${candidate.phone}`} 
-                            className="flex items-center gap-2 text-sm text-white hover:text-green-400 transition-colors"
+                            className="flex items-center gap-2 text-sm text-foreground hover:text-green-600 dark:hover:text-green-400 transition-colors"
                             data-testid={`phone-${candidate.id}`}
                           >
-                            <Phone className="h-4 w-4 text-green-400 flex-shrink-0" />
+                            <Phone className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
                             <span>{candidate.phone}</span>
                           </a>
                         ) : (
@@ -483,9 +483,9 @@ export default function CandidatePipeline() {
                       <div className="flex items-center justify-between mb-3">
                         <p className="text-xs font-medium text-muted-foreground">REQUIRED DOCUMENTS</p>
                         <div className="flex items-center gap-2 text-xs">
-                          <span className="text-green-400">{stats.complete} ✓</span>
-                          <span className="text-yellow-400">{stats.pending} ⏱</span>
-                          <span className="text-red-400">{stats.missing} ✗</span>
+                          <span className="text-green-600 dark:text-green-400">{stats.complete} ✓</span>
+                          <span className="text-yellow-600 dark:text-yellow-400">{stats.pending} ⏱</span>
+                          <span className="text-red-600 dark:text-red-400">{stats.missing} ✗</span>
                         </div>
                       </div>
                       
@@ -526,13 +526,13 @@ export default function CandidatePipeline() {
                     {candidateBlockers[candidate.id]?.length > 0 && (
                       <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
                         <div className="flex items-center gap-2 mb-2">
-                          <Ban className="h-4 w-4 text-red-400" />
-                          <p className="text-sm font-medium text-red-400">Cannot Advance</p>
+                          <Ban className="h-4 w-4 text-red-600 dark:text-red-400" />
+                          <p className="text-sm font-medium text-red-600 dark:text-red-400">Cannot Advance</p>
                         </div>
                         <ul className="space-y-1">
                           {candidateBlockers[candidate.id].map((blocker, i) => (
                             <li key={i} className="text-xs text-red-300 flex items-start gap-1">
-                              <span className="text-red-400 mt-0.5">•</span>
+                              <span className="text-red-600 dark:text-red-400 mt-0.5">•</span>
                               {blocker}
                             </li>
                           ))}
@@ -565,7 +565,7 @@ export default function CandidatePipeline() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        className="bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20"
+                        className="bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400 hover:bg-green-500/20"
                         onClick={() => handleOpenWhatsApp(candidate)}
                         disabled={openingWhatsApp === candidate.id}
                         data-testid={`button-whatsapp-${candidate.id}`}

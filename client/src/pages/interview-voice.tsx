@@ -229,7 +229,7 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
     return (
       <div className="min-h-screen bg-black text-foreground flex items-center justify-center">
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold text-red-400">Connection Error</h2>
+          <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Connection Error</h2>
           <p className="text-white/70">Unable to connect to Hume AI. Please check your configuration.</p>
           <Link href="/hr-dashboard">
             <Button variant="outline">Return to Dashboard</Button>

@@ -109,10 +109,10 @@ export default function PlatformSettings() {
             </div>
           </div>
 
-          <Card className="bg-zinc-900/50 border-zinc-800 mb-6">
+          <Card className="bg-gray-100 dark:bg-zinc-900/50 border-gray-200 dark:border-zinc-800 mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-blue-400" />
+                <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 Security Notice
               </CardTitle>
               <CardDescription>
@@ -128,7 +128,7 @@ export default function PlatformSettings() {
               const isConfigured = getPlatformStatus(platform.platform);
               
               return (
-                <Card key={platform.platform} className="bg-zinc-900/50 border-zinc-800" data-testid={`card-platform-${platform.platform}`}>
+                <Card key={platform.platform} className="bg-gray-100 dark:bg-zinc-900/50 border-gray-200 dark:border-zinc-800" data-testid={`card-platform-${platform.platform}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
@@ -143,7 +143,7 @@ export default function PlatformSettings() {
                       <Badge 
                         variant="outline" 
                         className={isConfigured 
-                          ? "border-green-500 text-green-400" 
+                          ? "border-green-500 text-green-600 dark:text-green-400" 
                           : "border-zinc-600 text-zinc-400"
                         }
                         data-testid={`status-${platform.platform}`}
@@ -165,7 +165,7 @@ export default function PlatformSettings() {
                         <div key={keyConfig.key} className="space-y-2">
                           <div className="flex items-center justify-between">
                             <Label className="text-zinc-300">{keyConfig.label}</Label>
-                            <code className="text-xs text-zinc-500 bg-zinc-800 px-2 py-1 rounded">
+                            <code className="text-xs text-zinc-500 bg-gray-200 dark:bg-zinc-800 px-2 py-1 rounded">
                               {keyConfig.key}
                             </code>
                           </div>
@@ -175,7 +175,7 @@ export default function PlatformSettings() {
                               <Input
                                 type={showKeys[keyConfig.key] ? "text" : "password"}
                                 placeholder={isConfigured ? "••••••••••••••••" : "Enter API key..."}
-                                className="bg-zinc-800 border-zinc-700 pr-10"
+                                className="bg-gray-200 dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 pr-10"
                                 disabled={isConfigured}
                                 data-testid={`input-${keyConfig.key.toLowerCase()}`}
                               />
@@ -205,7 +205,7 @@ export default function PlatformSettings() {
                         href={platform.docsUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 flex items-center gap-1"
                       >
                         <ExternalLink className="h-3 w-3" />
                         View API Documentation
@@ -239,10 +239,10 @@ export default function PlatformSettings() {
             })}
           </div>
 
-          <Card className="bg-zinc-900/50 border-zinc-800 mt-6">
+          <Card className="bg-gray-100 dark:bg-zinc-900/50 border-gray-200 dark:border-zinc-800 mt-6">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Key className="h-5 w-5 text-yellow-400" />
+                <Key className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                 How to Configure API Keys
               </CardTitle>
             </CardHeader>
@@ -259,7 +259,7 @@ export default function PlatformSettings() {
                 <p>
                   <strong className="text-zinc-300">3. Required Variables:</strong>
                 </p>
-                <div className="bg-zinc-800 rounded-lg p-4 font-mono text-xs space-y-1">
+                <div className="bg-gray-200 dark:bg-zinc-800 rounded-lg p-4 font-mono text-xs space-y-1">
                   <p># LinkedIn</p>
                   <p>LINKEDIN_API_KEY=your_linkedin_api_key</p>
                   <p>LINKEDIN_API_SECRET=your_linkedin_secret</p>
@@ -270,7 +270,7 @@ export default function PlatformSettings() {
                   <p>INDEED_API_KEY=your_indeed_api_key</p>
                   <p>INDEED_EMPLOYER_ID=your_employer_id</p>
                 </div>
-                <p className="text-yellow-400/80">
+                <p className="text-yellow-600 dark:text-yellow-400/80">
                   Note: Currently, the sourcing specialists use AI to simulate candidate searches. 
                   Real API integration will be enabled once credentials are configured.
                 </p>

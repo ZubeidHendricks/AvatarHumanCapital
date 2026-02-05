@@ -186,7 +186,7 @@ export default function IntegritySetup() {
   if (checksLoading || providersLoading) {
     return (
       <div className="container mx-auto py-8 px-4 max-w-6xl flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-amber-600 dark:text-amber-400" />
       </div>
     );
   }
@@ -195,7 +195,7 @@ export default function IntegritySetup() {
     <div className="container mx-auto py-8 px-4 max-w-6xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <Shield className="h-8 w-8 text-amber-400" />
+          <Shield className="h-8 w-8 text-amber-600 dark:text-amber-400" />
           Integrity Setup
         </h1>
         <p className="text-muted-foreground mt-2">
@@ -207,7 +207,7 @@ export default function IntegritySetup() {
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-400" />
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
               Integrity Checks
             </CardTitle>
             <CardDescription>Select which checks to include in your verification process</CardDescription>
@@ -216,11 +216,11 @@ export default function IntegritySetup() {
             {displayChecks.map((check) => (
               <div 
                 key={check.id} 
-                className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/50 border border-zinc-700/50"
+                className="flex items-center justify-between p-4 rounded-lg bg-gray-200 dark:bg-zinc-800/50 border border-gray-300 dark:border-zinc-700/50"
                 data-testid={`check-item-${check.id}`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${check.enabled ? 'bg-green-500/20 text-green-400' : 'bg-zinc-700 text-zinc-400'}`}>
+                  <div className={`p-2 rounded-lg ${check.enabled ? 'bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-zinc-700 text-zinc-400'}`}>
                     {CHECK_ICONS[check.id]}
                   </div>
                   <div>
@@ -260,7 +260,7 @@ export default function IntegritySetup() {
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5 text-blue-400" />
+              <Key className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               Verification Providers
             </CardTitle>
             <CardDescription>Connect to background check service providers</CardDescription>
@@ -272,7 +272,7 @@ export default function IntegritySetup() {
                 className={`p-4 rounded-lg border transition-all ${
                   provider.connected 
                     ? 'bg-green-500/10 border-green-500/30' 
-                    : 'bg-zinc-800/50 border-zinc-700/50'
+                    : 'bg-gray-200 dark:bg-zinc-800/50 border-gray-300 dark:border-zinc-700/50'
                 }`}
                 data-testid={`provider-${provider.id}`}
               >
@@ -280,7 +280,7 @@ export default function IntegritySetup() {
                   <div className="flex items-center gap-2">
                     <h4 className="font-medium text-white">{provider.name}</h4>
                     {provider.connected && (
-                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                      <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
                         Connected
                       </Badge>
                     )}
@@ -291,7 +291,7 @@ export default function IntegritySetup() {
                       size="sm"
                       onClick={() => handleDisconnect(provider.id)}
                       disabled={disconnectProviderMutation.isPending}
-                      className="gap-1 text-red-400 border-red-500/30 hover:bg-red-500/10"
+                      className="gap-1 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/10"
                       data-testid={`button-disconnect-${provider.id}`}
                     >
                       {disconnectProviderMutation.isPending ? (
@@ -319,7 +319,7 @@ export default function IntegritySetup() {
                 </p>
 
                 {selectedProvider === provider.id && (
-                  <div className="mt-4 space-y-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-700">
+                  <div className="mt-4 space-y-3 p-3 rounded-lg bg-gray-100 dark:bg-zinc-900/50 border border-gray-300 dark:border-zinc-700">
                     <div className="space-y-2">
                       <Label htmlFor={`apiKey-${provider.id}`}>API Key</Label>
                       <Input
@@ -374,9 +374,9 @@ export default function IntegritySetup() {
       <Card className="mt-6 bg-amber-500/10 border-amber-500/30">
         <CardContent className="pt-6">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5" />
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
             <div>
-              <h4 className="font-medium text-amber-400">Compliance Note</h4>
+              <h4 className="font-medium text-amber-600 dark:text-amber-400">Compliance Note</h4>
               <p className="text-sm text-muted-foreground mt-1">
                 All background checks require candidate consent as per POPIA regulations. 
                 Consent is automatically requested during the screening process.

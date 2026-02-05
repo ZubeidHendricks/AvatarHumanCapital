@@ -123,17 +123,17 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
   return (
     <div className="flex flex-wrap gap-2 mt-2">
       {candidate.email ? (
-        <a href={`mailto:${candidate.email}`} className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300">
+        <a href={`mailto:${candidate.email}`} className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-300">
           <Mail className="h-3 w-3" /> {candidate.email}
         </a>
       ) : null}
       {candidate.phone ? (
-        <a href={`tel:${candidate.phone}`} className="inline-flex items-center gap-1 text-xs text-green-400 hover:text-green-300">
+        <a href={`tel:${candidate.phone}`} className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:text-green-300">
           <Phone className="h-3 w-3" /> {candidate.phone}
         </a>
       ) : null}
       {metadata?.linkedinUrl && (
-        <a href={metadata.linkedinUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300">
+        <a href={metadata.linkedinUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-300">
           <Linkedin className="h-3 w-3" /> LinkedIn
         </a>
       )}
@@ -143,7 +143,7 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
         <Button
           variant="outline"
           size="sm"
-          className="h-7 text-xs gap-1 border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+          className="h-7 text-xs gap-1 border-purple-500/50 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10"
           onClick={handleEnrichContact}
           disabled={isEnriching}
           data-testid={`enrich-contact-${candidate.id}`}
@@ -167,7 +167,7 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
         <Button
           variant="outline"
           size="sm"
-          className="h-7 text-xs gap-1 border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
+          className="h-7 text-xs gap-1 border-blue-500/50 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
           onClick={() => window.open(`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(candidate.fullName || '')}`, '_blank')}
           data-testid={`linkedin-search-${candidate.id}`}
         >
@@ -178,7 +178,7 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
       
       {/* Show enrichment result */}
       {enrichResult && (
-        <div className={`w-full mt-2 p-2 rounded text-xs ${enrichResult.success ? 'bg-green-500/10 border border-green-500/30 text-green-400' : 'bg-amber-500/10 border border-amber-500/30 text-amber-400'}`}>
+        <div className={`w-full mt-2 p-2 rounded text-xs ${enrichResult.success ? 'bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400' : 'bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400'}`}>
           {enrichResult.success ? (
             <span className="flex items-center gap-1">
               <CheckCircle className="h-3 w-3" />
@@ -432,9 +432,9 @@ export default function RecruitmentAgent() {
   };
 
   const getMatchColor = (score: number) => {
-    if (score >= 85) return 'text-green-400 bg-green-500/20 border-green-500/30';
-    if (score >= 70) return 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
-    if (score >= 50) return 'text-orange-400 bg-orange-500/20 border-orange-500/30';
+    if (score >= 85) return 'text-green-600 dark:text-green-400 bg-green-500/20 border-green-500/30';
+    if (score >= 70) return 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
+    if (score >= 50) return 'text-orange-600 dark:text-orange-400 bg-orange-500/20 border-orange-500/30';
     return 'text-zinc-400 bg-zinc-500/20 border-zinc-500/30';
   };
 
@@ -475,10 +475,10 @@ export default function RecruitmentAgent() {
             {/* Left Panel - Controls & Workflow */}
             <div className="lg:col-span-4 space-y-6">
               {/* Start New Session */}
-              <Card className="bg-zinc-900/50 border-zinc-800">
+              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-zinc-800">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Play className="h-5 w-5 text-green-400" />
+                    <Play className="h-5 w-5 text-green-600 dark:text-green-400" />
                     Launch Recruitment
                   </CardTitle>
                 </CardHeader>
@@ -486,10 +486,10 @@ export default function RecruitmentAgent() {
                   <div className="space-y-2">
                     <Label className="text-zinc-400">Target Position</Label>
                     <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                      <SelectTrigger className="bg-zinc-800 border-zinc-700" data-testid="select-job">
+                      <SelectTrigger className="bg-gray-200 dark:bg-zinc-800 border-zinc-700" data-testid="select-job">
                         <SelectValue placeholder="Select a job..." />
                       </SelectTrigger>
-                      <SelectContent className="bg-zinc-800 border-zinc-700">
+                      <SelectContent className="bg-gray-200 dark:bg-zinc-800 border-zinc-700">
                         {jobsLoading ? (
                           <SelectItem value="loading" disabled>Loading...</SelectItem>
                         ) : jobs?.length ? (
@@ -506,9 +506,9 @@ export default function RecruitmentAgent() {
                   </div>
 
                   {selectedJob && (
-                    <div className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                    <div className="p-3 bg-gray-200 dark:bg-zinc-800/50 rounded-lg border border-zinc-700">
                       <div className="flex items-start gap-3">
-                        <Briefcase className="h-5 w-5 text-blue-400 mt-0.5" />
+                        <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
                         <div>
                           <p className="font-medium">{selectedJob.title}</p>
                           <p className="text-sm text-zinc-400">{selectedJob.department}</p>
@@ -529,7 +529,7 @@ export default function RecruitmentAgent() {
                         type="number"
                         value={maxCandidates}
                         onChange={(e) => setMaxCandidates(Number(e.target.value))}
-                        className="bg-zinc-800 border-zinc-700"
+                        className="bg-gray-200 dark:bg-zinc-800 border-zinc-700"
                         data-testid="input-max-candidates"
                       />
                     </div>
@@ -539,7 +539,7 @@ export default function RecruitmentAgent() {
                         type="number"
                         value={minMatchScore}
                         onChange={(e) => setMinMatchScore(Number(e.target.value))}
-                        className="bg-zinc-800 border-zinc-700"
+                        className="bg-gray-200 dark:bg-zinc-800 border-zinc-700"
                         data-testid="input-min-match"
                       />
                     </div>
@@ -567,10 +567,10 @@ export default function RecruitmentAgent() {
               </Card>
 
               {/* Sourcing Agents - Workflow Style */}
-              <Card className="bg-zinc-900/50 border-zinc-800">
+              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-zinc-800">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Bot className="h-5 w-5 text-purple-400" />
+                    <Bot className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                     AI Agent Workflow
                   </CardTitle>
                   <CardDescription>
@@ -600,7 +600,7 @@ export default function RecruitmentAgent() {
                                     : 'border-l-transparent'
                               }`}
                             >
-                              <span className={`text-sm font-mono ${categoryActive ? 'text-purple-400' : categoryComplete ? 'text-green-400' : 'text-zinc-500'}`}>
+                              <span className={`text-sm font-mono ${categoryActive ? 'text-purple-600 dark:text-purple-400' : categoryComplete ? 'text-green-600 dark:text-green-400' : 'text-zinc-500'}`}>
                                 {String(idx + 1).padStart(2, '0')}
                               </span>
                               <span className={`text-sm font-medium ${categoryActive ? 'text-white' : 'text-zinc-400'}`}>
@@ -630,8 +630,8 @@ export default function RecruitmentAgent() {
                                 isActive 
                                   ? 'bg-purple-500/10' 
                                   : hasResult
-                                    ? 'bg-zinc-800/30'
-                                    : 'bg-zinc-800/20'
+                                    ? 'bg-gray-200 dark:bg-zinc-800/30'
+                                    : 'bg-gray-200 dark:bg-zinc-800/20'
                               }`}
                               data-testid={`agent-${agent.platform.toLowerCase().replace(/\s+/g, '-')}`}
                             >
@@ -673,10 +673,10 @@ export default function RecruitmentAgent() {
               </div>
 
               {/* Workflow Steps */}
-              <Card className="bg-zinc-900/50 border-zinc-800">
+              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-zinc-800">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-purple-400" />
+                    <Activity className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                     Agent Workflow
                   </CardTitle>
                 </CardHeader>
@@ -695,7 +695,7 @@ export default function RecruitmentAgent() {
                               ? 'bg-purple-500/20 border border-purple-500/50' 
                               : isComplete
                                 ? 'bg-green-500/10 border border-green-500/30'
-                                : 'bg-zinc-800/50 border border-zinc-700/50'
+                                : 'bg-gray-200 dark:bg-zinc-800/50 border border-zinc-700/50'
                           }`}
                         >
                           <div className={`p-2 rounded-lg ${
@@ -736,15 +736,15 @@ export default function RecruitmentAgent() {
 
             {/* Center Panel - Live Activity Feed */}
             <div className="lg:col-span-5">
-              <Card className="bg-zinc-900/50 border-zinc-800 h-full">
+              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-zinc-800 h-full">
                 <CardHeader className="pb-3 border-b border-zinc-800">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5 text-blue-400" />
+                      <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       Live Agent Activity
                     </CardTitle>
                     {isSimulating && (
-                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                      <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
                         <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse" />
                         Live
                       </Badge>
@@ -772,7 +772,7 @@ export default function RecruitmentAgent() {
                                 {getAgentAvatar(msg.agent)}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="flex-1 bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
+                            <div className="flex-1 bg-gray-200 dark:bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="font-medium text-sm text-zinc-300">{msg.agent}</span>
                                 <span className="text-xs text-zinc-500">
@@ -791,7 +791,7 @@ export default function RecruitmentAgent() {
                               AI
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex-1 bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
+                          <div className="flex-1 bg-gray-200 dark:bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
                             <div className="flex items-center gap-2">
                               <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" />
                               <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -810,29 +810,29 @@ export default function RecruitmentAgent() {
             <div className="lg:col-span-3 space-y-6">
               {/* Stats */}
               <div className="grid grid-cols-2 gap-3">
-                <Card className="bg-zinc-900/50 border-zinc-800">
+                <Card className="bg-gray-100 dark:bg-zinc-900/50 border-zinc-800">
                   <CardContent className="p-4 text-center">
-                    <p className="text-3xl font-bold text-blue-400">{sessions?.length || 0}</p>
+                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{sessions?.length || 0}</p>
                     <p className="text-xs text-zinc-500">Sessions</p>
                   </CardContent>
                 </Card>
-                <Card className="bg-zinc-900/50 border-zinc-800">
+                <Card className="bg-gray-100 dark:bg-zinc-900/50 border-zinc-800">
                   <CardContent className="p-4 text-center">
-                    <p className="text-3xl font-bold text-green-400">{candidates?.length || 0}</p>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">{candidates?.length || 0}</p>
                     <p className="text-xs text-zinc-500">Candidates</p>
                   </CardContent>
                 </Card>
               </div>
 
               {/* Top Candidates */}
-              <Card className="bg-zinc-900/50 border-zinc-800">
+              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-zinc-800">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Star className="h-5 w-5 text-yellow-400" />
+                    <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                     Top Matches
                   </CardTitle>
                   {displayJobTitle && (
-                    <CardDescription className="text-xs text-purple-400 flex items-center gap-1">
+                    <CardDescription className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
                       <Briefcase className="h-3 w-3" />
                       For: {displayJobTitle}
                     </CardDescription>
@@ -840,10 +840,10 @@ export default function RecruitmentAgent() {
                   {!displayJobTitle && jobs && jobs.length > 0 && (
                     <div className="mt-2">
                       <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                        <SelectTrigger className="bg-zinc-800 border-zinc-700 h-8 text-xs">
+                        <SelectTrigger className="bg-gray-200 dark:bg-zinc-800 border-zinc-700 h-8 text-xs">
                           <SelectValue placeholder="Filter by job..." />
                         </SelectTrigger>
-                        <SelectContent className="bg-zinc-800 border-zinc-700">
+                        <SelectContent className="bg-gray-200 dark:bg-zinc-800 border-zinc-700">
                           {jobs.map((job) => (
                             <SelectItem key={job.id} value={job.id} className="text-xs">
                               {job.title}
@@ -862,7 +862,7 @@ export default function RecruitmentAgent() {
                           <div
                             key={candidate.id}
                             onClick={() => handleCandidateClick(candidate)}
-                            className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50 hover:border-purple-500/30 hover:bg-zinc-800 transition-all cursor-pointer"
+                            className="flex items-center gap-3 p-3 bg-gray-200 dark:bg-zinc-800/50 rounded-lg border border-zinc-700/50 hover:border-purple-500/30 hover:bg-gray-200 dark:bg-zinc-800 transition-all cursor-pointer"
                             data-testid={`candidate-card-${candidate.id}`}
                           >
                             <div className="relative">
@@ -900,7 +900,7 @@ export default function RecruitmentAgent() {
                   </ScrollArea>
                   {topCandidates.length > 0 && (
                     <Link href="/candidates-list">
-                      <Button variant="outline" className="w-full mt-3 border-zinc-700 hover:bg-zinc-800" data-testid="button-view-all-candidates">
+                      <Button variant="outline" className="w-full mt-3 border-zinc-700 hover:bg-gray-200 dark:bg-zinc-800" data-testid="button-view-all-candidates">
                         View All Candidates
                         <ChevronRight className="h-4 w-4 ml-2" />
                       </Button>
@@ -910,7 +910,7 @@ export default function RecruitmentAgent() {
               </Card>
 
               {/* Recent Sessions */}
-              <Card className="bg-zinc-900/50 border-zinc-800">
+              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-zinc-800">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Clock className="h-5 w-5 text-zinc-400" />
@@ -926,16 +926,16 @@ export default function RecruitmentAgent() {
                           return (
                             <div
                               key={session.id}
-                              className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+                              className="p-3 bg-gray-200 dark:bg-zinc-800/50 rounded-lg border border-zinc-700/50"
                             >
                               <div className="flex items-center justify-between mb-1">
                                 <span className="font-medium text-sm truncate flex-1">
                                   {job?.title || 'Unknown Job'}
                                 </span>
                                 <Badge className={
-                                  session.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
-                                  session.status === 'Running' ? 'bg-blue-500/20 text-blue-400' :
-                                  'bg-red-500/20 text-red-400'
+                                  session.status === 'Completed' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
+                                  session.status === 'Running' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' :
+                                  'bg-red-500/20 text-red-600 dark:text-red-400'
                                 }>
                                   {session.status}
                                 </Badge>
@@ -964,13 +964,13 @@ export default function RecruitmentAgent() {
 
       {/* Candidate Details Dialog */}
       <Dialog open={showCandidateDialog} onOpenChange={setShowCandidateDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-zinc-900 border-zinc-800 text-white">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-gray-100 dark:bg-zinc-900 border-zinc-800 text-white">
           <DialogHeader className="border-b border-zinc-800 pb-4">
             <DialogTitle className="text-xl flex items-center gap-2">
-              <Star className="h-5 w-5 text-yellow-400" />
+              <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
               Top Matched Candidates
               {displayJobTitle && (
-                <Badge className="ml-2 bg-purple-500/20 text-purple-400 border-purple-500/30">
+                <Badge className="ml-2 bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30">
                   {displayJobTitle}
                 </Badge>
               )}
@@ -992,7 +992,7 @@ export default function RecruitmentAgent() {
                     className={`p-4 rounded-lg border transition-all ${
                       selectedCandidate?.id === candidate.id 
                         ? 'bg-purple-500/10 border-purple-500/50' 
-                        : 'bg-zinc-800/50 border-zinc-700/50 hover:border-zinc-600'
+                        : 'bg-gray-200 dark:bg-zinc-800/50 border-zinc-700/50 hover:border-zinc-600'
                     }`}
                   >
                     <div className="flex items-start gap-4">
@@ -1050,12 +1050,12 @@ export default function RecruitmentAgent() {
                             <p className="text-xs text-zinc-500 mb-2">Skills</p>
                             <div className="flex flex-wrap gap-1.5">
                               {(candidate.skills as string[]).slice(0, 8).map((skill, i) => (
-                                <Badge key={i} variant="outline" className="text-xs bg-zinc-800 border-zinc-700">
+                                <Badge key={i} variant="outline" className="text-xs bg-gray-200 dark:bg-zinc-800 border-zinc-700">
                                   {skill}
                                 </Badge>
                               ))}
                               {(candidate.skills as string[]).length > 8 && (
-                                <Badge variant="outline" className="text-xs bg-zinc-800 border-zinc-700">
+                                <Badge variant="outline" className="text-xs bg-gray-200 dark:bg-zinc-800 border-zinc-700">
                                   +{(candidate.skills as string[]).length - 8} more
                                 </Badge>
                               )}
@@ -1074,7 +1074,7 @@ export default function RecruitmentAgent() {
                         {/* AI Reasoning */}
                         {metadata?.aiReasoning && (
                           <div className="mt-3 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
-                            <p className="text-xs text-purple-400 mb-1 flex items-center gap-1">
+                            <p className="text-xs text-purple-600 dark:text-purple-400 mb-1 flex items-center gap-1">
                               <Brain className="h-3 w-3" /> AI Analysis
                             </p>
                             <p className="text-sm text-zinc-300">{metadata.aiReasoning}</p>
@@ -1098,7 +1098,7 @@ export default function RecruitmentAgent() {
                               View Full Profile
                             </Button>
                           </Link>
-                          <Button size="sm" variant="outline" className="border-zinc-700 hover:bg-zinc-800">
+                          <Button size="sm" variant="outline" className="border-zinc-700 hover:bg-gray-200 dark:bg-zinc-800">
                             <ThumbsUp className="h-4 w-4 mr-1" />
                             Shortlist
                           </Button>

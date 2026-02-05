@@ -277,8 +277,8 @@ export function DataSourceForm({
                     }`}
                     data-testid={`card-type-${type.value}`}
                   >
-                    <TypeIcon className={`h-6 w-6 mb-2 ${isSelected ? "text-blue-400" : "text-gray-400"}`} />
-                    <p className={`font-medium text-sm ${isSelected ? "text-blue-400" : "text-white"}`}>
+                    <TypeIcon className={`h-6 w-6 mb-2 ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`} />
+                    <p className={`font-medium text-sm ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-white"}`}>
                       {type.label}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">{type.description}</p>

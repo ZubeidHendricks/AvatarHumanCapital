@@ -113,7 +113,7 @@ This is an initial screening interview to assess the candidate's potential fit f
 
         {createdPersona && (
           <Alert className="mb-6 border-green-500/30 bg-green-500/10" data-testid="alert-persona-created">
-            <CheckCircle2 className="h-4 w-4 text-green-400" />
+            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
             <AlertDescription className="text-green-100">
               <div className="flex items-center justify-between">
                 <div>
@@ -158,7 +158,7 @@ This is an initial screening interview to assess the candidate's potential fit f
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               ) : personasError ? (
-                <div className="text-amber-400 text-sm">
+                <div className="text-amber-600 dark:text-amber-400 text-sm">
                   <p>Could not load personas. Please check your Tavus API key in settings.</p>
                 </div>
               ) : personasData?.personas && personasData.personas.length > 0 ? (

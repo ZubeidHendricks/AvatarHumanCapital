@@ -356,7 +356,7 @@ export default function KpiManagement() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-red-400 hover:text-red-300"
+                          className="text-red-600 dark:text-red-400 hover:text-red-300"
                           onClick={() => deleteTemplateMutation.mutate(template.id)}
                           data-testid={`button-delete-template-${template.id}`}
                         >
@@ -410,7 +410,7 @@ export default function KpiManagement() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="p-3 bg-blue-600/20 rounded-lg">
-                            <Calendar className="h-6 w-6 text-blue-400" />
+                            <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                           </div>
                           <div>
                             <h3 className="font-medium text-foreground">{cycle.name}</h3>
@@ -433,7 +433,7 @@ export default function KpiManagement() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-red-400 hover:text-red-300"
+                              className="text-red-600 dark:text-red-400 hover:text-red-300"
                               onClick={() => deleteCycleMutation.mutate(cycle.id)}
                               data-testid={`button-delete-cycle-${cycle.id}`}
                             >
@@ -500,7 +500,7 @@ export default function KpiManagement() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="h-10 w-10 bg-blue-600/20 rounded-full flex items-center justify-center">
-                              <User className="h-5 w-5 text-blue-400" />
+                              <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div>
                               <p className="font-medium text-foreground">{employee?.fullName || "Unknown"}</p>
@@ -566,7 +566,7 @@ export default function KpiManagement() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
                             <div className="h-12 w-12 bg-blue-600/20 rounded-full flex items-center justify-center">
-                              <User className="h-6 w-6 text-blue-400" />
+                              <User className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div>
                               <h3 className="font-medium text-foreground">{employee?.fullName || "Unknown"}</h3>
@@ -590,7 +590,7 @@ export default function KpiManagement() {
                                     <Star
                                       key={star}
                                       className={`h-4 w-4 ${
-                                        star <= submission.finalScore! ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"
+                                        star <= submission.finalScore! ? "text-yellow-600 dark:text-yellow-400 fill-yellow-400" : "text-muted-foreground"
                                       }`}
                                     />
                                   ))}
@@ -1050,7 +1050,7 @@ function TemplateDialog({
                         data-testid={`checkbox-assign-employee-${employee.id}`}
                       />
                       <div className="h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center">
-                        <User className="h-4 w-4 text-blue-400" />
+                        <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
                       <span className="text-foreground">{employee.fullName}</span>
                     </label>
@@ -1411,7 +1411,7 @@ function AssignDialog({
                     data-testid={`checkbox-employee-${employee.id}`}
                   />
                   <div className="h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center">
-                    <User className="h-4 w-4 text-blue-400" />
+                    <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   </div>
                   <span className="text-foreground">{employee.fullName}</span>
                 </label>
@@ -1506,7 +1506,7 @@ function SubmissionDetailDialog({
                   <Star
                     key={star}
                     className={`h-6 w-6 ${
-                      star <= submission.finalScore! ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"
+                      star <= submission.finalScore! ? "text-yellow-600 dark:text-yellow-400 fill-yellow-400" : "text-muted-foreground"
                     }`}
                   />
                 ))}

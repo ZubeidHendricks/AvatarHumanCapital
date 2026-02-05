@@ -70,7 +70,7 @@ export function DashboardPreview() {
                   <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
                   <div>
                     <p className="text-xs text-muted-foreground">System Status</p>
-                    <p className="font-mono text-sm font-bold text-green-500 dark:text-green-400">OPTIMAL</p>
+                    <p className="font-mono text-sm font-bold text-green-600 dark:text-green-400">OPTIMAL</p>
                   </div>
                 </div>
               </motion.div>

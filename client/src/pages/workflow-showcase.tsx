@@ -73,7 +73,7 @@ const WORKFLOW_STEPS = [
     color: "from-blue-500 to-blue-600", 
     bgColor: "bg-blue-500/10", 
     borderColor: "border-blue-500/30", 
-    textColor: "text-blue-400" 
+    textColor: "text-blue-600 dark:text-blue-400" 
   },
   { 
     id: 2, 
@@ -84,7 +84,7 @@ const WORKFLOW_STEPS = [
     color: "from-purple-500 to-purple-600", 
     bgColor: "bg-purple-500/10", 
     borderColor: "border-purple-500/30", 
-    textColor: "text-purple-400" 
+    textColor: "text-purple-600 dark:text-purple-400" 
   },
   { 
     id: 3, 
@@ -106,7 +106,7 @@ const WORKFLOW_STEPS = [
     color: "from-yellow-500 to-amber-500", 
     bgColor: "bg-yellow-500/10", 
     borderColor: "border-yellow-500/30", 
-    textColor: "text-yellow-400" 
+    textColor: "text-yellow-600 dark:text-yellow-400" 
   },
   { 
     id: 5, 
@@ -117,7 +117,7 @@ const WORKFLOW_STEPS = [
     color: "from-indigo-500 to-indigo-600", 
     bgColor: "bg-indigo-500/10", 
     borderColor: "border-indigo-500/30", 
-    textColor: "text-indigo-400" 
+    textColor: "text-indigo-600 dark:text-indigo-400" 
   },
   { 
     id: 6, 
@@ -128,7 +128,7 @@ const WORKFLOW_STEPS = [
     color: "from-cyan-500 to-cyan-600", 
     bgColor: "bg-cyan-500/10", 
     borderColor: "border-cyan-500/30", 
-    textColor: "text-cyan-400" 
+    textColor: "text-cyan-600 dark:text-cyan-400" 
   },
   { 
     id: 7, 
@@ -139,7 +139,7 @@ const WORKFLOW_STEPS = [
     color: "from-orange-500 to-orange-600", 
     bgColor: "bg-orange-500/10", 
     borderColor: "border-orange-500/30", 
-    textColor: "text-orange-400" 
+    textColor: "text-orange-600 dark:text-orange-400" 
   },
   { 
     id: 8, 
@@ -150,7 +150,7 @@ const WORKFLOW_STEPS = [
     color: "from-teal-500 to-teal-600", 
     bgColor: "bg-teal-500/10", 
     borderColor: "border-teal-500/30", 
-    textColor: "text-teal-400" 
+    textColor: "text-teal-600 dark:text-teal-400" 
   },
   { 
     id: 9, 
@@ -161,7 +161,7 @@ const WORKFLOW_STEPS = [
     color: "from-green-500 to-green-600", 
     bgColor: "bg-green-500/10", 
     borderColor: "border-green-500/30", 
-    textColor: "text-green-400" 
+    textColor: "text-green-600 dark:text-green-400" 
   },
 ];
 
@@ -773,7 +773,7 @@ BENEFITS:
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12 border border-border dark:border-white/10">
-                        <AvatarFallback className="bg-purple-500/20 text-purple-400 text-sm">
+                        <AvatarFallback className="bg-purple-500/20 text-purple-600 dark:text-purple-400 text-sm">
                           {candidate.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
@@ -794,7 +794,7 @@ BENEFITS:
                     <div className="flex flex-col items-end gap-2">
                       {candidate.match && (
                         <div className="flex items-center gap-2">
-                          <span className="text-2xl font-bold text-purple-400">{candidate.match}%</span>
+                          <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{candidate.match}%</span>
                           <span className="text-xs text-muted-foreground">Match</span>
                         </div>
                       )}
@@ -849,7 +849,7 @@ BENEFITS:
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Star className="h-5 w-5 text-yellow-400" />
+              <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
               <span className="font-medium">Top Candidates ({stepCandidates.length})</span>
             </div>
             <Button 
@@ -875,14 +875,14 @@ BENEFITS:
                 <Card key={candidate.id} className="bg-background/50 border-yellow-500/20" data-testid={`compare-card-${candidate.id}`}>
                   <CardContent className="p-4 text-center">
                     <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-yellow-500/30">
-                      <AvatarFallback className="bg-yellow-500/20 text-yellow-400">
+                      <AvatarFallback className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400">
                         {candidate.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </AvatarFallback>
                     </Avatar>
                     <p className="font-medium">{candidate.fullName}</p>
                     <p className="text-sm text-muted-foreground mb-2">{candidate.role}</p>
                     {candidate.match && (
-                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 mb-2">
+                      <Badge className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30 mb-2">
                         <Star className="h-3 w-3 mr-1" />{candidate.match}% Match
                       </Badge>
                     )}
@@ -906,11 +906,11 @@ BENEFITS:
                         <div className="flex items-center gap-3">
                           <div className="relative">
                             <Avatar className="h-10 w-10 border border-yellow-500/30">
-                              <AvatarFallback className="bg-yellow-500/20 text-yellow-400 text-sm">
+                              <AvatarFallback className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 text-sm">
                                 {candidate.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                               </AvatarFallback>
                             </Avatar>
-                            <Star className="h-4 w-4 text-yellow-400 absolute -top-1 -right-1" />
+                            <Star className="h-4 w-4 text-yellow-600 dark:text-yellow-400 absolute -top-1 -right-1" />
                           </div>
                           <div>
                             <p className="font-medium">{candidate.fullName}</p>
@@ -920,7 +920,7 @@ BENEFITS:
                         <div className="flex items-center gap-2">
                           {candidate.match && (
                             <Badge variant="outline" className="bg-yellow-500/10 border-yellow-500/30">
-                              <Star className="h-3 w-3 mr-1 text-yellow-400" />{candidate.match}%
+                              <Star className="h-3 w-3 mr-1 text-yellow-600 dark:text-yellow-400" />{candidate.match}%
                             </Badge>
                           )}
                           <Button size="sm" variant="outline" asChild data-testid={`button-schedule-interview-${candidate.id}`}>
@@ -962,13 +962,13 @@ BENEFITS:
           <div className="grid grid-cols-2 gap-4">
             <Link href="/interview-voice">
               <Button variant="outline" className="w-full h-20 flex-col gap-2 border-indigo-500/30 hover:bg-indigo-500/10" data-testid="button-ai-voice-interview">
-                <Mic className="h-6 w-6 text-indigo-400" />
+                <Mic className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
                 <span>AI Voice Interview</span>
               </Button>
             </Link>
             <Link href="/interview-video">
               <Button variant="outline" className="w-full h-20 flex-col gap-2 border-indigo-500/30 hover:bg-indigo-500/10" data-testid="button-video-interview">
-                <Video className="h-6 w-6 text-indigo-400" />
+                <Video className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
                 <span>Video Interview</span>
               </Button>
             </Link>
@@ -989,7 +989,7 @@ BENEFITS:
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 border border-indigo-500/30">
-                            <AvatarFallback className="bg-indigo-500/20 text-indigo-400 text-sm">
+                            <AvatarFallback className="bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-sm">
                               {candidate.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                             </AvatarFallback>
                           </Avatar>
@@ -1000,10 +1000,10 @@ BENEFITS:
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className={(candidate as any).interviewStatus === 'completed' 
-                            ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                            ? 'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400'
                             : (candidate as any).interviewStatus === 'scheduled'
-                              ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
-                              : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                              ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400'
+                              : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-600 dark:text-yellow-400'
                           }>
                             {(candidate as any).interviewStatus || 'Pending'}
                           </Badge>
@@ -1059,7 +1059,7 @@ BENEFITS:
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10 border border-orange-500/30">
-                              <AvatarFallback className="bg-orange-500/20 text-orange-400 text-sm">
+                              <AvatarFallback className="bg-orange-500/20 text-orange-600 dark:text-orange-400 text-sm">
                                 {candidate.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                               </AvatarFallback>
                             </Avatar>
@@ -1071,10 +1071,10 @@ BENEFITS:
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className={
                               offerStatus === 'accepted' 
-                                ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                                ? 'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400'
                                 : offerStatus === 'declined'
-                                  ? 'bg-red-500/10 border-red-500/30 text-red-400'
-                                  : 'bg-orange-500/10 border-orange-500/30 text-orange-400'
+                                  ? 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'
+                                  : 'bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400'
                             }>
                               {offerStatus === 'accepted' ? 'Offer Accepted' : offerStatus === 'declined' ? 'Declined' : 'Offer Pending'}
                             </Badge>
@@ -1156,7 +1156,7 @@ BENEFITS:
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10 border border-cyan-500/30">
-                              <AvatarFallback className="bg-cyan-500/20 text-cyan-400 text-sm">
+                              <AvatarFallback className="bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-sm">
                                 {candidate.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                               </AvatarFallback>
                             </Avatar>
@@ -1166,10 +1166,10 @@ BENEFITS:
                             </div>
                           </div>
                           <Badge variant="outline" className={
-                            riskData.riskLevel === 'low' ? 'bg-green-500/10 border-green-500/30 text-green-400' :
-                            riskData.riskLevel === 'medium' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' :
-                            riskData.riskLevel === 'high' ? 'bg-orange-500/10 border-orange-500/30 text-orange-400' :
-                            'bg-red-500/10 border-red-500/30 text-red-400'
+                            riskData.riskLevel === 'low' ? 'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400' :
+                            riskData.riskLevel === 'medium' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-600 dark:text-yellow-400' :
+                            riskData.riskLevel === 'high' ? 'bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400' :
+                            'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'
                           } data-testid={`risk-badge-${candidate.id}`}>
                             <AlertTriangle className="h-3 w-3 mr-1" />
                             Risk: {riskData.overallRiskScore}%
@@ -1178,19 +1178,19 @@ BENEFITS:
                         
                         <div className="mt-3 grid grid-cols-4 gap-2">
                           <div className="flex items-center gap-1 text-xs" data-testid={`criminal-check-${candidate.id}`}>
-                            <Shield className={`h-4 w-4 ${integrity?.criminalCheckStatus === 'clear' ? 'text-green-400' : integrity?.criminalCheckStatus === 'failed' ? 'text-red-400' : 'text-yellow-400'}`} />
+                            <Shield className={`h-4 w-4 ${integrity?.criminalCheckStatus === 'clear' ? 'text-green-600 dark:text-green-400' : integrity?.criminalCheckStatus === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`} />
                             <span className="text-muted-foreground">Criminal</span>
                           </div>
                           <div className="flex items-center gap-1 text-xs" data-testid={`credit-check-${candidate.id}`}>
-                            <CreditCard className={`h-4 w-4 ${integrity?.creditCheckStatus === 'clear' ? 'text-green-400' : integrity?.creditCheckStatus === 'failed' ? 'text-red-400' : 'text-yellow-400'}`} />
+                            <CreditCard className={`h-4 w-4 ${integrity?.creditCheckStatus === 'clear' ? 'text-green-600 dark:text-green-400' : integrity?.creditCheckStatus === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`} />
                             <span className="text-muted-foreground">Credit</span>
                           </div>
                           <div className="flex items-center gap-1 text-xs" data-testid={`reference-check-${candidate.id}`}>
-                            <UserCheck className={`h-4 w-4 ${integrity?.referenceCheckStatus === 'clear' ? 'text-green-400' : integrity?.referenceCheckStatus === 'failed' ? 'text-red-400' : 'text-yellow-400'}`} />
+                            <UserCheck className={`h-4 w-4 ${integrity?.referenceCheckStatus === 'clear' ? 'text-green-600 dark:text-green-400' : integrity?.referenceCheckStatus === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`} />
                             <span className="text-muted-foreground">Reference</span>
                           </div>
                           <div className="flex items-center gap-1 text-xs" data-testid={`social-check-${candidate.id}`}>
-                            <Search className={`h-4 w-4 ${social?.status === 'completed' ? 'text-green-400' : social?.status === 'flagged' ? 'text-red-400' : 'text-yellow-400'}`} />
+                            <Search className={`h-4 w-4 ${social?.status === 'completed' ? 'text-green-600 dark:text-green-400' : social?.status === 'flagged' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`} />
                             <span className="text-muted-foreground">Social</span>
                           </div>
                         </div>
@@ -1240,7 +1240,7 @@ BENEFITS:
           <Card className="bg-background/50 border-teal-500/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <ClipboardList className="h-4 w-4 text-teal-400" />
+                <ClipboardList className="h-4 w-4 text-teal-600 dark:text-teal-400" />
                 Onboarding Checklist
               </CardTitle>
             </CardHeader>
@@ -1255,15 +1255,15 @@ BENEFITS:
                       data-testid={`onboarding-task-${task.id}`}
                     >
                       <div className="flex items-center gap-2">
-                        <TaskIcon className="h-4 w-4 text-teal-400" />
+                        <TaskIcon className="h-4 w-4 text-teal-600 dark:text-teal-400" />
                         <span className="text-sm">{task.task}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">{task.assignee}</span>
                         <Badge variant="outline" className={
-                          task.status === 'Completed' ? 'bg-green-500/10 border-green-500/30 text-green-400' :
-                          task.status === 'In Progress' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' :
-                          'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                          task.status === 'Completed' ? 'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400' :
+                          task.status === 'In Progress' ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400' :
+                          'bg-yellow-500/10 border-yellow-500/30 text-yellow-600 dark:text-yellow-400'
                         }>
                           {task.status}
                         </Badge>
@@ -1288,7 +1288,7 @@ BENEFITS:
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10 border border-teal-500/30">
-                          <AvatarFallback className="bg-teal-500/20 text-teal-400 text-sm">
+                          <AvatarFallback className="bg-teal-500/20 text-teal-600 dark:text-teal-400 text-sm">
                             {candidate.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                           </AvatarFallback>
                         </Avatar>
@@ -1299,11 +1299,11 @@ BENEFITS:
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1 text-xs">
-                          <Laptop className="h-4 w-4 text-teal-400" />
+                          <Laptop className="h-4 w-4 text-teal-600 dark:text-teal-400" />
                           <span className="text-muted-foreground">IT Ready</span>
                         </div>
                         <div className="flex items-center gap-1 text-xs">
-                          <FileText className="h-4 w-4 text-teal-400" />
+                          <FileText className="h-4 w-4 text-teal-600 dark:text-teal-400" />
                           <span className="text-muted-foreground">Docs</span>
                         </div>
                         <Button
@@ -1340,17 +1340,17 @@ BENEFITS:
         <div className="space-y-4">
           {stepCandidates.length === 0 ? (
             <div className="text-center py-12">
-              <Award className="h-16 w-16 mx-auto text-green-400 mb-4" />
-              <h3 className="text-xl font-bold mb-2 text-green-400">Ready to Hire!</h3>
+              <Award className="h-16 w-16 mx-auto text-green-600 dark:text-green-400 mb-4" />
+              <h3 className="text-xl font-bold mb-2 text-green-600 dark:text-green-400">Ready to Hire!</h3>
               <p className="text-muted-foreground">Complete the onboarding process to add employees to your workforce</p>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="text-center py-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 mb-4">
-                  <CheckCircle2 className="h-8 w-8 text-green-400" />
+                  <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
                 </div>
-                <h3 className="text-xl font-bold text-green-400">Congratulations!</h3>
+                <h3 className="text-xl font-bold text-green-600 dark:text-green-400">Congratulations!</h3>
                 <p className="text-muted-foreground">{stepCandidates.length} employee(s) successfully hired</p>
               </div>
               
@@ -1363,16 +1363,16 @@ BENEFITS:
                           <div className="flex items-center gap-3">
                             <div className="relative">
                               <Avatar className="h-12 w-12 border-2 border-green-500/50">
-                                <AvatarFallback className="bg-green-500/20 text-green-400">
+                                <AvatarFallback className="bg-green-500/20 text-green-600 dark:text-green-400">
                                   {candidate.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                 </AvatarFallback>
                               </Avatar>
-                              <CheckCircle2 className="h-5 w-5 text-green-400 absolute -bottom-1 -right-1 bg-background rounded-full" />
+                              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 absolute -bottom-1 -right-1 bg-background rounded-full" />
                             </div>
                             <div>
                               <p className="font-medium">{candidate.fullName}</p>
                               <p className="text-sm text-muted-foreground">{candidate.role}</p>
-                              <Badge className="mt-1 bg-green-500/20 text-green-400 border-green-500/30">
+                              <Badge className="mt-1 bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
                                 <Award className="h-3 w-3 mr-1" />
                                 Hired
                               </Badge>
@@ -1451,17 +1451,17 @@ BENEFITS:
                     <div className="flex items-center gap-2">
                       {candidate.match && (
                         <Badge variant="outline" className="bg-yellow-500/10 border-yellow-500/30">
-                          <Star className="h-3 w-3 mr-1 text-yellow-400" />{candidate.match}%
+                          <Star className="h-3 w-3 mr-1 text-yellow-600 dark:text-yellow-400" />{candidate.match}%
                         </Badge>
                       )}
                       
                       {stepKey === "integrity" && integrity && (
                         <Badge variant="outline" className={
                           (integrity as any).status === 'completed' || (integrity as any).status === 'passed'
-                            ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                            ? 'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400'
                             : (integrity as any).status === 'failed'
-                              ? 'bg-red-500/10 border-red-500/30 text-red-400'
-                              : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                              ? 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'
+                              : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-600 dark:text-yellow-400'
                         }>
                           <ShieldCheck className="h-3 w-3 mr-1" />{(integrity as any).status}
                         </Badge>
@@ -1491,7 +1491,7 @@ BENEFITS:
                       )}
                       
                       {stepKey === "hired" && (
-                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                        <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
                           <CheckCircle2 className="h-3 w-3 mr-1" />Hired
                         </Badge>
                       )}
@@ -1592,7 +1592,7 @@ BENEFITS:
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all ${
                       isActive ? `bg-gradient-to-r ${step.color} shadow-lg` : isCompleted ? 'bg-green-500/20 border border-green-500' : 'bg-muted/50'
                     }`}>
-                      {isCompleted ? <CheckCircle2 className="h-4 w-4 text-green-400" /> : <StepIcon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-muted-foreground'}`} />}
+                      {isCompleted ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" /> : <StepIcon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-muted-foreground'}`} />}
                     </div>
                     <span className={`text-[10px] font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>{step.shortName}</span>
                     {stats && stats.count > 0 && <span className={`text-[10px] ${step.textColor}`}>{stats.count}</span>}
@@ -1617,7 +1617,7 @@ BENEFITS:
             <Card className="bg-card/50 border-border dark:border-white/10">
               <CardHeader>
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-yellow-400" />Automations at This Stage
+                  <Zap className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />Automations at This Stage
                 </CardTitle>
               </CardHeader>
               <CardContent>

@@ -79,10 +79,10 @@ interface WorkforceAlert {
 }
 
 const SKILL_STATUS_COLORS = {
-  critical_gap: { bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/30", dot: "bg-red-500" },
-  training_needed: { bg: "bg-yellow-500/20", text: "text-yellow-400", border: "border-yellow-500/30", dot: "bg-yellow-500" },
-  good_match: { bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/30", dot: "bg-green-500" },
-  beyond_expectations: { bg: "bg-purple-500/20", text: "text-purple-400", border: "border-purple-500/30", dot: "bg-purple-500" },
+  critical_gap: { bg: "bg-red-500/20", text: "text-red-600 dark:text-red-400", border: "border-red-500/30", dot: "bg-red-500" },
+  training_needed: { bg: "bg-yellow-500/20", text: "text-yellow-600 dark:text-yellow-400", border: "border-yellow-500/30", dot: "bg-yellow-500" },
+  good_match: { bg: "bg-green-500/20", text: "text-green-600 dark:text-green-400", border: "border-green-500/30", dot: "bg-green-500" },
+  beyond_expectations: { bg: "bg-purple-500/20", text: "text-purple-600 dark:text-purple-400", border: "border-purple-500/30", dot: "bg-purple-500" },
 };
 
 export default function WorkforceIntelligence() {
@@ -675,7 +675,7 @@ export default function WorkforceIntelligence() {
                                         </Badge>
                                       ))
                                     ) : (
-                                      <span className="text-xs text-green-400">No gaps identified</span>
+                                      <span className="text-xs text-green-600 dark:text-green-400">No gaps identified</span>
                                     )}
                                   </div>
                                 </div>
@@ -713,7 +713,7 @@ export default function WorkforceIntelligence() {
                                 <div className="flex items-start justify-between">
                                   <div className="space-y-2">
                                     <h3 className="font-semibold text-lg text-foreground">{job.title}</h3>
-                                    <Badge className="text-xs bg-blue-500/20 text-blue-400 border-0">
+                                    <Badge className="text-xs bg-blue-500/20 text-blue-600 dark:text-blue-400 border-0">
                                       {job.department}
                                     </Badge>
                                     <p className="text-sm text-muted-foreground line-clamp-2">
@@ -784,7 +784,7 @@ export default function WorkforceIntelligence() {
                                     {activity.description || `${activity.activityType.replace(/_/g, " ")}`}
                                   </p>
                                   {activity.newLevel && activity.previousLevel && (
-                                    <Badge className="text-xs bg-green-500/20 text-green-400 border-0">
+                                    <Badge className="text-xs bg-green-500/20 text-green-600 dark:text-green-400 border-0">
                                       Level {activity.previousLevel} → {activity.newLevel}
                                     </Badge>
                                   )}
@@ -818,19 +818,19 @@ export default function WorkforceIntelligence() {
                   </div>
                   <div className="flex items-center gap-4 mt-4">
                     <Badge variant="outline" className="bg-muted border-border text-foreground">All {totalSkillAssessments}</Badge>
-                    <Badge className="bg-red-500/20 text-red-400 border-0">
+                    <Badge className="bg-red-500/20 text-red-600 dark:text-red-400 border-0">
                       <span className="w-2 h-2 rounded-full bg-red-500 mr-1" />
                       Critical gap {skillStatusCounts.critical_gap}
                     </Badge>
-                    <Badge className="bg-yellow-500/20 text-yellow-400 border-0">
+                    <Badge className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-0">
                       <span className="w-2 h-2 rounded-full bg-yellow-500 mr-1" />
                       Training needed {skillStatusCounts.training_needed}
                     </Badge>
-                    <Badge className="bg-green-500/20 text-green-400 border-0">
+                    <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-0">
                       <span className="w-2 h-2 rounded-full bg-green-500 mr-1" />
                       Good skill match {skillStatusCounts.good_match}
                     </Badge>
-                    <Badge className="bg-purple-500/20 text-purple-400 border-0">
+                    <Badge className="bg-purple-500/20 text-purple-600 dark:text-purple-400 border-0">
                       <span className="w-2 h-2 rounded-full bg-purple-500 mr-1" />
                       Beyond expectations {skillStatusCounts.beyond_expectations}
                     </Badge>
@@ -899,7 +899,7 @@ export default function WorkforceIntelligence() {
                                     <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground flex-wrap">
                                       <span className="whitespace-nowrap">{skill.assessedCount} assessed</span>
                                       {skill.gapCount > 0 && (
-                                        <Badge className="text-[10px] bg-red-500/20 text-red-400 border-0 flex-shrink-0">
+                                        <Badge className="text-[10px] bg-red-500/20 text-red-600 dark:text-red-400 border-0 flex-shrink-0">
                                           {skill.gapCount} gap{skill.gapCount > 1 ? 's' : ''}
                                         </Badge>
                                       )}
@@ -1059,7 +1059,7 @@ export default function WorkforceIntelligence() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-lg text-foreground flex items-center gap-2">
-                        <Target className="h-5 w-5 text-purple-400" />
+                        <Target className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                         Career Ambitions
                       </CardTitle>
                       <CardDescription className="text-muted-foreground">
@@ -1137,7 +1137,7 @@ export default function WorkforceIntelligence() {
                       <Button 
                         onClick={() => setShowAmbitionForm(true)}
                         variant="outline" 
-                        className="border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400"
+                        className="border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Create First Ambition
@@ -1152,7 +1152,7 @@ export default function WorkforceIntelligence() {
                             <CardContent className="p-4">
                               <div className="flex items-start gap-3 mb-3">
                                 <Avatar className="h-10 w-10">
-                                  <AvatarFallback className="bg-purple-500/20 text-purple-400">
+                                  <AvatarFallback className="bg-purple-500/20 text-purple-600 dark:text-purple-400">
                                     {emp ? getInitials(emp.fullName) : '?'}
                                   </AvatarFallback>
                                 </Avatar>
@@ -1163,7 +1163,7 @@ export default function WorkforceIntelligence() {
                               </div>
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                  <Compass className="h-4 w-4 text-purple-400" />
+                                  <Compass className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                                   <span className="text-sm text-foreground">Target: <span className="font-medium text-foreground">{ambition.targetJobTitle}</span></span>
                                 </div>
                                 {ambition.targetDepartment && (
@@ -1203,7 +1203,7 @@ export default function WorkforceIntelligence() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-lg text-foreground flex items-center gap-2">
-                        <UserCheck className="h-5 w-5 text-green-400" />
+                        <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
                         Mentor Matching
                       </CardTitle>
                       <CardDescription className="text-muted-foreground">
@@ -1227,14 +1227,14 @@ export default function WorkforceIntelligence() {
                               <CardContent className="p-4">
                                 <div className="flex items-start gap-3">
                                   <Avatar className="h-12 w-12">
-                                    <AvatarFallback className="bg-green-500/20 text-green-400">
+                                    <AvatarFallback className="bg-green-500/20 text-green-600 dark:text-green-400">
                                       {getInitials(emp.fullName)}
                                     </AvatarFallback>
                                   </Avatar>
                                   <div className="flex-1">
                                     <h4 className="font-medium text-foreground">{emp.fullName}</h4>
                                     <p className="text-xs text-muted-foreground">{emp.jobTitle}</p>
-                                    <Badge className="mt-1 text-xs bg-green-500/20 text-green-400 border-0">
+                                    <Badge className="mt-1 text-xs bg-green-500/20 text-green-600 dark:text-green-400 border-0">
                                       <Star className="h-3 w-3 mr-1" />
                                       Expert in {expertSkills.length} skill{expertSkills.length !== 1 ? 's' : ''}
                                     </Badge>
@@ -1242,7 +1242,7 @@ export default function WorkforceIntelligence() {
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-1">
                                   {expertSkills.slice(0, 3).map((es, i) => (
-                                    <Badge key={i} variant="outline" className="text-xs border-green-500/30 text-green-400">
+                                    <Badge key={i} variant="outline" className="text-xs border-green-500/30 text-green-600 dark:text-green-400">
                                       {es.skill?.name} ({es.proficiencyLevel}/8)
                                     </Badge>
                                   ))}
@@ -1279,7 +1279,7 @@ export default function WorkforceIntelligence() {
                                 <div className="flex items-center gap-4">
                                   <div className="flex items-center gap-2">
                                     <Avatar className="h-10 w-10">
-                                      <AvatarFallback className="bg-green-500/20 text-green-400">
+                                      <AvatarFallback className="bg-green-500/20 text-green-600 dark:text-green-400">
                                         {getInitials(m.mentor?.fullName || '')}
                                       </AvatarFallback>
                                     </Avatar>
@@ -1291,7 +1291,7 @@ export default function WorkforceIntelligence() {
                                   <ArrowRight className="h-5 w-5 text-muted-foreground" />
                                   <div className="flex items-center gap-2">
                                     <Avatar className="h-10 w-10">
-                                      <AvatarFallback className="bg-blue-500/20 text-blue-400">
+                                      <AvatarFallback className="bg-blue-500/20 text-blue-600 dark:text-blue-400">
                                         {getInitials(m.mentee?.fullName || '')}
                                       </AvatarFallback>
                                     </Avatar>
@@ -1308,9 +1308,9 @@ export default function WorkforceIntelligence() {
                                     </Badge>
                                   )}
                                   <Badge className={`ml-2 ${
-                                    m.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                                    m.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
-                                    'bg-yellow-500/20 text-yellow-400'
+                                    m.status === 'active' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
+                                    m.status === 'completed' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' :
+                                    'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400'
                                   } border-0`}>
                                     {m.status}
                                   </Badge>
@@ -1333,7 +1333,7 @@ export default function WorkforceIntelligence() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-lg text-foreground flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5 text-blue-400" />
+                        <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         Growth Areas
                       </CardTitle>
                       <CardDescription className="text-muted-foreground">
@@ -1384,10 +1384,10 @@ export default function WorkforceIntelligence() {
                           low: 'border-green-500/50 bg-green-500/10'
                         };
                         const priorityBadgeColors = {
-                          critical: 'bg-red-500/20 text-red-400',
-                          high: 'bg-orange-500/20 text-orange-400',
-                          medium: 'bg-yellow-500/20 text-yellow-400',
-                          low: 'bg-green-500/20 text-green-400'
+                          critical: 'bg-red-500/20 text-red-600 dark:text-red-400',
+                          high: 'bg-orange-500/20 text-orange-600 dark:text-orange-400',
+                          medium: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400',
+                          low: 'bg-green-500/20 text-green-600 dark:text-green-400'
                         };
                         const actions: {description: string}[] = Array.isArray(area.suggestedActions) ? area.suggestedActions as {description: string}[] : [];
                         return (
@@ -1396,7 +1396,7 @@ export default function WorkforceIntelligence() {
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-10 w-10">
-                                    <AvatarFallback className="bg-blue-500/20 text-blue-400">
+                                    <AvatarFallback className="bg-blue-500/20 text-blue-600 dark:text-blue-400">
                                       {emp ? getInitials(emp.fullName) : '?'}
                                     </AvatarFallback>
                                   </Avatar>
@@ -1422,7 +1422,7 @@ export default function WorkforceIntelligence() {
                                   <p className="text-xs text-muted-foreground">Target</p>
                                 </div>
                                 <div className="text-center p-2 bg-muted rounded">
-                                  <div className="text-lg font-bold text-green-400">{area.progress || 0}%</div>
+                                  <div className="text-lg font-bold text-green-600 dark:text-green-400">{area.progress || 0}%</div>
                                   <p className="text-xs text-muted-foreground">Progress</p>
                                 </div>
                               </div>
@@ -1520,7 +1520,7 @@ export default function WorkforceIntelligence() {
                             <Award className="h-4 w-4 mr-2" />
                             Select Skills
                             {selectedMatchingSkills.length > 0 && (
-                              <Badge className="ml-2 bg-purple-500/20 text-purple-400 border-0">
+                              <Badge className="ml-2 bg-purple-500/20 text-purple-600 dark:text-purple-400 border-0">
                                 {selectedMatchingSkills.length}
                               </Badge>
                             )}
@@ -1609,7 +1609,7 @@ export default function WorkforceIntelligence() {
                                     <Button 
                                       variant="ghost" 
                                       size="sm" 
-                                      className="h-5 w-5 p-0 text-muted-foreground hover:text-red-400"
+                                      className="h-5 w-5 p-0 text-muted-foreground hover:text-red-600 dark:text-red-400"
                                       onClick={() => toggleEmployeeSelection(person.id)}
                                       data-testid={`button-remove-employee-${idx}`}
                                     >
@@ -1659,7 +1659,7 @@ export default function WorkforceIntelligence() {
                                     <span className="text-sm font-medium text-foreground">{skill}</span>
                                     <div className="flex items-center gap-1 text-muted-foreground">
                                       <X 
-                                        className="h-3 w-3 cursor-pointer hover:text-red-400" 
+                                        className="h-3 w-3 cursor-pointer hover:text-red-600 dark:text-red-400" 
                                         onClick={() => toggleSkillSelection(skill)}
                                       />
                                     </div>
@@ -1676,7 +1676,7 @@ export default function WorkforceIntelligence() {
                                   };
                                   const getScoreIcon = (s: number | null) => {
                                     if (s === null) return null;
-                                    if (s >= 80) return <CheckCircle className="h-4 w-4 text-green-400" />;
+                                    if (s >= 80) return <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />;
                                     if (s >= 60) return <div className="h-3 w-3 rounded-full bg-yellow-500" />;
                                     return <div className="h-3 w-3 rounded-full bg-red-500" />;
                                   };

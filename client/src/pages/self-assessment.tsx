@@ -79,7 +79,7 @@ function StarRating({
             className={cn(
               "w-8 h-8 transition-colors",
               (hovered !== null ? star <= hovered : star <= value)
-                ? "fill-yellow-400 text-yellow-400"
+                ? "fill-yellow-400 text-yellow-600 dark:text-yellow-400"
                 : "fill-gray-200 text-gray-300"
             )}
           />

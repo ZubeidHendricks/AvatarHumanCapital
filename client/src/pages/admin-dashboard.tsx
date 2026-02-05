@@ -429,7 +429,7 @@ export default function AdminDashboard() {
 
                 <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 mt-4">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5 shrink-0" />
+                    <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                     <div className="text-sm">
                       <p className="text-blue-300 font-semibold">Email Service Integration</p>
                       <p className="text-blue-200/80 mt-1">
@@ -473,7 +473,7 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-2">
                         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{module.label}</h3>
                         {tenantConfig.modulesEnabled?.[module.key] && (
-                          <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/20">
+                          <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
                             Active
                           </Badge>
                         )}
@@ -498,7 +498,7 @@ export default function AdminDashboard() {
                 
                 <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 mt-4">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" />
+                    <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
                     <div className="text-sm">
                       <p className="text-yellow-300 font-semibold">Module Visibility</p>
                       <p className="text-yellow-200/80 mt-1">
@@ -554,7 +554,7 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5 shrink-0" />
+                    <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                     <div className="text-sm">
                       <p className="text-blue-300 font-semibold">Secure Secret Management</p>
                       <p className="text-blue-200/80 mt-1">

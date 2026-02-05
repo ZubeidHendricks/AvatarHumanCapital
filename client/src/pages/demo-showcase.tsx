@@ -94,15 +94,15 @@ export default function DemoShowcase() {
 
           <div className="flex flex-wrap justify-center gap-4 mb-8">
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
-              <Cpu className="w-5 h-5 text-purple-400" />
+              <Cpu className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               <span className="text-sm">AI-Powered</span>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
-              <Globe className="w-5 h-5 text-blue-400" />
+              <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               <span className="text-sm">Cloud-Native</span>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
-              <Zap className="w-5 h-5 text-amber-400" />
+              <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               <span className="text-sm">Enterprise-Ready</span>
             </div>
           </div>
@@ -151,9 +151,9 @@ export default function DemoShowcase() {
                       variant="outline" 
                       className={
                         product.status === "live" 
-                          ? "bg-green-500/10 text-green-400 border-green-500/30" 
+                          ? "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30" 
                           : product.status === "beta"
-                          ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                          ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
                           : "bg-gray-500/10 text-gray-400 border-gray-500/30"
                       }
                     >

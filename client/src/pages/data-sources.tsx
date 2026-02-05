@@ -205,9 +205,9 @@ export default function DataSourcesPage() {
 
   const getStatusBadge = (status: string) => {
     const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: any; color: string }> = {
-      active: { variant: "default", icon: CheckCircle, color: "text-green-400" },
-      pending: { variant: "secondary", icon: Clock, color: "text-yellow-400" },
-      error: { variant: "destructive", icon: XCircle, color: "text-red-400" },
+      active: { variant: "default", icon: CheckCircle, color: "text-green-600 dark:text-green-400" },
+      pending: { variant: "secondary", icon: Clock, color: "text-yellow-600 dark:text-yellow-400" },
+      error: { variant: "destructive", icon: XCircle, color: "text-red-600 dark:text-red-400" },
       inactive: { variant: "outline", icon: AlertCircle, color: "text-gray-400" },
     };
     const { variant, icon: Icon, color } = config[status] || config.inactive;
@@ -273,7 +273,7 @@ export default function DataSourcesPage() {
                   <p className="text-2xl font-bold text-white" data-testid="stat-total">{stats.total}</p>
                 </div>
                 <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <Database className="h-6 w-6 text-blue-400" />
+                  <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             </CardContent>
@@ -284,10 +284,10 @@ export default function DataSourcesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Active</p>
-                  <p className="text-2xl font-bold text-green-400" data-testid="stat-active">{stats.active}</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="stat-active">{stats.active}</p>
                 </div>
                 <div className="p-3 bg-green-500/10 rounded-lg">
-                  <CheckCircle className="h-6 w-6 text-green-400" />
+                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
             </CardContent>
@@ -298,10 +298,10 @@ export default function DataSourcesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Pending Setup</p>
-                  <p className="text-2xl font-bold text-yellow-400" data-testid="stat-pending">{stats.pending}</p>
+                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400" data-testid="stat-pending">{stats.pending}</p>
                 </div>
                 <div className="p-3 bg-yellow-500/10 rounded-lg">
-                  <Clock className="h-6 w-6 text-yellow-400" />
+                  <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
               </div>
             </CardContent>
@@ -315,7 +315,7 @@ export default function DataSourcesPage() {
                   <p className="text-2xl font-bold text-white" data-testid="stat-health">{stats.avgHealth}%</p>
                 </div>
                 <div className="p-3 bg-purple-500/10 rounded-lg">
-                  <Activity className="h-6 w-6 text-purple-400" />
+                  <Activity className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
               <Progress value={stats.avgHealth} className="mt-2 h-1" />
@@ -387,7 +387,7 @@ export default function DataSourcesPage() {
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-blue-500/10 rounded-lg">
-                              <TypeIcon className="h-5 w-5 text-blue-400" />
+                              <TypeIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                             </div>
                             <RouterLink href={`/data-sources/${source.id}`}>
                               <div className="cursor-pointer hover:opacity-80">
@@ -430,15 +430,15 @@ export default function DataSourcesPage() {
                         {source.lastSyncStatus && (
                           <div className="flex items-center gap-2 text-sm">
                             {source.lastSyncStatus === "success" ? (
-                              <CheckCircle className="h-4 w-4 text-green-400" />
+                              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                             ) : source.lastSyncStatus === "failed" ? (
-                              <XCircle className="h-4 w-4 text-red-400" />
+                              <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
                             ) : (
-                              <Clock className="h-4 w-4 text-yellow-400" />
+                              <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                             )}
                             <span className={
-                              source.lastSyncStatus === "success" ? "text-green-400" :
-                              source.lastSyncStatus === "failed" ? "text-red-400" : "text-yellow-400"
+                              source.lastSyncStatus === "success" ? "text-green-600 dark:text-green-400" :
+                              source.lastSyncStatus === "failed" ? "text-red-600 dark:text-red-400" : "text-yellow-600 dark:text-yellow-400"
                             }>
                               {source.lastSyncMessage || source.lastSyncStatus}
                             </span>
@@ -489,7 +489,7 @@ export default function DataSourcesPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => deleteSourceMutation.mutate(source.id)}
-                            className="text-gray-400 hover:text-red-400 hover:bg-gray-800"
+                            className="text-gray-400 hover:text-red-600 dark:text-red-400 hover:bg-gray-800"
                             data-testid={`button-delete-${source.id}`}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -579,8 +579,8 @@ export default function DataSourcesPage() {
                         }`}
                         data-testid={`button-type-${type.value}`}
                       >
-                        <TypeIcon className={`h-5 w-5 mb-2 ${isSelected ? "text-blue-400" : "text-gray-400"}`} />
-                        <p className={`font-medium ${isSelected ? "text-blue-400" : "text-white"}`}>
+                        <TypeIcon className={`h-5 w-5 mb-2 ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`} />
+                        <p className={`font-medium ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-white"}`}>
                           {type.label}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">{type.description}</p>
@@ -593,7 +593,7 @@ export default function DataSourcesPage() {
               {selectedType && TYPE_CONFIGS[selectedType] && (
                 <div className="space-y-4 pt-4 border-t border-gray-800">
                   <h4 className="font-medium text-white flex items-center gap-2">
-                    <Settings className="h-4 w-4 text-blue-400" />
+                    <Settings className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     Connection Settings
                   </h4>
 
@@ -601,7 +601,7 @@ export default function DataSourcesPage() {
                     <div key={field.name}>
                       <Label className="text-gray-300">
                         {field.label}
-                        {field.required && <span className="text-red-400 ml-1">*</span>}
+                        {field.required && <span className="text-red-600 dark:text-red-400 ml-1">*</span>}
                       </Label>
                       {field.type === "select" ? (
                         <Select

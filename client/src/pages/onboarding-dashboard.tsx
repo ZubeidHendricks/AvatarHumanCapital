@@ -116,9 +116,9 @@ const priorityConfig: Record<string, { bg: string; text: string; border: string 
 };
 
 const channelConfig: Record<string, { icon: any; color: string }> = {
-  whatsapp: { icon: MessageSquare, color: "text-green-400" },
-  email: { icon: Mail, color: "text-blue-400" },
-  system: { icon: Bot, color: "text-purple-400" },
+  whatsapp: { icon: MessageSquare, color: "text-green-600 dark:text-green-400" },
+  email: { icon: Mail, color: "text-blue-600 dark:text-blue-400" },
+  system: { icon: Bot, color: "text-purple-600 dark:text-purple-400" },
   manual: { icon: User, color: "text-slate-400" },
 };
 
@@ -356,7 +356,7 @@ export default function OnboardingDashboard() {
             </CardHeader>
             <CardContent className="pt-0">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <TrendingUp className="w-3 h-3 text-green-400" />
+                <TrendingUp className="w-3 h-3 text-green-600 dark:text-green-400" />
                 Employees onboarding
               </p>
             </CardContent>
@@ -421,7 +421,7 @@ export default function OnboardingDashboard() {
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-red-500/20 rounded-lg">
-                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
                   <CardTitle className="text-red-300">Human Intervention Required</CardTitle>
@@ -629,7 +629,7 @@ export default function OnboardingDashboard() {
                                             Due: {new Date(doc.dueDate).toLocaleDateString()}
                                           </span>
                                           {doc.reminderCount > 0 && (
-                                            <span className="flex items-center gap-1 text-orange-400">
+                                            <span className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
                                               <Bell className="w-3 h-3" />
                                               {doc.reminderCount} reminder{doc.reminderCount > 1 ? "s" : ""} sent
                                             </span>
@@ -783,7 +783,7 @@ export default function OnboardingDashboard() {
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="p-2 bg-red-500/20 rounded-lg">
-                <AlertTriangle className="w-5 h-5 text-red-400" />
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
               </div>
               <div>
                 <DialogTitle>Resolve Escalation</DialogTitle>

@@ -34,7 +34,7 @@ const tutorialSteps: TutorialStep[] = [
     id: "welcome",
     title: "Welcome to Avatar Human Capital",
     description: "Your AI-powered HR management platform. This quick tutorial will guide you through the key features to help you get started.",
-    icon: <Sparkles className="h-8 w-8 text-purple-400" />,
+    icon: <Sparkles className="h-8 w-8 text-purple-600 dark:text-purple-400" />,
     tips: [
       "The platform automates your entire recruitment process",
       "AI helps create job specs, find candidates, and conduct interviews",
@@ -45,7 +45,7 @@ const tutorialSteps: TutorialStep[] = [
     id: "hr-command",
     title: "HR Command Centre",
     description: "Your central hub for managing job specifications. Create new jobs using AI Research to automatically generate complete job specs from just a job title.",
-    icon: <Target className="h-8 w-8 text-blue-400" />,
+    icon: <Target className="h-8 w-8 text-blue-600 dark:text-blue-400" />,
     route: "/hr-dashboard",
     action: "Click 'Create New Job' and select 'AI Research' mode",
     tips: [
@@ -58,7 +58,7 @@ const tutorialSteps: TutorialStep[] = [
     id: "job-creation",
     title: "Creating Jobs with AI",
     description: "The AI Job Research feature automatically generates comprehensive job specifications. Just enter the job title and customer name - the AI does the rest!",
-    icon: <Briefcase className="h-8 w-8 text-green-400" />,
+    icon: <Briefcase className="h-8 w-8 text-green-600 dark:text-green-400" />,
     route: "/hr-dashboard",
     action: "Try creating a job for 'Senior Software Developer'",
     tips: [
@@ -71,7 +71,7 @@ const tutorialSteps: TutorialStep[] = [
     id: "candidate-search",
     title: "Finding Candidates",
     description: "Use the AI Recruitment Agent to search for candidates across multiple sources including PNet, LinkedIn, and your local database.",
-    icon: <Search className="h-8 w-8 text-cyan-400" />,
+    icon: <Search className="h-8 w-8 text-cyan-600 dark:text-cyan-400" />,
     route: "/recruitment-agent",
     action: "Select a job and start searching for candidates",
     tips: [
@@ -84,7 +84,7 @@ const tutorialSteps: TutorialStep[] = [
     id: "candidates",
     title: "Managing Candidates",
     description: "View all your candidates in one place. Upload CVs, track their progress through the pipeline, and manage applications.",
-    icon: <Users className="h-8 w-8 text-amber-400" />,
+    icon: <Users className="h-8 w-8 text-amber-600 dark:text-amber-400" />,
     route: "/candidates-list",
     action: "Upload a CV or view existing candidates",
     tips: [
@@ -97,7 +97,7 @@ const tutorialSteps: TutorialStep[] = [
     id: "interviews",
     title: "AI-Powered Interviews",
     description: "Conduct voice interviews with Hume AI for emotional analysis, or video interviews with Tavus avatars for a personalized experience.",
-    icon: <MessageSquare className="h-8 w-8 text-pink-400" />,
+    icon: <MessageSquare className="h-8 w-8 text-pink-600 dark:text-pink-400" />,
     route: "/interviews",
     action: "Schedule an interview for a shortlisted candidate",
     tips: [
@@ -110,7 +110,7 @@ const tutorialSteps: TutorialStep[] = [
     id: "documents",
     title: "Document Management",
     description: "Generate professional CVs, request documents from candidates, and manage all HR paperwork in one place.",
-    icon: <FileText className="h-8 w-8 text-orange-400" />,
+    icon: <FileText className="h-8 w-8 text-orange-600 dark:text-orange-400" />,
     route: "/document-library",
     action: "Explore document templates and generation",
     tips: [
@@ -123,7 +123,7 @@ const tutorialSteps: TutorialStep[] = [
     id: "complete",
     title: "You're Ready!",
     description: "You've completed the tutorial! Start by creating your first job specification using AI Research. The platform will guide you from there.",
-    icon: <CheckCircle2 className="h-8 w-8 text-green-400" />,
+    icon: <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />,
     tips: [
       "Click the '?' button anytime to restart this tutorial",
       "Explore the sidebar to discover more features",
@@ -187,7 +187,7 @@ export function TutorialWalkthrough({ isOpen, onClose, onNavigate }: TutorialWal
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <Card className="w-full max-w-lg mx-4 bg-zinc-900 border-zinc-700 shadow-2xl" data-testid="tutorial-card">
+      <Card className="w-full max-w-lg mx-4 bg-gray-100 dark:bg-zinc-900 border-gray-300 dark:border-zinc-700 shadow-2xl" data-testid="tutorial-card">
         <CardHeader className="relative pb-2">
           <Button 
             variant="ghost" 
@@ -200,7 +200,7 @@ export function TutorialWalkthrough({ isOpen, onClose, onNavigate }: TutorialWal
           </Button>
           
           <div className="flex items-center gap-2 mb-2">
-            <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+            <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-600 dark:text-purple-400">
               Step {currentStep + 1} of {tutorialSteps.length}
             </Badge>
           </div>
@@ -208,7 +208,7 @@ export function TutorialWalkthrough({ isOpen, onClose, onNavigate }: TutorialWal
           <Progress value={progress} className="h-1 mb-4" />
           
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-zinc-800/50 border border-zinc-700">
+            <div className="p-3 rounded-xl bg-gray-200 dark:bg-zinc-800/50 border border-gray-300 dark:border-zinc-700">
               {step.icon}
             </div>
             <CardTitle className="text-xl text-white">{step.title}</CardTitle>
@@ -238,7 +238,7 @@ export function TutorialWalkthrough({ isOpen, onClose, onNavigate }: TutorialWal
               <ul className="space-y-1.5">
                 {step.tips.map((tip, index) => (
                   <li key={index} className="text-sm text-zinc-400 flex items-start gap-2">
-                    <span className="text-green-400 mt-0.5">•</span>
+                    <span className="text-green-600 dark:text-green-400 mt-0.5">•</span>
                     {tip}
                   </li>
                 ))}
@@ -250,7 +250,7 @@ export function TutorialWalkthrough({ isOpen, onClose, onNavigate }: TutorialWal
             <Button 
               variant="outline" 
               size="sm"
-              className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+              className="w-full border-gray-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-800"
               onClick={() => handleGoToStep(step.route!)}
               data-testid={`button-goto-${step.id}`}
             >
@@ -260,7 +260,7 @@ export function TutorialWalkthrough({ isOpen, onClose, onNavigate }: TutorialWal
           )}
         </CardContent>
         
-        <CardFooter className="flex justify-between pt-4 border-t border-zinc-800">
+        <CardFooter className="flex justify-between pt-4 border-t border-gray-200 dark:border-zinc-800">
           <Button 
             variant="ghost" 
             onClick={handlePrevious}

@@ -117,11 +117,11 @@ export default function InterviewFaceToFace() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "scheduled":
-        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Scheduled</Badge>;
+        return <Badge className="bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">Scheduled</Badge>;
       case "completed":
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Completed</Badge>;
+        return <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">Completed</Badge>;
       case "cancelled":
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Cancelled</Badge>;
+        return <Badge className="bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }

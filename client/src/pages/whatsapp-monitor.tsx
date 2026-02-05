@@ -59,7 +59,7 @@ const linkifyText = (text: string) => {
           href={part}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-400 hover:text-blue-300 underline break-all"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-300 underline break-all"
         >
           {part}
         </a>
@@ -510,11 +510,11 @@ export default function WhatsAppMonitor() {
   const getTypeBadge = (type: string) => {
     switch (type) {
       case "recruitment":
-        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/20">Recruitment</Badge>;
+        return <Badge className="bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/20">Recruitment</Badge>;
       case "document_request":
-        return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/20">Documents</Badge>;
+        return <Badge className="bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/20">Documents</Badge>;
       case "appointment":
-        return <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/20">Appointment</Badge>;
+        return <Badge className="bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/20">Appointment</Badge>;
       case "general":
       default:
         return <Badge className="bg-white/10 text-muted-foreground border-border dark:border-white/10">General</Badge>;
@@ -547,7 +547,7 @@ export default function WhatsAppMonitor() {
               <p className="text-muted-foreground mt-1">Manage candidate conversations and AI interactions</p>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/20">
+              <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
                 <span className="w-2 h-2 rounded-full bg-green-400 mr-2 animate-pulse"></span>
                 {conversations.length} Active
               </Badge>
@@ -556,7 +556,7 @@ export default function WhatsAppMonitor() {
           {whatsappStatus && !whatsappStatus.configured && (
             <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-yellow-500" />
-              <p className="text-yellow-400">WhatsApp API is not configured. Messages will be stored but not sent.</p>
+              <p className="text-yellow-600 dark:text-yellow-400">WhatsApp API is not configured. Messages will be stored but not sent.</p>
             </div>
           )}
         </div>
@@ -620,7 +620,7 @@ export default function WhatsAppMonitor() {
                       >
                         <div className="flex items-start gap-3">
                           <Avatar>
-                            <AvatarFallback className="bg-green-500/20 text-green-400">
+                            <AvatarFallback className="bg-green-500/20 text-green-600 dark:text-green-400">
                               {(conv.profileName || conv.phone).charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -669,7 +669,7 @@ export default function WhatsAppMonitor() {
                         <ChevronLeft className="h-5 w-5" />
                       </Button>
                       <Avatar>
-                        <AvatarFallback className="bg-green-500/20 text-green-400">
+                        <AvatarFallback className="bg-green-500/20 text-green-600 dark:text-green-400">
                           {(conversationDetail.conversation.profileName || conversationDetail.conversation.phone).charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -895,7 +895,7 @@ export default function WhatsAppMonitor() {
                           <Card className="p-3 bg-white/5 border-border dark:border-white/10">
                             <div className="flex items-center gap-3">
                               <Avatar className="h-10 w-10">
-                                <AvatarFallback className="bg-blue-500/20 text-blue-400">
+                                <AvatarFallback className="bg-blue-500/20 text-blue-600 dark:text-blue-400">
                                   {conversationDetail.candidate.fullName.charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
@@ -936,7 +936,7 @@ export default function WhatsAppMonitor() {
                           {calendlyConfig?.configured && (
                             <Button
                               variant="outline"
-                              className="w-full justify-start border-border dark:border-white/10 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400"
+                              className="w-full justify-start border-border dark:border-white/10 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400"
                               onClick={openCalendlyInNewWindow}
                               data-testid="btn-calendly"
                             >

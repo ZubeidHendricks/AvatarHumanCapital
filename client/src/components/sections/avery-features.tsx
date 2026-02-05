@@ -5,7 +5,7 @@ import { Zap, Sparkles, Users, MessageSquare, Mail } from "lucide-react";
 
 export function AHCFeatures() {
   return (
-    <div className="w-full bg-zinc-900 text-white py-20">
+    <div className="w-full bg-gray-100 dark:bg-zinc-900 text-foreground dark:text-white py-20">
       <div className="container mx-auto px-6">
         
         {/* Hero Section */}
@@ -77,7 +77,7 @@ export function AHCFeatures() {
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <Badge className="mb-4 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border-purple-500/20">DISCOVERY</Badge>
+            <Badge className="mb-4 bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 border-purple-500/20">DISCOVERY</Badge>
             <h3 className="text-4xl font-bold mb-4">Read through the lines.</h3>
             <p className="text-gray-400 text-lg mb-6">
               Spot hidden, growing, unusual talent, before your competitor does.
@@ -99,7 +99,7 @@ export function AHCFeatures() {
                     whileHover={{ scale: 1.05 }}
                     className="bg-purple-500/20 p-4 rounded-xl border border-purple-500/50 shadow-[0_0_30px_-5px_rgba(168,85,247,0.3)]"
                   >
-                    <Sparkles className="w-8 h-8 text-purple-400 mb-2" />
+                    <Sparkles className="w-8 h-8 text-purple-600 dark:text-purple-400 mb-2" />
                     <div className="h-2 bg-purple-400/50 rounded w-1/2 mb-1"></div>
                     <div className="h-2 bg-purple-400/30 rounded w-3/4"></div>
                   </motion.div>
@@ -133,7 +133,7 @@ export function AHCFeatures() {
             transition={{ duration: 0.8 }}
             className="order-1 md:order-2"
           >
-            <Badge className="mb-4 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border-blue-500/20">FAIRNESS</Badge>
+            <Badge className="mb-4 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border-blue-500/20">FAIRNESS</Badge>
             <h3 className="text-4xl font-bold mb-4">Built to reduce, not amplify biases.</h3>
             <p className="text-gray-400 text-lg mb-6">
               AHC's matching algorithm aims for the best competence match, regardless of look or personality.
@@ -145,14 +145,14 @@ export function AHCFeatures() {
         </div>
 
         {/* Augment Outreach Section */}
-        <div className="bg-zinc-800/50 border border-white/5 rounded-3xl p-12 mb-32 text-center relative overflow-hidden">
+        <div className="bg-gray-200 dark:bg-zinc-800/50 border border-white/5 rounded-3xl p-12 mb-32 text-center relative overflow-hidden">
            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50"></div>
            <motion.div
              initial={{ opacity: 0, y: 20 }}
              whileInView={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8 }}
            >
-             <Badge className="mb-6 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border-orange-500/20">OUTREACH</Badge>
+             <Badge className="mb-6 bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 border-orange-500/20">OUTREACH</Badge>
              <h2 className="text-4xl font-bold mb-6">Augment your outreach</h2>
              <p className="text-gray-400 max-w-2xl mx-auto text-lg mb-8">
                Get in contact with the best-fitting talent without leaving AHC. And with Agent Mode, you outreach to all suitable candidates in batch.

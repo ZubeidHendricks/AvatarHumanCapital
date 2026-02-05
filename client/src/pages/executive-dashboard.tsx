@@ -118,11 +118,11 @@ export default function ExecutiveDashboard() {
           <div>
             <div className="flex items-center gap-3 mb-2">
                <h1 className="text-3xl font-bold tracking-tight">Executive Overview</h1>
-               <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30 text-xs flex items-center gap-1">
+               <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30 text-xs flex items-center gap-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                   Live: DigitalOcean
                </Badge>
-               <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/30 text-xs">
+               <Badge variant="outline" className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 text-xs">
                   Groq LLaMA 3.1 70B
                </Badge>
             </div>
@@ -158,7 +158,7 @@ export default function ExecutiveDashboard() {
             trend="+3" 
             trendUp={true} 
             icon={Briefcase} 
-            color="text-blue-400" 
+            color="text-blue-600 dark:text-blue-400" 
             chartData={[20, 22, 21, 24, 23, 25, 25]}
           />
           <StatsCard 
@@ -167,7 +167,7 @@ export default function ExecutiveDashboard() {
             trend={`${recruitmentData.find(d => d.name === "Shortlisted")?.value || 0} shortlisted`} 
             trendUp={true} 
             icon={Users} 
-            color="text-purple-400" 
+            color="text-purple-600 dark:text-purple-400" 
             chartData={[0, 0, 0, 0, 0, 0, candidates?.length || 0]}
           />
           <StatsCard 
@@ -176,7 +176,7 @@ export default function ExecutiveDashboard() {
             trend="-2" 
             trendUp={true} // technically down is good for risk, but green means good here
             icon={AlertTriangle} 
-            color="text-amber-400" 
+            color="text-amber-600 dark:text-amber-400" 
             chartData={[8, 6, 5, 7, 4, 5, 3]}
           />
         </div>
@@ -336,11 +336,11 @@ export default function ExecutiveDashboard() {
           <Card className="bg-green-900/10 border-green-500/20 backdrop-blur-sm">
             <CardHeader className="pb-2">
               <div className="flex justify-between items-center">
-                <CardTitle className="flex items-center gap-2 text-green-400">
+                <CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
                   <Smartphone className="w-5 h-5" />
                   Live WhatsApp Feed
                 </CardTitle>
-                <Badge variant="outline" className="border-green-500/50 text-green-400 bg-green-500/10 animate-pulse">
+                <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 bg-green-500/10 animate-pulse">
                   ONLINE
                 </Badge>
               </div>
@@ -350,7 +350,7 @@ export default function ExecutiveDashboard() {
                 {whatsappFeed.map((msg) => (
                   <div key={msg.id} className="flex gap-3 text-sm">
                     <div className="w-8 h-8 rounded-full bg-green-800/50 flex items-center justify-center shrink-0 border border-green-500/30">
-                      <span className="text-xs font-bold text-green-400">{msg.user[0]}</span>
+                      <span className="text-xs font-bold text-green-600 dark:text-green-400">{msg.user[0]}</span>
                     </div>
                     <div className="bg-card/50 p-2 rounded-lg rounded-tl-none border border-border dark:border-white/5 flex-1">
                       <div className="flex justify-between items-center mb-1">
@@ -400,7 +400,7 @@ function StatsCard({ title, value, trend, trendUp, icon: Icon, color, chartData 
         </div>
         
         <div className="flex items-end justify-between">
-          <div className={`flex items-center gap-1 text-sm font-medium ${trendUp ? 'text-green-400' : 'text-red-400'}`}>
+          <div className={`flex items-center gap-1 text-sm font-medium ${trendUp ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {trendUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             {trend}
           </div>

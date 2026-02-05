@@ -98,7 +98,7 @@ function StarRating({
               sizeClasses[size],
               "transition-colors",
               (hovered !== null ? star <= hovered : star <= value)
-                ? "fill-yellow-400 text-yellow-400"
+                ? "fill-yellow-400 text-yellow-600 dark:text-yellow-400"
                 : "fill-muted text-muted-foreground"
             )}
           />
@@ -232,7 +232,7 @@ function EmployeeReviewDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-xl text-foreground flex items-center gap-2">
-            <User className="w-5 h-5 text-blue-400" />
+            <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Review: {submission.employee?.name || `Employee #${submission.employeeId}`}
           </DialogTitle>
           <DialogDescription>
@@ -242,13 +242,13 @@ function EmployeeReviewDialog({
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
           </div>
         ) : (
           <div className="space-y-6">
             {submission.employeeComments && (
               <div className="bg-blue-500/10 dark:bg-blue-900/20 border border-blue-500/30 p-4 rounded-lg">
-                <p className="text-sm text-blue-400 mb-1">Employee's Overall Comments</p>
+                <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">Employee's Overall Comments</p>
                 <p className="text-foreground">{submission.employeeComments}</p>
               </div>
             )}
@@ -293,7 +293,7 @@ function EmployeeReviewDialog({
                           onChange={(v) => setManagerScores(prev => ({ ...prev, [assignment.id]: v }))}
                           size="md"
                         />
-                        <span className="text-xl font-bold text-green-400">
+                        <span className="text-xl font-bold text-green-600 dark:text-green-400">
                           {managerScores[assignment.id] || "-"}
                         </span>
                       </div>
@@ -404,7 +404,7 @@ export default function KPIManagerReviewPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-3" data-testid="page-title">
-            <Users className="w-8 h-8 text-purple-400" />
+            <Users className="w-8 h-8 text-purple-600 dark:text-purple-400" />
             Manager Review Dashboard
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -456,11 +456,11 @@ export default function KPIManagerReviewPage() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Pending Reviews</p>
-                        <p className="text-2xl font-bold text-amber-400">{pendingReviews.length}</p>
+                        <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{pendingReviews.length}</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Completed</p>
-                        <p className="text-2xl font-bold text-green-400">{completedReviews.length}</p>
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">{completedReviews.length}</p>
                       </div>
                     </div>
                   </div>
@@ -470,14 +470,14 @@ export default function KPIManagerReviewPage() {
 
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-purple-600 dark:text-purple-400" />
               </div>
             ) : (
               <div className="space-y-6">
                 {pendingReviews.length > 0 && (
                   <div>
                     <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-amber-400" />
+                      <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                       Pending Reviews ({pendingReviews.length})
                     </h2>
                     <div className="grid gap-4">
@@ -492,7 +492,7 @@ export default function KPIManagerReviewPage() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                                  <User className="w-5 h-5 text-amber-400" />
+                                  <User className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                                 </div>
                                 <div>
                                   <p className="font-medium text-foreground">
@@ -504,7 +504,7 @@ export default function KPIManagerReviewPage() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
-                                <Badge variant="outline" className="border-amber-500 text-amber-400">
+                                <Badge variant="outline" className="border-amber-500 text-amber-600 dark:text-amber-400">
                                   Awaiting Review
                                 </Badge>
                                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -520,7 +520,7 @@ export default function KPIManagerReviewPage() {
                 {completedReviews.length > 0 && (
                   <div>
                     <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
                       Completed Reviews ({completedReviews.length})
                     </h2>
                     <div className="grid gap-4">
@@ -534,7 +534,7 @@ export default function KPIManagerReviewPage() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                                  <User className="w-5 h-5 text-green-400" />
+                                  <User className="w-5 h-5 text-green-600 dark:text-green-400" />
                                 </div>
                                 <div>
                                   <p className="font-medium text-foreground">
@@ -549,7 +549,7 @@ export default function KPIManagerReviewPage() {
                                 {submission.finalScore && (
                                   <div className="text-right">
                                     <p className="text-sm text-muted-foreground">Final Score</p>
-                                    <p className="text-2xl font-bold text-green-400">{submission.finalScore}%</p>
+                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{submission.finalScore}%</p>
                                   </div>
                                 )}
                                 <Badge variant="default" className="bg-green-600">

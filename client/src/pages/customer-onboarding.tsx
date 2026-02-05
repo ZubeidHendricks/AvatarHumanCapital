@@ -300,7 +300,7 @@ export default function CustomerOnboarding() {
                        </div>
                        <div className="flex items-center justify-between text-xs text-muted-foreground bg-black/20 p-2 rounded">
                           <span>Status:</span>
-                          <span className="text-green-400 flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"/> Connected</span>
+                          <span className="text-green-600 dark:text-green-400 flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"/> Connected</span>
                        </div>
                     </div>
 

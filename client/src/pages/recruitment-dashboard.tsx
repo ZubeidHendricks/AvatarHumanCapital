@@ -231,7 +231,7 @@ export default function RecruitmentDashboard() {
           <div>
             <div className="flex items-center gap-3 mb-2">
                <h1 className="text-3xl font-bold tracking-tight">Recruitment Dashboard</h1>
-               <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/30 text-xs">
+               <Badge variant="outline" className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 text-xs">
                   Live Data
                </Badge>
             </div>
@@ -241,7 +241,7 @@ export default function RecruitmentDashboard() {
 
         {/* Customizable Charts Section - At Top */}
         <div className="mb-8">
-          <Card className="bg-zinc-900/50 border-border dark:border-white/10">
+          <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border dark:border-white/10">
             <CardHeader>
               <CardTitle className="text-xl text-white">Custom Analytics</CardTitle>
               <CardDescription className="text-gray-400">
@@ -341,7 +341,7 @@ export default function RecruitmentDashboard() {
           <Card className="bg-black/40 border-border dark:border-white/10">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-purple-400" />
+                <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 Monthly Placements & Revenue
               </CardTitle>
               <CardDescription className="text-gray-400">
@@ -386,7 +386,7 @@ export default function RecruitmentDashboard() {
           <Card className="bg-black/40 border-border dark:border-white/10">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-blue-400" />
+                <Filter className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 Job Search Health
               </CardTitle>
               <CardDescription className="text-gray-400">
@@ -423,7 +423,7 @@ export default function RecruitmentDashboard() {
         <Card className="bg-black/40 border-border dark:border-white/10 mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-cyan-400" />
+              <Users className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
               Talent Pipeline (Live Data)
             </CardTitle>
             <CardDescription className="text-gray-400">
@@ -456,11 +456,11 @@ export default function RecruitmentDashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-gray-300">On Track</CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-green-400" />
+                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-400">{jobHealthData[0].value}</div>
+              <div className="text-3xl font-bold text-green-600 dark:text-green-400">{jobHealthData[0].value}</div>
               <p className="text-xs text-gray-500 mt-1">Jobs progressing well</p>
             </CardContent>
           </Card>
@@ -469,11 +469,11 @@ export default function RecruitmentDashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-gray-300">At Risk</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-amber-400" />
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-amber-400">{jobHealthData[1].value}</div>
+              <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">{jobHealthData[1].value}</div>
               <p className="text-xs text-gray-500 mt-1">Require attention</p>
             </CardContent>
           </Card>
@@ -482,11 +482,11 @@ export default function RecruitmentDashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-gray-300">Lost</CardTitle>
-                <XCircle className="h-4 w-4 text-red-400" />
+                <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-red-400">{jobHealthData[2].value}</div>
+              <div className="text-3xl font-bold text-red-600 dark:text-red-400">{jobHealthData[2].value}</div>
               <p className="text-xs text-gray-500 mt-1">Opportunities missed</p>
             </CardContent>
           </Card>
@@ -495,11 +495,11 @@ export default function RecruitmentDashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-gray-300">Completed</CardTitle>
-                <Briefcase className="h-4 w-4 text-blue-400" />
+                <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-blue-400">{jobHealthData[3].value}</div>
+              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{jobHealthData[3].value}</div>
               <p className="text-xs text-gray-500 mt-1">Successfully filled</p>
             </CardContent>
           </Card>

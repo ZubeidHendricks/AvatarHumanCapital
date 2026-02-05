@@ -328,11 +328,11 @@ AHC Recruiting Team`;
   // Helper function to get source color based on source type
   const getSourceColor = (source: string) => {
     const sourceColors: Record<string, string> = {
-      "Recruited": "text-blue-400 bg-blue-400/10",
-      "Uploaded": "text-green-400 bg-green-400/10",
-      "Referral": "text-purple-400 bg-purple-400/10",
+      "Recruited": "text-blue-600 dark:text-blue-400 bg-blue-400/10",
+      "Uploaded": "text-green-600 dark:text-green-400 bg-green-400/10",
+      "Referral": "text-purple-600 dark:text-purple-400 bg-purple-400/10",
       "LinkedIn": "text-blue-500 bg-blue-500/10",
-      "Direct": "text-yellow-400 bg-yellow-400/10"
+      "Direct": "text-yellow-600 dark:text-yellow-400 bg-yellow-400/10"
     };
     return sourceColors[source] || "text-gray-400 bg-gray-400/10";
   };
@@ -380,7 +380,7 @@ AHC Recruiting Team`;
                 {/* Feasibility Score */}
                 <div className="space-y-3">
                     <div className="flex justify-between items-center text-sm">
-                        <span className="text-yellow-400 font-medium">Feasible to hire</span>
+                        <span className="text-yellow-600 dark:text-yellow-400 font-medium">Feasible to hire</span>
                     </div>
                     <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                         <div className="h-full bg-yellow-400 w-3/4 rounded-full"></div>
@@ -405,10 +405,10 @@ AHC Recruiting Team`;
 
                 {/* Status Box */}
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 space-y-1">
-                    <div className="flex items-center gap-2 text-blue-400 font-medium text-sm">
+                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium text-sm">
                         <Briefcase className="h-4 w-4" /> {currentJob.status}
                     </div>
-                    <p className="text-xs text-blue-400/80">
+                    <p className="text-xs text-blue-600/80 dark:text-blue-400/80">
                         Showing candidates matched to this role.
                     </p>
                 </div>
@@ -517,7 +517,7 @@ AHC Recruiting Team`;
                               onClick={() => setActiveCriteria(prev => [...prev, skill])}
                               data-testid={`button-add-skill-${i}`}
                             >
-                                {skill} <Plus className="h-3 w-3 ml-1 text-indigo-400" />
+                                {skill} <Plus className="h-3 w-3 ml-1 text-indigo-600 dark:text-indigo-400" />
                             </Badge>
                           ))}
                      </div>
@@ -549,7 +549,7 @@ AHC Recruiting Team`;
                     className="h-14 rounded-none border-b-2 border-transparent data-[state=active]:border-yellow-400 data-[state=active]:bg-transparent px-2 text-sm font-medium text-muted-foreground data-[state=active]:text-white data-[state=active]:shadow-none"
                   >
                     Shortlisted
-                    <span className="ml-2 text-xs bg-yellow-400/20 px-1.5 py-0.5 rounded-full text-yellow-400">
+                    <span className="ml-2 text-xs bg-yellow-400/20 px-1.5 py-0.5 rounded-full text-yellow-600 dark:text-yellow-400">
                       {loadingCandidates ? '...' : shortlistedCandidates.length}
                     </span>
                   </TabsTrigger>
@@ -568,7 +568,7 @@ AHC Recruiting Team`;
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span className="text-muted-foreground">Match:</span>
-                          <span className="text-green-400 font-medium flex items-center gap-1 cursor-pointer">
+                          <span className="text-green-600 dark:text-green-400 font-medium flex items-center gap-1 cursor-pointer">
                               All <ChevronDown className="h-3 w-3" />
                           </span>
                       </div>
@@ -691,7 +691,7 @@ AHC Recruiting Team`;
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <span className="text-muted-foreground">Match:</span>
-                            <span className="text-green-400 font-medium flex items-center gap-1 cursor-pointer">
+                            <span className="text-green-600 dark:text-green-400 font-medium flex items-center gap-1 cursor-pointer">
                                 All <ChevronDown className="h-3 w-3" />
                             </span>
                         </div>
@@ -850,7 +850,7 @@ AHC Recruiting Team`;
                           placeholder={!selectedCandidate?.email ? "No email on file" : undefined}
                         />
                         {!selectedCandidate?.email && (
-                          <p className="text-xs text-yellow-400">This candidate has no email address on file.</p>
+                          <p className="text-xs text-yellow-600 dark:text-yellow-400">This candidate has no email address on file.</p>
                         )}
                     </div>
                     
@@ -869,7 +869,7 @@ AHC Recruiting Team`;
                         placeholder={!(selectedCandidate?.phone || (selectedCandidate?.metadata as any)?.phone) ? "No phone on file" : undefined}
                       />
                       {!(selectedCandidate?.phone || (selectedCandidate?.metadata as any)?.phone) && (
-                        <p className="text-xs text-yellow-400">This candidate has no phone number on file.</p>
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400">This candidate has no phone number on file.</p>
                       )}
                   </div>
                 )}
@@ -934,7 +934,7 @@ AHC Recruiting Team`}
               {/* Match Score */}
               {profileCandidate?.match && (
                 <div className="flex items-center gap-4 p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                  <div className="text-3xl font-bold text-purple-400" data-testid="text-profile-match">
+                  <div className="text-3xl font-bold text-purple-600 dark:text-purple-400" data-testid="text-profile-match">
                     {profileCandidate.match}%
                   </div>
                   <div>
@@ -946,33 +946,33 @@ AHC Recruiting Team`}
 
               {/* Contact Information */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                <div className="p-4 rounded-lg bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
                   <p className="text-xs text-zinc-500 mb-1">Email</p>
                   <p className="text-sm flex items-center gap-2" data-testid="text-profile-email">
                     <Mail className="h-4 w-4 text-zinc-400" />
                     {profileCandidate?.email || 'Not provided'}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                <div className="p-4 rounded-lg bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
                   <p className="text-xs text-zinc-500 mb-1">Phone</p>
                   <p className="text-sm flex items-center gap-2" data-testid="text-profile-phone">
                     <Phone className="h-4 w-4 text-zinc-400" />
                     {profileCandidate?.phone || (profileCandidate?.metadata as any)?.phone || 'Not provided'}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                <div className="p-4 rounded-lg bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
                   <p className="text-xs text-zinc-500 mb-1">Location</p>
                   <p className="text-sm flex items-center gap-2" data-testid="text-profile-location">
                     <MapPin className="h-4 w-4 text-zinc-400" />
                     {profileCandidate?.location || (profileCandidate?.metadata as any)?.location || 'Not specified'}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                <div className="p-4 rounded-lg bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
                   <p className="text-xs text-zinc-500 mb-1">Stage</p>
                   <p className="text-sm" data-testid="text-profile-stage">
                     <Badge className={
-                      profileCandidate?.stage === 'Shortlisted' ? 'bg-green-500/20 text-green-400' :
-                      profileCandidate?.stage === 'Interview' ? 'bg-blue-500/20 text-blue-400' :
+                      profileCandidate?.stage === 'Shortlisted' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
+                      profileCandidate?.stage === 'Interview' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' :
                       'bg-zinc-500/20 text-zinc-400'
                     }>
                       {profileCandidate?.stage || 'New'}
@@ -983,11 +983,11 @@ AHC Recruiting Team`}
 
               {/* Skills */}
               {profileCandidate?.skills && (profileCandidate.skills as string[]).length > 0 && (
-                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                <div className="p-4 rounded-lg bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
                   <p className="text-xs text-zinc-500 mb-3">Skills</p>
                   <div className="flex flex-wrap gap-2" data-testid="container-profile-skills">
                     {(profileCandidate.skills as string[]).map((skill: string, i: number) => (
-                      <Badge key={i} variant="outline" className="bg-zinc-800 border-zinc-700">
+                      <Badge key={i} variant="outline" className="bg-gray-200 dark:bg-zinc-800 border-gray-300 dark:border-zinc-700">
                         {skill}
                       </Badge>
                     ))}
@@ -997,7 +997,7 @@ AHC Recruiting Team`}
 
               {/* Experience */}
               {(profileCandidate?.metadata as any)?.experience && (
-                <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                <div className="p-4 rounded-lg bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
                   <p className="text-xs text-zinc-500 mb-2">Experience</p>
                   <p className="text-sm text-zinc-300" data-testid="text-profile-experience">
                     {(profileCandidate.metadata as any).experience}
@@ -1008,7 +1008,7 @@ AHC Recruiting Team`}
               {/* AI Reasoning */}
               {(profileCandidate?.metadata as any)?.aiReasoning && (
                 <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                  <p className="text-xs text-purple-400 mb-2">AI Analysis</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mb-2">AI Analysis</p>
                   <p className="text-sm text-zinc-300" data-testid="text-profile-ai-reasoning">
                     {(profileCandidate.metadata as any).aiReasoning}
                   </p>
@@ -1027,8 +1027,8 @@ AHC Recruiting Team`}
             </div>
           </ScrollArea>
 
-          <DialogFooter className="border-t border-zinc-800 pt-4">
-            <Button variant="outline" onClick={() => setProfileOpen(false)} className="border-zinc-700 hover:bg-zinc-800">
+          <DialogFooter className="border-t border-gray-200 dark:border-zinc-800 pt-4">
+            <Button variant="outline" onClick={() => setProfileOpen(false)} className="border-gray-300 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-800">
               Close
             </Button>
             <Button 

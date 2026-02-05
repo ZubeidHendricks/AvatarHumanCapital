@@ -92,7 +92,7 @@ function StarRating({
               sizeClasses[size],
               "transition-colors",
               (hovered !== null ? star <= hovered : star <= value)
-                ? "fill-yellow-400 text-yellow-400"
+                ? "fill-yellow-400 text-yellow-600 dark:text-yellow-400"
                 : "fill-muted text-muted-foreground"
             )}
           />
@@ -123,7 +123,7 @@ function KpiScoreCard({
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="text-lg text-foreground flex items-center gap-2">
-              <Target className="w-5 h-5 text-blue-400" />
+              <Target className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               {assignment.template?.name || "Unnamed KPI"}
             </CardTitle>
             <CardDescription className="mt-1">
@@ -187,7 +187,7 @@ function KpiScoreCard({
                     disabled
                     size="lg"
                   />
-                  <span className="text-2xl font-bold text-green-400">
+                  <span className="text-2xl font-bold text-green-600 dark:text-green-400">
                     {assignment.score?.managerScore || "-"}
                   </span>
                 </div>
@@ -375,7 +375,7 @@ export default function KPIReviewPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-3" data-testid="page-title">
-            <Target className="w-8 h-8 text-blue-400" />
+            <Target className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             My KPI Review
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -434,7 +434,7 @@ export default function KPIReviewPage() {
                     </div>
                     
                     {isSubmitted && (
-                      <div className="flex items-center gap-2 text-green-400">
+                      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                         <CheckCircle className="w-5 h-5" />
                         <span>Self-Assessment Completed</span>
                       </div>
@@ -446,7 +446,7 @@ export default function KPIReviewPage() {
 
             {loadingAssignments ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
               </div>
             ) : assignments.length === 0 ? (
               <Card className="bg-card border-border">
@@ -531,7 +531,7 @@ export default function KPIReviewPage() {
                       </div>
                       
                       {!allScored && (
-                        <p className="text-sm text-amber-400 text-right">
+                        <p className="text-sm text-amber-600 dark:text-amber-400 text-right">
                           Please score all KPIs before submitting
                         </p>
                       )}
@@ -542,7 +542,7 @@ export default function KPIReviewPage() {
                 {isSubmitted && currentSubmission?.managerReviewStatus === "pending" && (
                   <Card className="bg-amber-500/10 dark:bg-amber-900/20 border-amber-500/30">
                     <CardContent className="py-6 text-center">
-                      <Clock className="w-8 h-8 text-amber-400 mx-auto mb-3" />
+                      <Clock className="w-8 h-8 text-amber-600 dark:text-amber-400 mx-auto mb-3" />
                       <h3 className="text-lg font-semibold text-foreground mb-1">Awaiting Manager Review</h3>
                       <p className="text-muted-foreground">
                         Your self-assessment has been submitted and is waiting for manager approval.
@@ -555,7 +555,7 @@ export default function KPIReviewPage() {
                   <Card className="bg-green-500/10 dark:bg-green-900/20 border-green-500/30">
                     <CardContent className="py-6">
                       <div className="flex items-center gap-3 mb-4">
-                        <CheckCircle className="w-8 h-8 text-green-400" />
+                        <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
                         <div>
                           <h3 className="text-lg font-semibold text-foreground">Review Completed</h3>
                           <p className="text-muted-foreground">Your manager has completed the review</p>
@@ -565,7 +565,7 @@ export default function KPIReviewPage() {
                       {currentSubmission.finalScore && (
                         <div className="bg-muted p-4 rounded-lg">
                           <p className="text-sm text-muted-foreground mb-1">Final Score</p>
-                          <p className="text-3xl font-bold text-green-400">
+                          <p className="text-3xl font-bold text-green-600 dark:text-green-400">
                             {currentSubmission.finalScore}
                           </p>
                         </div>

@@ -397,13 +397,13 @@ export default function OfferSetup() {
                   >
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-lg ${template.isActive ? 'bg-green-500/20' : 'bg-primary/10'}`}>
-                        <FileText className={`w-5 h-5 ${template.isActive ? 'text-green-400' : 'text-primary'}`} />
+                        <FileText className={`w-5 h-5 ${template.isActive ? 'text-green-600 dark:text-green-400' : 'text-primary'}`} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium">{template.name}</h4>
                           {template.isActive === 1 && (
-                            <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                            <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
                               <Star className="w-3 h-3 mr-1" />
                               Active
                             </Badge>
@@ -442,7 +442,7 @@ export default function OfferSetup() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        className="text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 hover:bg-red-500/10"
                         onClick={() => deleteMutation.mutate(template.id)}
                         disabled={deleteMutation.isPending}
                         data-testid={`button-delete-${template.id}`}

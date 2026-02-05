@@ -353,7 +353,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
               {/* AI Research Mode */}
               <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-t-lg">
                 <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <Globe className="w-5 h-5 text-green-400" />
+                  <Globe className="w-5 h-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-white">AI Job Research</h3>
@@ -436,7 +436,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                 ) : (
                   <div className="space-y-3">
                     <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <p className="text-sm text-green-400 font-medium">
+                      <p className="text-sm text-green-600 dark:text-green-400 font-medium">
                         ✓ Job specification researched successfully! Review the details on the right and click "Create Job" to publish.
                       </p>
                     </div>
@@ -556,7 +556,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                 {isComplete ? (
                   <div className="space-y-3">
                     <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <p className="text-sm text-green-400 font-medium">
+                      <p className="text-sm text-green-600 dark:text-green-400 font-medium">
                         ✓ Job specification complete! Review the details and click "Create Job" to publish.
                       </p>
                     </div>
@@ -684,7 +684,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                 {isComplete ? (
                   <div className="space-y-3">
                     <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <p className="text-sm text-green-400 font-medium">
+                      <p className="text-sm text-green-600 dark:text-green-400 font-medium">
                         ✓ Job specification parsed successfully! Review the details and click "Create Job" to publish.
                       </p>
                     </div>
@@ -774,7 +774,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       variant="ghost"
                       size="sm"
                       onClick={handleSaveEdit}
-                      className="h-6 w-6 p-0 hover:bg-green-500/20 text-green-400"
+                      className="h-6 w-6 p-0 hover:bg-green-500/20 text-green-600 dark:text-green-400"
                       data-testid="button-save-edit"
                       title="Save changes"
                     >
@@ -996,7 +996,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       <ul className="mt-1 space-y-1">
                         {jobSpec.attributes.slice(0, 5).map((attr: string, i: number) => (
                           <li key={i} className="text-xs flex items-start gap-1">
-                            <span className="text-green-400">•</span>
+                            <span className="text-green-600 dark:text-green-400">•</span>
                             <span className="line-clamp-2">{attr}</span>
                           </li>
                         ))}
@@ -1089,7 +1089,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       <ul className="mt-1 space-y-1">
                         {jobSpec.responsibilities.slice(0, 5).map((resp: string, i: number) => (
                           <li key={i} className="text-xs flex items-start gap-1">
-                            <span className="text-green-400">•</span>
+                            <span className="text-green-600 dark:text-green-400">•</span>
                             <span className="line-clamp-2">{resp}</span>
                           </li>
                         ))}
@@ -1104,7 +1104,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       <span className="text-muted-foreground">Benefits:</span>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {jobSpec.benefits.map((benefit: string, i: number) => (
-                          <span key={i} className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs">
+                          <span key={i} className="bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-0.5 rounded text-xs">
                             {benefit}
                           </span>
                         ))}

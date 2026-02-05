@@ -75,7 +75,7 @@ export default function InterviewVideo() {
       <header className="h-16 border-b border-border dark:border-white/10 flex items-center justify-between px-6 bg-card/50 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-            <Video className="w-4 h-4 text-indigo-400" />
+            <Video className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           </div>
           <span className="font-semibold text-sm">Final Round Interview - {candidateName}</span>
         </div>
@@ -98,7 +98,7 @@ export default function InterviewVideo() {
             {!isSessionActive ? (
               <div className="w-full h-full rounded-2xl border border-border dark:border-white/10 bg-card/30 flex flex-col items-center justify-center gap-6 p-8">
                 <div className="w-20 h-20 rounded-full bg-indigo-500/20 flex items-center justify-center animate-pulse">
-                  <Video className="w-8 h-8 text-indigo-400" />
+                  <Video className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div className="text-center space-y-2">
                   <h2 className="text-2xl font-bold">Ready for your interview practice?</h2>
@@ -164,7 +164,7 @@ export default function InterviewVideo() {
                   )}
                 </Button>
                 {createSessionMutation.isError && (
-                  <p className="text-red-400 text-sm">
+                  <p className="text-red-600 dark:text-red-400 text-sm">
                     Failed to create session. Please check your Tavus API configuration.
                   </p>
                 )}
@@ -178,7 +178,7 @@ export default function InterviewVideo() {
               />
             ) : (
               <div className="w-full h-full rounded-2xl border border-border dark:border-white/10 bg-card/30 flex items-center justify-center">
-                <Loader2 className="w-12 h-12 animate-spin text-indigo-400" />
+                <Loader2 className="w-12 h-12 animate-spin text-indigo-600 dark:text-indigo-400" />
               </div>
             )}
           </div>
@@ -202,7 +202,7 @@ export default function InterviewVideo() {
         <div className="w-80 space-y-4">
           <div className="bg-card/30 border border-border dark:border-white/10 rounded-xl p-4">
             <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <Video className="w-4 h-4 text-indigo-400" />
+              <Video className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               Interview Details
             </h3>
             <div className="space-y-2 text-sm">
@@ -249,7 +249,7 @@ export default function InterviewVideo() {
 
           {isSessionActive && (
             <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4">
-              <p className="text-sm text-green-400">
+              <p className="text-sm text-green-600 dark:text-green-400">
                 The AI interviewer is actively listening and will adapt questions based on your responses.
               </p>
             </div>
