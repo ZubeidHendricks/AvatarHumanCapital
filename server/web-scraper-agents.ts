@@ -431,6 +431,7 @@ export class PNetScraper {
   
   private username = process.env.PNET_USERNAME;
   private password = process.env.PNET_PASSWORD;
+  private sessionCookies = process.env.PNET_SESSION_COOKIES; // JSON array of cookies from manual login
 
   async search(job: Job, limit: number = 10): Promise<ScraperResult> {
     console.log(`[PNetScraper] Searching for candidates: ${job.title}`);
@@ -439,15 +440,19 @@ export class PNetScraper {
     let page: Page | null = null;
     const allCandidates: ScrapedCandidate[] = [];
     
-    if (!this.username || !this.password) {
-      console.error("[PNetScraper] Missing PNET_USERNAME or PNET_PASSWORD credentials");
+    // Check if we have session cookies (preferred) or login credentials
+    const hasSessionCookies = !!this.sessionCookies;
+    const hasLoginCreds = this.username && this.password;
+    
+    if (!hasSessionCookies && !hasLoginCreds) {
+      console.error("[PNetScraper] Missing PNET_SESSION_COOKIES or PNET_USERNAME/PNET_PASSWORD credentials");
       return {
         platform: this.platform,
         query,
         candidates: [],
         scrapedAt: new Date(),
         status: "failed",
-        error: "PNet credentials not configured"
+        error: "PNet credentials not configured. Set PNET_SESSION_COOKIES (from manual login) or PNET_USERNAME/PNET_PASSWORD"
       };
     }
     
@@ -455,82 +460,147 @@ export class PNetScraper {
       const browser = await getBrowser();
       page = await browser.newPage();
       
+      // Advanced stealth settings to avoid bot detection
       await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
       await page.setViewport({ width: 1920, height: 1080 });
       
-      // Step 1: Login to PNet Recruiter Space
-      console.log("[PNetScraper] Logging into PNet Recruiter Space...");
-      
-      await page.goto("https://www.pnet.co.za/5/recruiterspace/login", { 
-        waitUntil: "networkidle2",
-        timeout: 30000 
+      // Override navigator properties to appear as real browser
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+        Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en', 'af'] });
+        (window as any).chrome = { runtime: {} };
+        Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
       });
       
-      await new Promise(r => setTimeout(r, 2000));
+      // Set extra headers to look more legitimate
+      await page.setExtraHTTPHeaders({
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1'
+      });
       
-      // Fill login form - PNet uses React with specific class names
-      // Username input: input[name="username"]
-      // Password input: input[type="password"][name="password"]
-      // Submit button: button.at-data-login-button
+      let isLoggedIn = false;
       
-      await page.waitForSelector('input[name="username"]', { timeout: 10000 });
-      
-      // Clear and type username
-      await page.click('input[name="username"]');
-      await page.keyboard.down('Control');
-      await page.keyboard.press('a');
-      await page.keyboard.up('Control');
-      await page.type('input[name="username"]', this.username);
-      
-      // Clear and type password
-      await page.click('input[name="password"]');
-      await page.keyboard.down('Control');
-      await page.keyboard.press('a');
-      await page.keyboard.up('Control');
-      await page.type('input[name="password"]', this.password);
-      
-      await new Promise(r => setTimeout(r, 1000));
-      
-      // Click sign in button using the PNet specific class
-      const signInButton = await page.$('button.at-data-login-button') || 
-                           await page.$('button[type="submit"]');
-      
-      if (signInButton) {
-        console.log("[PNetScraper] Clicking sign in button...");
-        await Promise.all([
-          page.waitForNavigation({ waitUntil: "networkidle2", timeout: 45000 }).catch(() => {}),
-          signInButton.click()
-        ]);
+      // METHOD 1: Use session cookies if available (bypasses bot detection)
+      if (hasSessionCookies) {
+        console.log("[PNetScraper] Using session cookies for authentication...");
+        try {
+          const cookies = JSON.parse(this.sessionCookies);
+          await page.setCookie(...cookies);
+          
+          // Navigate to dashboard to verify cookies work
+          await page.goto("https://www.pnet.co.za/5/recruiter-space/dashboard", { 
+            waitUntil: "networkidle2",
+            timeout: 30000 
+          });
+          
+          const currentUrl = page.url();
+          isLoggedIn = !currentUrl.includes('login') && !currentUrl.includes('notFound');
+          console.log(`[PNetScraper] Session cookie authentication: ${isLoggedIn ? 'SUCCESS' : 'FAILED'}`);
+          
+          if (!isLoggedIn) {
+            console.log("[PNetScraper] Session cookies expired, falling back to login...");
+          }
+        } catch (e) {
+          console.error("[PNetScraper] Failed to parse session cookies:", e);
+        }
       }
       
-      await new Promise(r => setTimeout(r, 4000));
-      
-      // Check if login was successful
-      const currentUrl = page.url();
-      console.log(`[PNetScraper] After login, URL: ${currentUrl}`);
-      
-      // Check for login errors
-      const pageContent = await page.evaluate(() => document.body.innerText.slice(0, 2000));
-      const isLoggedIn = !currentUrl.includes('login');
-      console.log(`[PNetScraper] Login successful: ${isLoggedIn}`);
-      
-      if (!isLoggedIn) {
-        // Check if there's an error message
-        if (pageContent.includes('Invalid') || pageContent.includes('incorrect') || pageContent.includes('error')) {
-          console.log(`[PNetScraper] Login error detected in page content`);
+      // METHOD 2: Try username/password login (may be blocked by bot detection)
+      if (!isLoggedIn && hasLoginCreds) {
+        console.log("[PNetScraper] Attempting username/password login...");
+        
+        await page.goto("https://www.pnet.co.za/5/recruiter-space/login", { 
+          waitUntil: "networkidle2",
+          timeout: 30000 
+        });
+        
+        await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
+        
+        const initialUrl = page.url();
+        console.log(`[PNetScraper] Initial page URL: ${initialUrl}`);
+        
+        if (initialUrl.includes('notFound') || initialUrl.includes('error')) {
+          console.log("[PNetScraper] Trying alternate login URL...");
+          await page.goto("https://www.pnet.co.za/5/recruiterspace/login", { 
+            waitUntil: "networkidle2",
+            timeout: 30000 
+          });
+          await new Promise(r => setTimeout(r, 2000));
         }
-        // Continue anyway and try to access public candidate sections
+        
+        try {
+          await page.waitForSelector('input[name="username"]', { timeout: 10000 });
+          
+          await page.click('input[name="username"]');
+          await new Promise(r => setTimeout(r, 100 + Math.random() * 200));
+          await page.keyboard.down('Control');
+          await page.keyboard.press('a');
+          await page.keyboard.up('Control');
+          
+          for (const char of this.username!) {
+            await page.keyboard.type(char, { delay: 50 + Math.random() * 100 });
+          }
+          
+          await new Promise(r => setTimeout(r, 300 + Math.random() * 300));
+          
+          await page.click('input[name="password"]');
+          await new Promise(r => setTimeout(r, 100 + Math.random() * 200));
+          await page.keyboard.down('Control');
+          await page.keyboard.press('a');
+          await page.keyboard.up('Control');
+          
+          for (const char of this.password!) {
+            await page.keyboard.type(char, { delay: 50 + Math.random() * 100 });
+          }
+          
+          await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+          
+          const signInButton = await page.$('button.at-data-login-button') || 
+                               await page.$('button[type="submit"]');
+          
+          if (signInButton) {
+            console.log("[PNetScraper] Clicking sign in button...");
+            await Promise.all([
+              page.waitForNavigation({ waitUntil: "networkidle2", timeout: 45000 }).catch(() => {}),
+              signInButton.click()
+            ]);
+          }
+          
+          await new Promise(r => setTimeout(r, 4000 + Math.random() * 2000));
+          
+          const currentUrl = page.url();
+          console.log(`[PNetScraper] After login, URL: ${currentUrl}`);
+          
+          isLoggedIn = !currentUrl.includes('login') && !currentUrl.includes('notFound');
+          console.log(`[PNetScraper] Login successful: ${isLoggedIn}`);
+          
+          if (isLoggedIn) {
+            // Export cookies for future use
+            const cookies = await page.cookies();
+            console.log("[PNetScraper] TIP: Save these cookies as PNET_SESSION_COOKIES to bypass login next time:");
+            console.log(JSON.stringify(cookies.filter(c => c.domain.includes('pnet'))));
+          }
+        } catch (e) {
+          console.error("[PNetScraper] Login form interaction failed:", e);
+        }
       }
       
       // Step 2: Navigate to candidate search
       console.log("[PNetScraper] Navigating to candidate search...");
       
-      // Navigate to recruiter space - check actual dashboard to find CV/candidate search
       const searchUrls = [
-        `https://www.pnet.co.za/5/recruiterspace/dashboard`,
-        `https://www.pnet.co.za/5/recruiterspace/candidate-database`,
-        `https://www.pnet.co.za/5/recruiterspace/cv-search?keywords=${encodeURIComponent(query)}`,
-        `https://www.pnet.co.za/5/recruiterspace/candidates?q=${encodeURIComponent(query)}`
+        `https://www.pnet.co.za/5/recruiter-space/dashboard`,
+        `https://www.pnet.co.za/5/recruiter-space/candidate-database`,
+        `https://www.pnet.co.za/5/recruiter-space/cv-search?keywords=${encodeURIComponent(query)}`,
+        `https://www.pnet.co.za/5/recruiter-space/candidates?q=${encodeURIComponent(query)}`
       ];
       
       for (const searchUrl of searchUrls) {
