@@ -495,8 +495,8 @@ export class PNetScraper {
           const cookies = JSON.parse(this.sessionCookies);
           await page.setCookie(...cookies);
           
-          // Navigate to dashboard to verify cookies work
-          await page.goto("https://www.pnet.co.za/5/recruiter-space/dashboard", { 
+          // Navigate to dashboard to verify cookies work (NO dash in recruiterspace)
+          await page.goto("https://www.pnet.co.za/5/recruiterspace/dashboard", { 
             waitUntil: "networkidle2",
             timeout: 30000 
           });
@@ -517,7 +517,7 @@ export class PNetScraper {
       if (!isLoggedIn && hasLoginCreds) {
         console.log("[PNetScraper] Attempting username/password login...");
         
-        await page.goto("https://www.pnet.co.za/5/recruiter-space/login", { 
+        await page.goto("https://www.pnet.co.za/5/recruiterspace/login", { 
           waitUntil: "networkidle2",
           timeout: 30000 
         });
@@ -528,7 +528,7 @@ export class PNetScraper {
         console.log(`[PNetScraper] Initial page URL: ${initialUrl}`);
         
         if (initialUrl.includes('notFound') || initialUrl.includes('error')) {
-          console.log("[PNetScraper] Trying alternate login URL...");
+          console.log("[PNetScraper] URL issue detected, trying to continue anyway...");
           await page.goto("https://www.pnet.co.za/5/recruiterspace/login", { 
             waitUntil: "networkidle2",
             timeout: 30000 
@@ -597,10 +597,10 @@ export class PNetScraper {
       console.log("[PNetScraper] Navigating to candidate search...");
       
       const searchUrls = [
-        `https://www.pnet.co.za/5/recruiter-space/dashboard`,
-        `https://www.pnet.co.za/5/recruiter-space/candidate-database`,
-        `https://www.pnet.co.za/5/recruiter-space/cv-search?keywords=${encodeURIComponent(query)}`,
-        `https://www.pnet.co.za/5/recruiter-space/candidates?q=${encodeURIComponent(query)}`
+        `https://www.pnet.co.za/5/recruiterspace/dashboard`,
+        `https://www.pnet.co.za/5/recruiterspace/candidate-database`,
+        `https://www.pnet.co.za/5/recruiterspace/cv-search?keywords=${encodeURIComponent(query)}`,
+        `https://www.pnet.co.za/5/recruiterspace/candidates?q=${encodeURIComponent(query)}`
       ];
       
       for (const searchUrl of searchUrls) {
