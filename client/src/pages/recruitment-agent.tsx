@@ -212,6 +212,7 @@ export default function RecruitmentAgent() {
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showCandidateDialog, setShowCandidateDialog] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [showAgentModal, setShowAgentModal] = useState(false);
   
   // Update selectedJobId when URL param changes
   useEffect(() => {
@@ -339,6 +340,7 @@ export default function RecruitmentAgent() {
         setIsSimulating(false);
         queryClient.invalidateQueries({ queryKey: recruitmentSessionsKey });
         queryClient.invalidateQueries({ queryKey: candidatesKey });
+        setTimeout(() => setShowAgentModal(false), 1500);
       }
     };
     
@@ -347,6 +349,7 @@ export default function RecruitmentAgent() {
 
   const handleStartRecruitment = () => {
     if (!selectedJobId) return;
+    setShowAgentModal(true);
     startRecruitmentMutation.mutate({
       jobId: selectedJobId,
       maxCandidates,
@@ -455,10 +458,10 @@ export default function RecruitmentAgent() {
       <div className="pt-20 pb-8">
         <div className="container mx-auto px-4">
           {/* Header */}
-          <div className="mb-8">
+          <div className="mb-6">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 rounded-lg bg-gradient-to-br from-teal-500 to-blue-600">
-                <Bot className="h-8 w-8" />
+                <Bot className="h-8 w-8 text-white" />
               </div>
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-blue-600 dark:from-teal-400 dark:to-blue-400 bg-clip-text text-transparent">
@@ -471,171 +474,366 @@ export default function RecruitmentAgent() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Panel - Controls & Workflow */}
-            <div className="lg:col-span-4 space-y-6">
-              {/* Start New Session */}
-              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Play className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    Launch Recruitment
+          {/* Controls Bar - Horizontal */}
+          <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border mb-6">
+            <CardContent className="p-4">
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="flex-1 min-w-[200px] max-w-xs">
+                  <Label className="text-gray-500 dark:text-gray-400 text-xs mb-1 block">Target Position</Label>
+                  <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                    <SelectTrigger className="bg-gray-200 dark:bg-zinc-800 border-border" data-testid="select-job">
+                      <SelectValue placeholder="Select a job..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-200 dark:bg-zinc-800 border-border">
+                      {jobsLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : jobs?.length ? (
+                        jobs.map((job) => (
+                          <SelectItem key={job.id} value={job.id}>
+                            {job.title}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>No jobs available</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedJob && (
+                  <div className="hidden md:flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 px-3 py-2 bg-muted/50 rounded-lg border border-border">
+                    <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="font-medium text-foreground">{selectedJob.title}</span>
+                    {selectedJob.department && <span>• {selectedJob.department}</span>}
+                    {selectedJob.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{selectedJob.location}</span>}
+                  </div>
+                )}
+                <div className="w-24">
+                  <Label className="text-gray-500 dark:text-gray-400 text-xs mb-1 block">Max</Label>
+                  <Input
+                    type="number"
+                    value={maxCandidates}
+                    onChange={(e) => setMaxCandidates(Number(e.target.value))}
+                    className="bg-gray-200 dark:bg-zinc-800 border-border"
+                    data-testid="input-max-candidates"
+                  />
+                </div>
+                <div className="w-24">
+                  <Label className="text-gray-500 dark:text-gray-400 text-xs mb-1 block">Min Score</Label>
+                  <Input
+                    type="number"
+                    value={minMatchScore}
+                    onChange={(e) => setMinMatchScore(Number(e.target.value))}
+                    className="bg-gray-200 dark:bg-zinc-800 border-border"
+                    data-testid="input-min-match"
+                  />
+                </div>
+                <Button
+                  onClick={handleStartRecruitment}
+                  disabled={!selectedJobId || startRecruitmentMutation.isPending || isSimulating}
+                  className="bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-500 hover:to-blue-500 h-10 px-6"
+                  data-testid="button-start-recruitment"
+                >
+                  {startRecruitmentMutation.isPending || isSimulating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Agents Working...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="mr-2 h-4 w-4" />
+                      Deploy AI Agents
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/10">
+                  <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{sessions?.length || 0}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">Sessions</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-500/10">
+                  <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{candidates?.length || 0}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">Candidates</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-teal-500/10">
+                  <CheckCircle className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-teal-600 dark:text-teal-400">{completedSessions.length}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">Completed</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-yellow-500/10">
+                  <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{topCandidates.length}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">Top Matches</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Top Matches - Main Content */}
+          <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border mb-6">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Star className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+                    Top Matches
                   </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-gray-500 dark:text-gray-400">Target Position</Label>
+                  {displayJobTitle && (
+                    <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                      <Briefcase className="h-3 w-3 mr-1" />
+                      {displayJobTitle}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {!displayJobTitle && jobs && jobs.length > 0 && (
                     <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                      <SelectTrigger className="bg-gray-200 dark:bg-zinc-800 border-border" data-testid="select-job">
-                        <SelectValue placeholder="Select a job..." />
+                      <SelectTrigger className="bg-gray-200 dark:bg-zinc-800 border-border h-8 text-xs w-48">
+                        <SelectValue placeholder="Filter by job..." />
                       </SelectTrigger>
                       <SelectContent className="bg-gray-200 dark:bg-zinc-800 border-border">
-                        {jobsLoading ? (
-                          <SelectItem value="loading" disabled>Loading...</SelectItem>
-                        ) : jobs?.length ? (
-                          jobs.map((job) => (
-                            <SelectItem key={job.id} value={job.id}>
-                              {job.title}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" disabled>No jobs available</SelectItem>
-                        )}
+                        {jobs.map((job) => (
+                          <SelectItem key={job.id} value={job.id} className="text-xs">
+                            {job.title}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                  </div>
+                  )}
+                  {topCandidates.length > 0 && (
+                    <Link href="/candidates-list">
+                      <Button variant="outline" size="sm" className="border-border hover:bg-muted" data-testid="button-view-all-candidates">
+                        View All Candidates
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {topCandidates.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {topCandidates.map((candidate, index) => {
+                    const metadata = candidate.metadata as any;
+                    const candidateJob = getCandidateJob(candidate.jobId);
+                    return (
+                      <div
+                        key={candidate.id}
+                        onClick={() => handleCandidateClick(candidate)}
+                        className="group p-5 rounded-xl border border-border bg-card hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/5 transition-all cursor-pointer relative"
+                        data-testid={`candidate-card-${candidate.id}`}
+                      >
+                        {index < 3 && (
+                          <div className={`absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow-md ${
+                            index === 0 ? 'bg-yellow-500 text-black' : index === 1 ? 'bg-gray-400 text-black' : 'bg-amber-600 text-white'
+                          }`}>
+                            {index + 1}
+                          </div>
+                        )}
 
-                  {selectedJob && (
-                    <div className="p-3 bg-muted/50 rounded-lg border border-border">
-                      <div className="flex items-start gap-3">
-                        <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                        <div>
-                          <p className="font-medium">{selectedJob.title}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{selectedJob.department}</p>
-                          {selectedJob.location && (
-                            <p className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1 mt-1">
-                              <MapPin className="h-3 w-3" /> {selectedJob.location}
-                            </p>
-                          )}
+                        <div className="flex items-start gap-4 mb-3">
+                          <Avatar className="h-12 w-12 bg-gradient-to-br from-teal-500 to-blue-600 flex-shrink-0">
+                            <AvatarFallback className="text-white text-sm font-bold bg-transparent">
+                              {candidate.fullName?.split(' ').map(n => n[0]).join('') || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-base truncate">{candidate.fullName}</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{candidate.role || 'No role specified'}</p>
+                            {metadata?.company && (
+                              <p className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1 mt-0.5">
+                                <Building2 className="h-3 w-3" /> {metadata.company}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3 border ${getMatchColor(candidate.match || 0)}`}>
+                          <span className="text-lg font-bold">{candidate.match || 0}%</span>
+                          <span className="text-xs opacity-80">{getMatchLabel(candidate.match || 0)}</span>
+                        </div>
+
+                        {(candidate.location || metadata?.location) && (
+                          <p className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1 mb-2">
+                            <MapPin className="h-3 w-3" /> {candidate.location || metadata?.location}
+                          </p>
+                        )}
+
+                        {candidate.skills && (candidate.skills as string[]).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {(candidate.skills as string[]).slice(0, 5).map((skill, i) => (
+                              <Badge key={i} variant="outline" className="text-[10px] px-1.5 py-0 bg-muted/50 border-border">
+                                {skill}
+                              </Badge>
+                            ))}
+                            {(candidate.skills as string[]).length > 5 && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-muted/50 border-border">
+                                +{(candidate.skills as string[]).length - 5}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+
+                        <ContactEnrichmentSection candidate={candidate} metadata={metadata} />
+
+                        <div className="mt-3 pt-3 border-t border-border flex gap-2">
+                          <Link href={`/candidates-list?candidateId=${candidate.id}`} onClick={(e: any) => e.stopPropagation()}>
+                            <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-xs h-7">
+                              <Eye className="h-3 w-3 mr-1" />
+                              Profile
+                            </Button>
+                          </Link>
+                          <Button size="sm" variant="outline" className="border-border hover:bg-muted text-xs h-7" onClick={(e: any) => e.stopPropagation()}>
+                            <ThumbsUp className="h-3 w-3 mr-1" />
+                            Shortlist
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-16 text-gray-500 dark:text-gray-500">
+                  <Bot className="h-16 w-16 mx-auto mb-4 opacity-20" />
+                  <h3 className="text-lg font-medium text-foreground mb-1">No candidates yet</h3>
+                  <p className="text-sm max-w-md mx-auto">Select a job position above and deploy AI agents to find and rank top candidates automatically.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-gray-500 dark:text-gray-400 text-xs">Max Candidates</Label>
-                      <Input
-                        type="number"
-                        value={maxCandidates}
-                        onChange={(e) => setMaxCandidates(Number(e.target.value))}
-                        className="bg-gray-200 dark:bg-zinc-800 border-border"
-                        data-testid="input-max-candidates"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-gray-500 dark:text-gray-400 text-xs">Min Score %</Label>
-                      <Input
-                        type="number"
-                        value={minMatchScore}
-                        onChange={(e) => setMinMatchScore(Number(e.target.value))}
-                        className="bg-gray-200 dark:bg-zinc-800 border-border"
-                        data-testid="input-min-match"
-                      />
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={handleStartRecruitment}
-                    disabled={!selectedJobId || startRecruitmentMutation.isPending || isSimulating}
-                    className="w-full bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-500 hover:to-blue-500"
-                    data-testid="button-start-recruitment"
-                  >
-                    {startRecruitmentMutation.isPending || isSimulating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Agents Working...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="mr-2 h-4 w-4" />
-                        Deploy AI Agents
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Sourcing Agents - Workflow Style */}
-              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Bot className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    AI Agent Workflow
-                  </CardTitle>
-                  <CardDescription>
-                    {effectiveStep === 1 ? "Executing sourcing workflow..." : "Intelligent talent acquisition powered by LLaMA 3.1 70B"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <div className="flex">
-                    {/* Left: Category Steps */}
-                    <div className="w-48 border-r border-border py-4">
-                      {Object.entries(agentsByCategory).length === 0 ? (
-                        <div className="px-4 py-8 text-center">
-                          <Loader2 className="h-6 w-6 text-gray-500 dark:text-gray-500 mx-auto animate-spin" />
+          {/* Recent Sessions - Compact Horizontal */}
+          {sessions && sessions.length > 0 && (
+            <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  Recent Sessions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {sessions.slice(0, 5).map((session) => {
+                    const job = jobs?.find(j => j.id === session.jobId);
+                    return (
+                      <div
+                        key={session.id}
+                        className="p-3 bg-muted/50 rounded-lg border border-border"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm truncate flex-1">
+                            {job?.title || 'Unknown Job'}
+                          </span>
+                          <Badge className={`text-[10px] ml-2 ${
+                            session.status === 'Completed' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
+                            session.status === 'Running' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' :
+                            'bg-red-500/20 text-red-600 dark:text-red-400'
+                          }`}>
+                            {session.status}
+                          </Badge>
                         </div>
-                      ) : (
-                        Object.keys(agentsByCategory).map((category, idx) => {
-                          const categoryActive = effectiveStep === 1;
-                          const categoryComplete = effectiveStep > 1;
-                          return (
-                            <div 
-                              key={category}
-                              className={`flex items-center gap-3 px-4 py-3 border-l-2 transition-all ${
-                                categoryActive 
-                                  ? 'border-l-blue-500 bg-blue-500/5' 
-                                  : categoryComplete 
-                                    ? 'border-l-green-500' 
-                                    : 'border-l-transparent'
-                              }`}
-                            >
-                              <span className={`text-sm font-mono ${categoryActive ? 'text-blue-600 dark:text-blue-400' : categoryComplete ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-500'}`}>
-                                {String(idx + 1).padStart(2, '0')}
-                              </span>
-                              <span className={`text-sm font-medium ${categoryActive ? 'text-foreground' : 'text-gray-500 dark:text-gray-400'}`}>
-                                {category}
-                              </span>
-                            </div>
-                          );
-                        })
-                      )}
+                        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
+                          <span>{session.candidatesFound} found</span>
+                          <span>{session.candidatesAdded} added</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Agent Activity Modal */}
+      <Dialog open={showAgentModal} onOpenChange={setShowAgentModal}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden bg-card border-border text-foreground">
+          <DialogHeader className="border-b border-border pb-4">
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <Bot className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              AI Agents Working
+              {isSimulating && (
+                <Badge className="ml-2 bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
+                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse" />
+                  Live
+                </Badge>
+              )}
+              {!isSimulating && agentMessages.length > 0 && (
+                <Badge className="ml-2 bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Complete
+                </Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
+              {selectedJob ? `Sourcing candidates for: ${selectedJob.title}` : 'Deploying sourcing agents across platforms'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+            {/* Left: AI Agent Workflow */}
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="px-4 py-3 bg-muted/50 border-b border-border">
+                <h3 className="font-medium text-sm flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  AI Agent Workflow
+                </h3>
+              </div>
+              <ScrollArea className="h-[400px]">
+                <div className="p-3 space-y-1.5">
+                  {Object.entries(agentsByCategory).length === 0 ? (
+                    <div className="text-center py-8">
+                      <Loader2 className="h-6 w-6 text-gray-500 mx-auto animate-spin" />
                     </div>
-                    
-                    {/* Right: Agent Actions */}
-                    <div className="flex-1 py-4 px-4 space-y-2 max-h-80 overflow-y-auto">
-                      {Object.entries(agentsByCategory).flatMap(([category, agents]) => 
-                        agents.map((agent) => {
+                  ) : (
+                    Object.entries(agentsByCategory).map(([category, agents]) => (
+                      <div key={category}>
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-2 py-1.5">{category}</p>
+                        {agents.map((agent) => {
                           const isActive = effectiveStep === 1;
                           const sessionResult = specialistResultsFromSession.find(
                             (r: any) => r.platform === agent.platform || r.specialist === agent.name
                           );
                           const hasResult = sessionResult && sessionResult.found > 0;
-                          const estimatedTime = Math.floor(Math.random() * 4) + 2;
-                          
                           return (
-                            <div 
+                            <div
                               key={agent.platform}
-                              className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
-                                isActive 
-                                  ? 'bg-blue-500/10' 
-                                  : hasResult
-                                    ? 'bg-muted/30'
-                                    : 'bg-muted/50'
+                              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
+                                isActive ? 'bg-blue-500/10' : hasResult ? 'bg-green-500/5' : ''
                               }`}
                               data-testid={`agent-${agent.platform.toLowerCase().replace(/\s+/g, '-')}`}
                             >
-                              <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
                                 isActive ? 'bg-blue-500' : hasResult ? 'bg-green-500' : 'bg-gray-300 dark:bg-zinc-700'
                               }`}>
                                 {isActive ? (
@@ -649,318 +847,75 @@ export default function RecruitmentAgent() {
                               <span className={`flex-1 text-sm ${isActive ? 'text-foreground' : hasResult ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-500'}`}>
                                 {agent.name}
                               </span>
-                              <Badge className={`text-xs px-2 py-0.5 ${
-                                isActive ? 'bg-blue-500/20 text-blue-300' : 
-                                hasResult ? 'bg-green-500/20 text-green-300' : 
-                                'bg-gray-300 dark:bg-zinc-700 text-gray-500 dark:text-gray-400'
-                              }`}>
-                                {isActive ? `${estimatedTime}s` : hasResult ? `${sessionResult?.found || 0}` : `${estimatedTime}s`}
-                              </Badge>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Workflow Description */}
-              <div className="px-2">
-                <p className="text-sm text-gray-500 dark:text-gray-500 leading-relaxed">
-                  Extract candidate data from multiple sources including APIs, job boards, and professional networks, then rank using AI matching algorithms.
-                </p>
-              </div>
-
-              {/* Workflow Steps */}
-              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    Agent Workflow
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {AGENT_STEPS.map((step, index) => {
-                      const isActive = isSimulating && index === effectiveStep;
-                      const isComplete = index < effectiveStep || (!isSimulating && completedSessions.length > 0 && effectiveStep >= 0);
-                      const StepIcon = step.icon;
-                      
-                      return (
-                        <div
-                          key={step.id}
-                          className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
-                            isActive 
-                              ? 'bg-blue-500/20 border border-blue-500/50' 
-                              : isComplete
-                                ? 'bg-green-500/10 border border-green-500/30'
-                                : 'bg-muted/50 border border-border'
-                          }`}
-                        >
-                          <div className={`p-2 rounded-lg ${
-                            isActive 
-                              ? 'bg-blue-500 animate-pulse' 
-                              : isComplete
-                                ? 'bg-green-500'
-                                : 'bg-gray-300 dark:bg-zinc-700'
-                          }`}>
-                            {isActive ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : isComplete ? (
-                              <CheckCircle className="h-4 w-4" />
-                            ) : (
-                              <StepIcon className="h-4 w-4" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <p className={`font-medium text-sm ${isActive ? 'text-blue-300' : isComplete ? 'text-green-300' : 'text-gray-500 dark:text-gray-400'}`}>
-                              {step.name}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-500">{step.description}</p>
-                          </div>
-                          {isActive && (
-                            <div className="flex gap-1">
-                              <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                              <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                              <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Center Panel - Live Activity Feed */}
-            <div className="lg:col-span-5">
-              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border h-full">
-                <CardHeader className="pb-3 border-b border-border">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      Live Agent Activity
-                    </CardTitle>
-                    {isSimulating && (
-                      <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
-                        <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse" />
-                        Live
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <ScrollArea className="h-[500px]">
-                    <div className="p-4 space-y-3">
-                      {agentMessages.length === 0 && !isSimulating ? (
-                        <div className="text-center py-12 text-gray-500 dark:text-gray-500">
-                          <Bot className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                          <p>No active recruitment session</p>
-                          <p className="text-sm">Deploy AI agents to see live activity</p>
-                        </div>
-                      ) : (
-                        agentMessages.map((msg, index) => (
-                          <div
-                            key={index}
-                            className="flex gap-3 animate-in slide-in-from-bottom-2 duration-300"
-                            style={{ animationDelay: `${index * 50}ms` }}
-                          >
-                            <Avatar className={`h-8 w-8 ${getAgentColor(msg.agent)}`}>
-                              <AvatarFallback className="text-xs font-bold text-white bg-transparent">
-                                {getAgentAvatar(msg.agent)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 bg-muted/50 rounded-lg p-3 border border-border">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium text-sm text-gray-700 dark:text-gray-300">{msg.agent}</span>
-                                <span className="text-xs text-gray-500 dark:text-gray-500">
-                                  {new Date().toLocaleTimeString()}
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{msg.message}</p>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                      {isSimulating && (
-                        <div className="flex gap-3 animate-pulse">
-                          <Avatar className="h-8 w-8 bg-blue-500">
-                            <AvatarFallback className="text-xs font-bold text-white bg-transparent">
-                              AI
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 bg-muted/50 rounded-lg p-3 border border-border">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
-                              <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                              <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Right Panel - Results & Candidates */}
-            <div className="lg:col-span-3 space-y-6">
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-3">
-                <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
-                  <CardContent className="p-4 text-center">
-                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{sessions?.length || 0}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">Sessions</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
-                  <CardContent className="p-4 text-center">
-                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">{candidates?.length || 0}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">Candidates</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Top Candidates */}
-              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                    Top Matches
-                  </CardTitle>
-                  {displayJobTitle && (
-                    <CardDescription className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                      <Briefcase className="h-3 w-3" />
-                      For: {displayJobTitle}
-                    </CardDescription>
-                  )}
-                  {!displayJobTitle && jobs && jobs.length > 0 && (
-                    <div className="mt-2">
-                      <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                        <SelectTrigger className="bg-gray-200 dark:bg-zinc-800 border-border h-8 text-xs">
-                          <SelectValue placeholder="Filter by job..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-200 dark:bg-zinc-800 border-border">
-                          {jobs.map((job) => (
-                            <SelectItem key={job.id} value={job.id} className="text-xs">
-                              {job.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[300px]">
-                    {topCandidates.length > 0 ? (
-                      <div className="space-y-3">
-                        {topCandidates.slice(0, 5).map((candidate, index) => (
-                          <div
-                            key={candidate.id}
-                            onClick={() => handleCandidateClick(candidate)}
-                            className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border hover:border-blue-500/30 hover:bg-muted transition-all cursor-pointer"
-                            data-testid={`candidate-card-${candidate.id}`}
-                          >
-                            <div className="relative">
-                              <Avatar className="h-10 w-10 bg-gradient-to-br from-teal-500 to-blue-600">
-                                <AvatarFallback className="text-white text-sm font-bold bg-transparent">
-                                  {candidate.fullName?.split(' ').map(n => n[0]).join('') || '?'}
-                                </AvatarFallback>
-                              </Avatar>
-                              {index < 3 && (
-                                <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                                  index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-zinc-400' : 'bg-amber-600'
-                                }`}>
-                                  {index + 1}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{candidate.fullName}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-500 truncate">{candidate.role || 'No role'}</p>
-                            </div>
-                            <div className="text-right">
-                              <Badge className={getMatchColor(candidate.match || 0)}>
-                                {candidate.match || 0}%
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500 dark:text-gray-500">
-                        <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">No candidates yet</p>
-                      </div>
-                    )}
-                  </ScrollArea>
-                  {topCandidates.length > 0 && (
-                    <Link href="/candidates-list">
-                      <Button variant="outline" className="w-full mt-3 border-border hover:bg-muted" data-testid="button-view-all-candidates">
-                        View All Candidates
-                        <ChevronRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Recent Sessions */}
-              <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                    Recent Sessions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[200px]">
-                    {sessions && sessions.length > 0 ? (
-                      <div className="space-y-2">
-                        {sessions.slice(0, 5).map((session) => {
-                          const job = jobs?.find(j => j.id === session.jobId);
-                          return (
-                            <div
-                              key={session.id}
-                              className="p-3 bg-muted/50 rounded-lg border border-border"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="font-medium text-sm truncate flex-1">
-                                  {job?.title || 'Unknown Job'}
-                                </span>
-                                <Badge className={
-                                  session.status === 'Completed' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
-                                  session.status === 'Running' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' :
-                                  'bg-red-500/20 text-red-600 dark:text-red-400'
-                                }>
-                                  {session.status}
+                              {hasResult && (
+                                <Badge className="text-[10px] px-1.5 py-0 bg-green-500/20 text-green-600 dark:text-green-400">
+                                  {sessionResult?.found || 0} found
                                 </Badge>
-                              </div>
-                              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-500">
-                                <span>{session.candidatesFound} found</span>
-                                <span>{session.candidatesAdded} added</span>
-                              </div>
+                              )}
                             </div>
                           );
                         })}
                       </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500 dark:text-gray-500">
-                        <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">No sessions yet</p>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Right: Live Activity Feed */}
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="px-4 py-3 bg-muted/50 border-b border-border">
+                <h3 className="font-medium text-sm flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  Live Agent Activity
+                </h3>
+              </div>
+              <ScrollArea className="h-[400px]">
+                <div className="p-3 space-y-2">
+                  {agentMessages.length === 0 && !isSimulating ? (
+                    <div className="text-center py-12 text-gray-500 dark:text-gray-500">
+                      <Bot className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p className="text-sm">Waiting for agents to start...</p>
+                    </div>
+                  ) : (
+                    agentMessages.map((msg, index) => (
+                      <div
+                        key={index}
+                        className="flex gap-2 animate-in slide-in-from-bottom-2 duration-300"
+                        style={{ animationDelay: `${index * 30}ms` }}
+                      >
+                        <Avatar className={`h-7 w-7 flex-shrink-0 ${getAgentColor(msg.agent)}`}>
+                          <AvatarFallback className="text-[10px] font-bold text-white bg-transparent">
+                            {getAgentAvatar(msg.agent)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 bg-muted/50 rounded-lg p-2 border border-border">
+                          <span className="font-medium text-xs text-gray-700 dark:text-gray-300">{msg.agent}</span>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{msg.message}</p>
+                        </div>
                       </div>
-                    )}
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+                    ))
+                  )}
+                  {isSimulating && (
+                    <div className="flex gap-2 animate-pulse">
+                      <Avatar className="h-7 w-7 bg-blue-500 flex-shrink-0">
+                        <AvatarFallback className="text-[10px] font-bold text-white bg-transparent">AI</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 bg-muted/50 rounded-lg p-2 border border-border">
+                        <div className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" />
+                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
             </div>
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Candidate Details Dialog */}
       <Dialog open={showCandidateDialog} onOpenChange={setShowCandidateDialog}>
