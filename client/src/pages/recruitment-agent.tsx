@@ -451,7 +451,7 @@ export default function RecruitmentAgent() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-foreground">
       <div className="pt-20 pb-8">
         <div className="container mx-auto px-4">
           {/* Header */}
@@ -603,7 +603,7 @@ export default function RecruitmentAgent() {
                               <span className={`text-sm font-mono ${categoryActive ? 'text-blue-600 dark:text-blue-400' : categoryComplete ? 'text-green-600 dark:text-green-400' : 'text-zinc-500'}`}>
                                 {String(idx + 1).padStart(2, '0')}
                               </span>
-                              <span className={`text-sm font-medium ${categoryActive ? 'text-white' : 'text-zinc-400'}`}>
+                              <span className={`text-sm font-medium ${categoryActive ? 'text-foreground' : 'text-zinc-400'}`}>
                                 {category}
                               </span>
                             </div>
@@ -646,7 +646,7 @@ export default function RecruitmentAgent() {
                                   <div className="w-2 h-2 rounded-full bg-zinc-500" />
                                 )}
                               </div>
-                              <span className={`flex-1 text-sm ${isActive ? 'text-white' : hasResult ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                              <span className={`flex-1 text-sm ${isActive ? 'text-foreground' : hasResult ? 'text-zinc-300' : 'text-zinc-500'}`}>
                                 {agent.name}
                               </span>
                               <Badge className={`text-xs px-2 py-0.5 ${
@@ -964,7 +964,7 @@ export default function RecruitmentAgent() {
 
       {/* Candidate Details Dialog */}
       <Dialog open={showCandidateDialog} onOpenChange={setShowCandidateDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-gray-100 dark:bg-zinc-900 border-zinc-800 text-white">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-gray-100 dark:bg-zinc-900 border-zinc-800 text-foreground">
           <DialogHeader className="border-b border-zinc-800 pb-4">
             <DialogTitle className="text-xl flex items-center gap-2">
               <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />

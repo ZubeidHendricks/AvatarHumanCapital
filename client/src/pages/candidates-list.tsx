@@ -360,7 +360,7 @@ AHC Recruiting Team`;
                         {currentJob.title.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h1 className="text-xl font-bold text-white">{currentJob.title}</h1>
+                      <h1 className="text-xl font-bold text-foreground">{currentJob.title}</h1>
                       <p className="text-xs text-muted-foreground">{currentJob.department}</p>
                     </div>
                   </>
@@ -369,7 +369,7 @@ AHC Recruiting Team`;
                     <div className="h-10 w-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
                         A
                     </div>
-                    <h1 className="text-xl font-bold text-white">All Candidates</h1>
+                    <h1 className="text-xl font-bold text-foreground">All Candidates</h1>
                   </>
                 )}
             </div>
@@ -387,7 +387,7 @@ AHC Recruiting Team`;
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
                         <span>EXPECTED SALARY</span>
-                        <span className="text-white">
+                        <span className="text-foreground">
                           {currentJob.salaryMin && currentJob.salaryMax 
                             ? `R ${currentJob.salaryMin.toLocaleString()} - R ${currentJob.salaryMax.toLocaleString()}`
                             : 'Not specified'}
@@ -395,11 +395,11 @@ AHC Recruiting Team`;
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
                         <span>TOTAL CANDIDATES</span>
-                        <span className="text-white">{regularCandidates.length} active</span>
+                        <span className="text-foreground">{regularCandidates.length} active</span>
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
                         <span>SHORTLISTED</span>
-                        <span className="text-white">{shortlistedCandidates.length} candidates</span>
+                        <span className="text-foreground">{shortlistedCandidates.length} candidates</span>
                     </div>
                 </div>
 
@@ -562,7 +562,7 @@ AHC Recruiting Team`;
                   <div className="flex items-center gap-6">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span className="text-muted-foreground">Stage:</span>
-                          <span className="text-white font-medium flex items-center gap-1 cursor-pointer">
+                          <span className="text-foreground font-medium flex items-center gap-1 cursor-pointer">
                               All Stages <ChevronDown className="h-3 w-3" />
                           </span>
                       </div>
@@ -685,7 +685,7 @@ AHC Recruiting Team`;
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <span className="text-muted-foreground">Stage:</span>
-                            <span className="text-white font-medium flex items-center gap-1 cursor-pointer">
+                            <span className="text-foreground font-medium flex items-center gap-1 cursor-pointer">
                                 All Stages <ChevronDown className="h-3 w-3" />
                             </span>
                         </div>
@@ -734,7 +734,7 @@ AHC Recruiting Team`;
                                       </AvatarFallback>
                                   </Avatar>
                                   <div className="min-w-0">
-                                      <h3 className="text-sm font-bold text-white truncate hover:underline">{candidate.fullName || 'Unknown'}</h3>
+                                      <h3 className="text-sm font-bold text-foreground truncate hover:underline">{candidate.fullName || 'Unknown'}</h3>
                                       <p className="text-xs text-muted-foreground truncate">{candidate.role || 'No role specified'}</p>
                                   </div>
                               </Link>

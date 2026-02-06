@@ -186,7 +186,7 @@ export default function IntegritySetup() {
   if (checksLoading || providersLoading) {
     return (
       <div className="container mx-auto py-8 px-4 max-w-6xl flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-600 dark:text-amber-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-teal-600 dark:text-teal-400" />
       </div>
     );
   }
@@ -194,8 +194,8 @@ export default function IntegritySetup() {
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <Shield className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+        <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+          <Shield className="h-8 w-8 text-teal-600 dark:text-teal-400" />
           Integrity Setup
         </h1>
         <p className="text-muted-foreground mt-2">
@@ -220,14 +220,14 @@ export default function IntegritySetup() {
                 data-testid={`check-item-${check.id}`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${check.enabled ? 'bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-zinc-700 text-zinc-400'}`}>
+                  <div className={`p-2 rounded-lg ${check.enabled ? 'bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-gray-200 dark:bg-zinc-700 text-gray-400 dark:text-zinc-400'}`}>
                     {CHECK_ICONS[check.id]}
                   </div>
                   <div>
-                    <h4 className="font-medium text-white">{check.name}</h4>
+                    <h4 className="font-medium text-foreground">{check.name}</h4>
                     <p className="text-sm text-muted-foreground">{check.description}</p>
                     {check.cost && (
-                      <Badge variant="outline" className="mt-1 text-xs border-zinc-600">
+                      <Badge variant="outline" className="mt-1 text-xs border-border">
                         Est. cost: {check.cost}
                       </Badge>
                     )}
@@ -278,7 +278,7 @@ export default function IntegritySetup() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-medium text-white">{provider.name}</h4>
+                    <h4 className="font-medium text-foreground">{provider.name}</h4>
                     {provider.connected && (
                       <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
                         Connected

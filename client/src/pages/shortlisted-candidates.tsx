@@ -142,7 +142,7 @@ export default function ShortlistedCandidates() {
                 <Star className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Shortlisted Candidates</h1>
+                <h1 className="text-xl font-bold text-foreground">Shortlisted Candidates</h1>
                 <p className="text-xs text-muted-foreground">Top talent ready for next steps</p>
               </div>
             </div>
@@ -151,13 +151,13 @@ export default function ShortlistedCandidates() {
             <div className="space-y-3">
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>TOTAL SHORTLISTED</span>
-                <span className="text-white font-medium">{shortlistedCandidates.length} candidates</span>
+                <span className="text-foreground font-medium">{shortlistedCandidates.length} candidates</span>
               </div>
             </div>
 
             {/* Info Box */}
             <div className="bg-white/5 border border-border dark:border-white/10 rounded-lg p-4 space-y-2">
-              <p className="text-sm font-medium text-white">About Shortlisted</p>
+              <p className="text-sm font-medium text-foreground">About Shortlisted</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 These candidates have passed initial screening and are ready for interviews or offers. 
                 Schedule AI interviews or move them forward in the hiring process.
@@ -211,7 +211,7 @@ export default function ShortlistedCandidates() {
                       </Avatar>
                       
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-white truncate" data-testid={`text-candidate-name-${candidate.id}`}>
+                        <p className="font-semibold text-foreground truncate" data-testid={`text-candidate-name-${candidate.id}`}>
                           {candidate.fullName}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">

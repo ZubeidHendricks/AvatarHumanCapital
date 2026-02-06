@@ -679,7 +679,7 @@ BENEFITS:
         <div className="space-y-4">
           <div className="rounded-lg bg-gradient-to-r from-primary/20 to-blue-500/20 border border-primary/20 p-4 flex items-center justify-between">
             <div>
-              <h3 className="text-md font-bold flex items-center gap-2 text-white">
+              <h3 className="text-md font-bold flex items-center gap-2 text-foreground">
                 <Sparkles className="w-4 h-4 text-primary" />
                 Need to find candidates fast?
               </h3>

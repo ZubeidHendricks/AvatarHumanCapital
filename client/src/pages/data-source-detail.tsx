@@ -176,7 +176,7 @@ export default function DataSourceDetailPage() {
           <Card className="bg-gray-900/50 border-gray-800">
             <CardContent className="py-12 text-center">
               <Database className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">Data Source Not Found</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">Data Source Not Found</h3>
               <p className="text-gray-400 mb-4">The requested data source could not be found.</p>
               <Link href="/data-sources">
                 <Button className="bg-blue-600 hover:bg-blue-700">
@@ -203,7 +203,7 @@ export default function DataSourceDetailPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-white flex items-center gap-3" data-testid="page-title">
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-3" data-testid="page-title">
                 <div className="p-2 bg-blue-500/10 rounded-lg">
                   <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
@@ -250,7 +250,7 @@ export default function DataSourceDetailPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Health Score</p>
-                  <p className="text-2xl font-bold text-white" data-testid="stat-health">{source.healthScore || 0}%</p>
+                  <p className="text-2xl font-bold text-foreground" data-testid="stat-health">{source.healthScore || 0}%</p>
                 </div>
                 <div className="p-3 bg-blue-500/10 rounded-lg">
                   <Activity className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -265,7 +265,7 @@ export default function DataSourceDetailPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Last Sync</p>
-                  <p className="text-lg font-medium text-white" data-testid="stat-last-sync">
+                  <p className="text-lg font-medium text-foreground" data-testid="stat-last-sync">
                     {source.lastSyncAt
                       ? formatDistanceToNow(new Date(source.lastSyncAt), { addSuffix: true })
                       : "Never"}
@@ -283,7 +283,7 @@ export default function DataSourceDetailPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Sync Frequency</p>
-                  <p className="text-lg font-medium text-white capitalize" data-testid="stat-frequency">
+                  <p className="text-lg font-medium text-foreground capitalize" data-testid="stat-frequency">
                     {source.refreshSchedule || "Manual"}
                   </p>
                 </div>
@@ -299,7 +299,7 @@ export default function DataSourceDetailPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Linked KPIs</p>
-                  <p className="text-2xl font-bold text-white" data-testid="stat-kpis">{linkedKpis.length}</p>
+                  <p className="text-2xl font-bold text-foreground" data-testid="stat-kpis">{linkedKpis.length}</p>
                 </div>
                 <div className="p-3 bg-teal-600/10 rounded-lg">
                   <Target className="h-6 w-6 text-teal-700 dark:text-teal-400" />
@@ -339,7 +339,7 @@ export default function DataSourceDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="bg-gray-900/50 border-gray-800">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+                  <CardTitle className="text-foreground flex items-center gap-2">
                     <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     Source Details
                   </CardTitle>
@@ -348,37 +348,37 @@ export default function DataSourceDetailPage() {
                   {source.description && (
                     <div>
                       <p className="text-gray-400 text-sm">Description</p>
-                      <p className="text-white">{source.description}</p>
+                      <p className="text-foreground">{source.description}</p>
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-gray-400 text-sm">Type</p>
-                      <p className="text-white capitalize">{source.type.replace(/_/g, " ")}</p>
+                      <p className="text-foreground capitalize">{source.type.replace(/_/g, " ")}</p>
                     </div>
                     <div>
                       <p className="text-gray-400 text-sm">Category</p>
-                      <p className="text-white">{source.category || "General"}</p>
+                      <p className="text-foreground">{source.category || "General"}</p>
                     </div>
                     <div>
                       <p className="text-gray-400 text-sm">Connection Type</p>
-                      <p className="text-white capitalize">{source.connectionType || "N/A"}</p>
+                      <p className="text-foreground capitalize">{source.connectionType || "N/A"}</p>
                     </div>
                     <div>
                       <p className="text-gray-400 text-sm">Auth Type</p>
-                      <p className="text-white capitalize">{source.authType?.replace(/_/g, " ") || "N/A"}</p>
+                      <p className="text-foreground capitalize">{source.authType?.replace(/_/g, " ") || "N/A"}</p>
                     </div>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Created</p>
-                    <p className="text-white">{format(new Date(source.createdAt), "MMMM d, yyyy 'at' h:mm a")}</p>
+                    <p className="text-foreground">{format(new Date(source.createdAt), "MMMM d, yyyy 'at' h:mm a")}</p>
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="bg-gray-900/50 border-gray-800">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+                  <CardTitle className="text-foreground flex items-center gap-2">
                     <Activity className="h-5 w-5 text-green-600 dark:text-green-400" />
                     Last Sync Status
                   </CardTitle>
@@ -392,12 +392,12 @@ export default function DataSourceDetailPage() {
                       </div>
                       <div>
                         <p className="text-gray-400 text-sm">Time</p>
-                        <p className="text-white">{format(new Date(source.lastSyncAt), "MMMM d, yyyy 'at' h:mm a")}</p>
+                        <p className="text-foreground">{format(new Date(source.lastSyncAt), "MMMM d, yyyy 'at' h:mm a")}</p>
                       </div>
                       {source.lastSyncMessage && (
                         <div>
                           <p className="text-gray-400 text-sm">Message</p>
-                          <p className="text-white">{source.lastSyncMessage}</p>
+                          <p className="text-foreground">{source.lastSyncMessage}</p>
                         </div>
                       )}
                     </>
@@ -423,7 +423,7 @@ export default function DataSourceDetailPage() {
           <TabsContent value="history" className="space-y-4">
             <Card className="bg-gray-900/50 border-gray-800">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="text-foreground flex items-center gap-2">
                   <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   Sync History
                 </CardTitle>
@@ -448,7 +448,7 @@ export default function DataSourceDetailPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             {getSyncStatusBadge(entry.status)}
-                            <span className="text-white">
+                            <span className="text-foreground">
                               {format(new Date(entry.startedAt), "MMM d, yyyy 'at' h:mm a")}
                             </span>
                           </div>
@@ -461,7 +461,7 @@ export default function DataSourceDetailPage() {
                         {(entry.recordsProcessed || entry.recordsCreated || entry.recordsUpdated) && (
                           <div className="mt-3 flex gap-6 text-sm">
                             <span className="text-gray-400">
-                              Processed: <span className="text-white">{entry.recordsProcessed || 0}</span>
+                              Processed: <span className="text-foreground">{entry.recordsProcessed || 0}</span>
                             </span>
                             <span className="text-gray-400">
                               Created: <span className="text-green-600 dark:text-green-400">{entry.recordsCreated || 0}</span>
@@ -485,7 +485,7 @@ export default function DataSourceDetailPage() {
           <TabsContent value="kpis" className="space-y-4">
             <Card className="bg-gray-900/50 border-gray-800">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="text-foreground flex items-center gap-2">
                   <Target className="h-5 w-5 text-teal-700 dark:text-teal-400" />
                   Linked KPI Templates
                 </CardTitle>
@@ -515,7 +515,7 @@ export default function DataSourceDetailPage() {
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <h4 className="text-white font-medium">{kpi.name}</h4>
+                            <h4 className="text-foreground font-medium">{kpi.name}</h4>
                             <p className="text-gray-400 text-sm">{kpi.description}</p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -528,11 +528,11 @@ export default function DataSourceDetailPage() {
                         {kpi.sourceFieldMapping && (
                           <div className="mt-3 flex items-center gap-4 text-sm">
                             <span className="text-gray-400">
-                              Field: <span className="text-white font-mono">{kpi.sourceFieldMapping}</span>
+                              Field: <span className="text-foreground font-mono">{kpi.sourceFieldMapping}</span>
                             </span>
                             {kpi.aggregationMethod && (
                               <span className="text-gray-400">
-                                Aggregation: <span className="text-white capitalize">{kpi.aggregationMethod}</span>
+                                Aggregation: <span className="text-foreground capitalize">{kpi.aggregationMethod}</span>
                               </span>
                             )}
                           </div>
@@ -549,7 +549,7 @@ export default function DataSourceDetailPage() {
             <TabsContent value="entry" className="space-y-4">
               <Card className="bg-gray-900/50 border-gray-800">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+                  <CardTitle className="text-foreground flex items-center gap-2">
                     <Edit2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     Manual Data Entry
                   </CardTitle>
@@ -582,7 +582,7 @@ export default function DataSourceDetailPage() {
                           >
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
-                                <Label className="text-white font-medium">{kpi.name}</Label>
+                                <Label className="text-foreground font-medium">{kpi.name}</Label>
                                 <p className="text-gray-400 text-sm mt-1">{kpi.description}</p>
                                 <div className="flex items-center gap-4 mt-2 text-sm flex-wrap">
                                   <span className="text-gray-500">
@@ -657,7 +657,7 @@ export default function DataSourceDetailPage() {
           <TabsContent value="settings" className="space-y-4">
             <Card className="bg-gray-900/50 border-gray-800">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="text-foreground flex items-center gap-2">
                   <Settings className="h-5 w-5 text-gray-400" />
                   Configuration
                 </CardTitle>

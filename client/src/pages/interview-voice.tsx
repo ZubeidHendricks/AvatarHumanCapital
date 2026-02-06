@@ -230,7 +230,7 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
       <div className="min-h-screen bg-black text-foreground flex items-center justify-center">
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Connection Error</h2>
-          <p className="text-white/70">Unable to connect to Hume AI. Please check your configuration.</p>
+          <p className="text-foreground/70">Unable to connect to Hume AI. Please check your configuration.</p>
           <Link href="/hr-dashboard">
             <Button variant="outline">Return to Dashboard</Button>
           </Link>
@@ -249,8 +249,8 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
           </div>
           <div>
-            <h1 className="font-medium text-sm text-white/90">Voice Interview Session</h1>
-            <p className="text-xs text-white/50">Powered by Hume AI</p>
+            <h1 className="font-medium text-sm text-foreground/90">Voice Interview Session</h1>
+            <p className="text-xs text-foreground/50">Powered by Hume AI</p>
           </div>
         </div>
         <Badge variant="outline" className="bg-white/5 border-border dark:border-white/10 text-white/70 px-3 py-1">
@@ -271,8 +271,8 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
               <Mic className="w-12 h-12 text-white" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-3xl font-bold text-white">Ready for your interview?</h2>
-              <p className="text-white/50 max-w-md mx-auto">
+              <h2 className="text-3xl font-bold text-foreground">Ready for your interview?</h2>
+              <p className="text-foreground/50 max-w-md mx-auto">
                 This is an AI-led voice interview. Speak naturally as if you were talking to a person.
               </p>
             </div>
@@ -309,7 +309,7 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
                     transition={{ duration: 0.5 }}
                     className={`text-xl md:text-2xl font-medium leading-relaxed ${
                       transcripts[transcripts.length - 1].role === "ai" 
-                        ? "text-white" 
+                        ? "text-foreground" 
                         : "text-blue-300"
                     }`}
                   >

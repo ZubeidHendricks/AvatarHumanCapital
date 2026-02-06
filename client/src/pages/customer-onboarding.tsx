@@ -99,7 +99,7 @@ export default function CustomerOnboarding() {
         <div className="w-full max-w-3xl mb-12">
           <div className="flex justify-between mb-4">
             {["Company Profile", "Branding & Domain", "Module Selection", "Integrations"].map((label, i) => (
-              <div key={i} className={`flex flex-col items-center gap-2 ${step > i + 1 ? "text-primary" : step === i + 1 ? "text-white" : "text-muted-foreground"}`}>
+              <div key={i} className={`flex flex-col items-center gap-2 ${step > i + 1 ? "text-primary" : step === i + 1 ? "text-foreground" : "text-muted-foreground"}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors ${
                   step > i + 1 ? "bg-primary border-primary text-black" : 
                   step === i + 1 ? "border-primary text-primary" : 

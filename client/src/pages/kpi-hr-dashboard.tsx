@@ -787,7 +787,7 @@ export default function KPIHRDashboard() {
       <main className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3" data-testid="page-title">
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3" data-testid="page-title">
               <BarChart3 className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               HR Performance Dashboard
             </h1>
@@ -845,7 +845,7 @@ export default function KPIHRDashboard() {
         {/* Customizable Charts Section - At Top */}
         <Card className="mb-8 bg-gray-900/50 border-border dark:border-white/10">
           <CardHeader>
-            <CardTitle className="text-xl text-white">Custom Analytics</CardTitle>
+            <CardTitle className="text-xl text-foreground">Custom Analytics</CardTitle>
             <CardDescription className="text-gray-400">
               Build your own charts by selecting data sources and fields
             </CardDescription>
@@ -898,7 +898,7 @@ export default function KPIHRDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-400">Current Cycle</p>
-                  <p className="text-xl font-semibold text-white">{selectedCycle.name}</p>
+                  <p className="text-xl font-semibold text-foreground">{selectedCycle.name}</p>
                   <p className="text-sm text-gray-500">
                     {format(new Date(selectedCycle.startDate), "MMM d, yyyy")} - {format(new Date(selectedCycle.endDate), "MMM d, yyyy")}
                   </p>
@@ -922,7 +922,7 @@ export default function KPIHRDashboard() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-white">Employee Reviews</CardTitle>
+                <CardTitle className="text-foreground">Employee Reviews</CardTitle>
                 <CardDescription>View and manage individual employee performance reviews</CardDescription>
               </div>
               <div className="flex items-center gap-3">
@@ -962,7 +962,7 @@ export default function KPIHRDashboard() {
             ) : filteredSubmissions.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No Reviews Found</h3>
+                <h3 className="text-xl font-semibold text-foreground mb-2">No Reviews Found</h3>
                 <p className="text-gray-400">
                   {searchTerm || statusFilter !== "all" 
                     ? "No employees match your search criteria" 
@@ -1011,7 +1011,7 @@ export default function KPIHRDashboard() {
                             <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-white">
+                            <p className="font-medium text-foreground">
                               {submission.employee?.name || `Employee #${submission.employeeId}`}
                             </p>
                             <p className="text-sm text-gray-500">{submission.employee?.email}</p>

@@ -267,7 +267,7 @@ export default function InterviewInvite() {
         <Card className="w-full max-w-md bg-card/80 backdrop-blur border-border dark:border-white/10">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="h-12 w-12 text-red-600 dark:text-red-400 mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">Unable to Load Interview</h2>
+            <h2 className="text-xl font-bold text-foreground mb-2">Unable to Load Interview</h2>
             <p className="text-muted-foreground text-center">{errorMessage}</p>
           </CardContent>
         </Card>
@@ -287,7 +287,7 @@ export default function InterviewInvite() {
             >
               <CheckCircle2 className="h-16 w-16 text-green-600 dark:text-green-400 mb-4" />
             </motion.div>
-            <h2 className="text-2xl font-bold text-white mb-2">Interview Complete!</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Interview Complete!</h2>
             <p className="text-muted-foreground text-center mb-4">
               Thank you for completing the interview. The recruiter will review your responses and be in touch soon.
             </p>
@@ -305,7 +305,7 @@ export default function InterviewInvite() {
       <header className="p-4 border-b border-border dark:border-white/10 bg-background/50 backdrop-blur">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-white">Voice Interview</h1>
+            <h1 className="text-lg font-bold text-foreground">Voice Interview</h1>
             {candidateName && <p className="text-sm text-muted-foreground">{candidateName}</p>}
           </div>
           {isConnected && (
@@ -320,7 +320,7 @@ export default function InterviewInvite() {
         {state === "ready" ? (
           <Card className="flex-1 bg-card/50 backdrop-blur border-border dark:border-white/10 flex flex-col items-center justify-center">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl text-white">Ready to Begin</CardTitle>
+              <CardTitle className="text-2xl text-foreground">Ready to Begin</CardTitle>
               <CardDescription className="text-muted-foreground max-w-sm">
                 You'll have a conversation with our AI interviewer. Speak naturally and take your time with responses.
               </CardDescription>
@@ -403,7 +403,7 @@ export default function InterviewInvite() {
                           className={`max-w-[85%] rounded-2xl px-4 py-2 ${
                             transcript.role === 'user'
                               ? 'bg-blue-600 text-white'
-                              : 'bg-card border border-border dark:border-white/10 text-white'
+                              : 'bg-card border border-border dark:border-white/10 text-foreground'
                           }`}
                         >
                           <p className="text-sm">{transcript.text}</p>

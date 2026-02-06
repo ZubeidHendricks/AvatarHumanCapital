@@ -182,7 +182,7 @@ export default function TenantManagementPage() {
 
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
               <Building2 className="w-8 h-8 text-primary" />
               Tenant Management
             </h1>
@@ -196,16 +196,16 @@ export default function TenantManagementPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Card className="bg-black/40 border-border dark:border-white/10">
             <CardHeader>
-              <CardTitle className="text-white text-sm font-medium">Total Tenants</CardTitle>
+              <CardTitle className="text-foreground text-sm font-medium">Total Tenants</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-white">{tenants.length}</p>
+              <p className="text-3xl font-bold text-foreground">{tenants.length}</p>
             </CardContent>
           </Card>
 
           <Card className="bg-black/40 border-border dark:border-white/10">
             <CardHeader>
-              <CardTitle className="text-white text-sm font-medium">Active Subscriptions</CardTitle>
+              <CardTitle className="text-foreground text-sm font-medium">Active Subscriptions</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-green-500">
@@ -216,7 +216,7 @@ export default function TenantManagementPage() {
 
           <Card className="bg-black/40 border-border dark:border-white/10">
             <CardHeader>
-              <CardTitle className="text-white text-sm font-medium">Trials</CardTitle>
+              <CardTitle className="text-foreground text-sm font-medium">Trials</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-yellow-500">
@@ -229,7 +229,7 @@ export default function TenantManagementPage() {
         {/* Tenants Table */}
         <Card className="bg-black/40 border-border dark:border-white/10">
           <CardHeader>
-            <CardTitle className="text-white">All Tenants</CardTitle>
+            <CardTitle className="text-foreground">All Tenants</CardTitle>
             <CardDescription>Manage tenant subscriptions and access</CardDescription>
           </CardHeader>
           <CardContent>
@@ -246,19 +246,19 @@ export default function TenantManagementPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border dark:border-white/10">
-                      <TableHead className="text-white">Company</TableHead>
-                      <TableHead className="text-white">Subdomain</TableHead>
-                      <TableHead className="text-white">Status</TableHead>
-                      <TableHead className="text-white">Tier</TableHead>
-                      <TableHead className="text-white">Next Payment</TableHead>
-                      <TableHead className="text-white">Modules</TableHead>
-                      <TableHead className="text-white text-right">Actions</TableHead>
+                      <TableHead className="text-foreground">Company</TableHead>
+                      <TableHead className="text-foreground">Subdomain</TableHead>
+                      <TableHead className="text-foreground">Status</TableHead>
+                      <TableHead className="text-foreground">Tier</TableHead>
+                      <TableHead className="text-foreground">Next Payment</TableHead>
+                      <TableHead className="text-foreground">Modules</TableHead>
+                      <TableHead className="text-foreground text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {tenants.map((tenant) => (
                       <TableRow key={tenant.id} className="border-border dark:border-white/10">
-                        <TableCell className="font-medium text-white">
+                        <TableCell className="font-medium text-foreground">
                           {tenant.companyName}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
@@ -313,7 +313,7 @@ export default function TenantManagementPage() {
             {/* Subscription Management */}
             <Card className="bg-black/40 border-border dark:border-white/10">
               <CardHeader>
-                <CardTitle className="text-white flex items-center justify-between">
+                <CardTitle className="text-foreground flex items-center justify-between">
                   <span>Subscription Details</span>
                   <Button
                     variant="outline"
@@ -336,13 +336,13 @@ export default function TenantManagementPage() {
                   </div>
                   <div>
                     <Label className="text-muted-foreground text-xs">Tier</Label>
-                    <p className="text-white mt-1">
+                    <p className="text-foreground mt-1">
                       {(selectedTenant.subscriptionTier || "free").toUpperCase()}
                     </p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground text-xs">Started</Label>
-                    <p className="text-white mt-1">
+                    <p className="text-foreground mt-1">
                       {selectedTenant.subscriptionStartedAt
                         ? format(new Date(selectedTenant.subscriptionStartedAt), "MMM dd, yyyy")
                         : "-"}
@@ -350,7 +350,7 @@ export default function TenantManagementPage() {
                   </div>
                   <div>
                     <Label className="text-muted-foreground text-xs">Next Payment</Label>
-                    <p className="text-white mt-1">
+                    <p className="text-foreground mt-1">
                       {selectedTenant.nextPaymentDate
                         ? format(new Date(selectedTenant.nextPaymentDate), "MMM dd, yyyy")
                         : "-"}
@@ -361,7 +361,7 @@ export default function TenantManagementPage() {
                 <Separator className="bg-white/10" />
 
                 <div>
-                  <Label className="text-white mb-3 block">Enabled Modules</Label>
+                  <Label className="text-foreground mb-3 block">Enabled Modules</Label>
                   <div className="space-y-2">
                     {[
                       { key: "recruitment", label: "Recruitment & Selection" },
@@ -373,7 +373,7 @@ export default function TenantManagementPage() {
                         key={module.key}
                         className="flex items-center justify-between p-3 rounded-lg bg-black/20 border border-border dark:border-white/5"
                       >
-                        <span className="text-white text-sm">{module.label}</span>
+                        <span className="text-foreground text-sm">{module.label}</span>
                         <Switch
                           checked={(selectedTenant.modulesEnabled as any)?.[module.key] || false}
                           onCheckedChange={(checked) => {
@@ -395,7 +395,7 @@ export default function TenantManagementPage() {
             {/* Payment History */}
             <Card className="bg-black/40 border-border dark:border-white/10">
               <CardHeader>
-                <CardTitle className="text-white flex items-center justify-between">
+                <CardTitle className="text-foreground flex items-center justify-between">
                   <span>Payment History</span>
                   <Button
                     variant="outline"
@@ -427,7 +427,7 @@ export default function TenantManagementPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <DollarSign className="w-4 h-4 text-green-500" />
-                            <span className="text-white font-medium">
+                            <span className="text-foreground font-medium">
                               {formatCurrency(payment.amount)}
                             </span>
                             {getPaymentStatusBadge(payment.status)}
@@ -449,7 +449,7 @@ export default function TenantManagementPage() {
                     <Separator className="my-4 bg-white/10" />
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground text-sm">Total Revenue</span>
-                      <span className="text-white font-bold text-lg">
+                      <span className="text-foreground font-bold text-lg">
                         {formatCurrency(payments.filter(p => p.status === "completed").reduce((sum, p) => sum + p.amount, 0))}
                       </span>
                     </div>
@@ -464,7 +464,7 @@ export default function TenantManagementPage() {
         <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
           <DialogContent className="bg-zinc-950 border-border dark:border-white/10">
             <DialogHeader>
-              <DialogTitle className="text-white">Record Payment</DialogTitle>
+              <DialogTitle className="text-foreground">Record Payment</DialogTitle>
               <DialogDescription>
                 Record a payment for {selectedTenant?.companyName}
               </DialogDescription>
@@ -485,7 +485,7 @@ export default function TenantManagementPage() {
             >
               <div className="space-y-4 py-4">
                 <div>
-                  <Label htmlFor="amount" className="text-white">Amount (R)</Label>
+                  <Label htmlFor="amount" className="text-foreground">Amount (R)</Label>
                   <Input
                     id="amount"
                     name="amount"
@@ -498,7 +498,7 @@ export default function TenantManagementPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="status" className="text-white">Status</Label>
+                  <Label htmlFor="status" className="text-foreground">Status</Label>
                   <Select name="status" defaultValue="completed">
                     <SelectTrigger className="bg-black/40 border-border dark:border-white/10 text-white">
                       <SelectValue />
@@ -512,7 +512,7 @@ export default function TenantManagementPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="paymentMethod" className="text-white">Payment Method</Label>
+                  <Label htmlFor="paymentMethod" className="text-foreground">Payment Method</Label>
                   <Select name="paymentMethod" defaultValue="bank_transfer">
                     <SelectTrigger className="bg-black/40 border-border dark:border-white/10 text-white">
                       <SelectValue />
@@ -526,7 +526,7 @@ export default function TenantManagementPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="transactionId" className="text-white">Transaction ID (Optional)</Label>
+                  <Label htmlFor="transactionId" className="text-foreground">Transaction ID (Optional)</Label>
                   <Input
                     id="transactionId"
                     name="transactionId"
@@ -536,7 +536,7 @@ export default function TenantManagementPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="description" className="text-white">Description</Label>
+                  <Label htmlFor="description" className="text-foreground">Description</Label>
                   <Textarea
                     id="description"
                     name="description"
@@ -576,7 +576,7 @@ export default function TenantManagementPage() {
         <Dialog open={showSubscriptionDialog} onOpenChange={setShowSubscriptionDialog}>
           <DialogContent className="bg-zinc-950 border-border dark:border-white/10">
             <DialogHeader>
-              <DialogTitle className="text-white">Update Subscription</DialogTitle>
+              <DialogTitle className="text-foreground">Update Subscription</DialogTitle>
               <DialogDescription>
                 Update subscription details for {selectedTenant?.companyName}
               </DialogDescription>
@@ -597,7 +597,7 @@ export default function TenantManagementPage() {
             >
               <div className="space-y-4 py-4">
                 <div>
-                  <Label htmlFor="subscriptionStatus" className="text-white">Status</Label>
+                  <Label htmlFor="subscriptionStatus" className="text-foreground">Status</Label>
                   <Select name="subscriptionStatus" defaultValue={selectedTenant?.subscriptionStatus || "trial"}>
                     <SelectTrigger className="bg-black/40 border-border dark:border-white/10 text-white">
                       <SelectValue />
@@ -612,7 +612,7 @@ export default function TenantManagementPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="subscriptionTier" className="text-white">Tier</Label>
+                  <Label htmlFor="subscriptionTier" className="text-foreground">Tier</Label>
                   <Select name="subscriptionTier" defaultValue={selectedTenant?.subscriptionTier || "free"}>
                     <SelectTrigger className="bg-black/40 border-border dark:border-white/10 text-white">
                       <SelectValue />
@@ -627,7 +627,7 @@ export default function TenantManagementPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="nextPaymentDate" className="text-white">Next Payment Date</Label>
+                  <Label htmlFor="nextPaymentDate" className="text-foreground">Next Payment Date</Label>
                   <Input
                     id="nextPaymentDate"
                     name="nextPaymentDate"
@@ -638,7 +638,7 @@ export default function TenantManagementPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="billingEmail" className="text-white">Billing Email</Label>
+                  <Label htmlFor="billingEmail" className="text-foreground">Billing Email</Label>
                   <Input
                     id="billingEmail"
                     name="billingEmail"

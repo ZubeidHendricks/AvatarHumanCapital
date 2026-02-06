@@ -223,7 +223,7 @@ export default function RecruitmentDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-foreground">
       
       <main className="pt-24 pb-12 px-6 container mx-auto">
         {/* Header */}
@@ -243,7 +243,7 @@ export default function RecruitmentDashboard() {
         <div className="mb-8">
           <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border dark:border-white/10">
             <CardHeader>
-              <CardTitle className="text-xl text-white">Custom Analytics</CardTitle>
+              <CardTitle className="text-xl text-foreground">Custom Analytics</CardTitle>
               <CardDescription className="text-gray-400">
                 Build your own charts by selecting data sources and fields
               </CardDescription>
@@ -266,10 +266,10 @@ export default function RecruitmentDashboard() {
             onClick={() => setSelectedModal('revenue')}
           >
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-normal text-white/80">Total Revenue YTD</CardTitle>
+              <CardTitle className="text-xs font-normal text-foreground/80">Total Revenue YTD</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">R{(totalRevenue / 1000000).toFixed(2)}m</div>
+              <div className="text-2xl font-bold text-foreground">R{(totalRevenue / 1000000).toFixed(2)}m</div>
             </CardContent>
           </Card>
 
@@ -278,10 +278,10 @@ export default function RecruitmentDashboard() {
             onClick={() => setSelectedModal('jobs')}
           >
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-normal text-white/80">Active Job Searches</CardTitle>
+              <CardTitle className="text-xs font-normal text-foreground/80">Active Job Searches</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {loadingJobs ? "—" : activeJobs.length}
               </div>
             </CardContent>
@@ -292,10 +292,10 @@ export default function RecruitmentDashboard() {
             onClick={() => setSelectedModal('candidates')}
           >
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-normal text-white/80">Total Candidates</CardTitle>
+              <CardTitle className="text-xs font-normal text-foreground/80">Total Candidates</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{totalCandidates}</div>
+              <div className="text-2xl font-bold text-foreground">{totalCandidates}</div>
             </CardContent>
           </Card>
 
@@ -304,10 +304,10 @@ export default function RecruitmentDashboard() {
             onClick={() => setSelectedModal('shortlisted')}
           >
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-normal text-white/80">Total Shortlisted</CardTitle>
+              <CardTitle className="text-xs font-normal text-foreground/80">Total Shortlisted</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{totalShortlisted}</div>
+              <div className="text-2xl font-bold text-foreground">{totalShortlisted}</div>
             </CardContent>
           </Card>
 
@@ -316,10 +316,10 @@ export default function RecruitmentDashboard() {
             onClick={() => setSelectedModal('placements')}
           >
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-normal text-white/80">Total Placements</CardTitle>
+              <CardTitle className="text-xs font-normal text-foreground/80">Total Placements</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{totalHired}</div>
+              <div className="text-2xl font-bold text-foreground">{totalHired}</div>
             </CardContent>
           </Card>
 
@@ -328,10 +328,10 @@ export default function RecruitmentDashboard() {
             onClick={() => setSelectedModal('lost')}
           >
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-normal text-white/80">Total Lost</CardTitle>
+              <CardTitle className="text-xs font-normal text-foreground/80">Total Lost</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{totalLost}</div>
+              <div className="text-2xl font-bold text-foreground">{totalLost}</div>
             </CardContent>
           </Card>
         </div>

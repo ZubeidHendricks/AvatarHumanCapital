@@ -106,7 +106,7 @@ This is an initial screening interview to assess the candidate's potential fit f
             <Sparkles className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-white">Persona Management</h1>
+            <h1 className="text-3xl font-bold text-foreground">Persona Management</h1>
             <p className="text-gray-400">Create custom AI personas for Tavus video interviews</p>
           </div>
         </div>
@@ -144,7 +144,7 @@ This is an initial screening interview to assess the candidate's potential fit f
         <div className="grid gap-6">
           <Card className="bg-black/40 border-border dark:border-white/10">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
+              <CardTitle className="flex items-center gap-2 text-foreground">
                 <List className="h-5 w-5" />
                 Your Existing Personas
               </CardTitle>
@@ -163,7 +163,7 @@ This is an initial screening interview to assess the candidate's potential fit f
                 </div>
               ) : personasData?.personas && personasData.personas.length > 0 ? (
                 <div className="space-y-2">
-                  <Label className="text-white">Select a Persona</Label>
+                  <Label className="text-foreground">Select a Persona</Label>
                   <Select value={selectedPersonaId} onValueChange={handleSelectPersona}>
                     <SelectTrigger className="bg-black/40 border-border dark:border-white/10 text-white">
                       <SelectValue placeholder="Choose a persona to edit..." />
@@ -173,7 +173,7 @@ This is an initial screening interview to assess the candidate's potential fit f
                         <SelectItem 
                           key={persona.persona_id} 
                           value={persona.persona_id}
-                          className="text-white hover:bg-white/10 focus:bg-white/10"
+                          className="text-foreground hover:bg-white/10 focus:bg-white/10"
                         >
                           {persona.persona_name || persona.persona_id}
                         </SelectItem>
@@ -192,7 +192,7 @@ This is an initial screening interview to assess the candidate's potential fit f
 
           <Card className="bg-black/40 border-border dark:border-white/10">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
+              <CardTitle className="flex items-center gap-2 text-foreground">
                 <User className="h-5 w-5" />
                 Create New Persona
               </CardTitle>
@@ -215,7 +215,7 @@ This is an initial screening interview to assess the candidate's potential fit f
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="personaName" className="text-white">
+                  <Label htmlFor="personaName" className="text-foreground">
                     Persona Name <span className="text-gray-500 text-sm">(optional)</span>
                   </Label>
                   <Input
@@ -230,7 +230,7 @@ This is an initial screening interview to assess the candidate's potential fit f
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="replicaId" className="text-white">
+                  <Label htmlFor="replicaId" className="text-foreground">
                     Replica ID <span className="text-gray-500 text-sm">(optional)</span>
                   </Label>
                   <Input
@@ -245,7 +245,7 @@ This is an initial screening interview to assess the candidate's potential fit f
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="systemPrompt" className="text-white">
+                  <Label htmlFor="systemPrompt" className="text-foreground">
                     System Prompt <span className="text-red-500">*</span>
                   </Label>
                   <Textarea
@@ -263,7 +263,7 @@ This is an initial screening interview to assess the candidate's potential fit f
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="context" className="text-white">
+                  <Label htmlFor="context" className="text-foreground">
                     Context <span className="text-gray-500 text-sm">(optional)</span>
                   </Label>
                   <Textarea

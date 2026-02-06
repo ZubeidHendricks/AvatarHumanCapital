@@ -186,7 +186,7 @@ export default function AdminDashboard() {
 
     return (
       <div className="p-4 rounded-lg bg-muted dark:bg-white/5 border border-border">
-        <Label className="text-sm font-semibold text-gray-900 dark:text-white mb-2 block">
+        <Label className="text-sm font-semibold text-foreground mb-2 block">
           {label}
         </Label>
         <p className="text-xs text-muted-foreground mb-3">
@@ -270,7 +270,7 @@ export default function AdminDashboard() {
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2" data-testid="text-page-title">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2" data-testid="text-page-title">
                 <Settings className="w-6 h-6 md:w-8 md:h-8 text-primary" />
                 System Administration
               </h1>
@@ -295,7 +295,7 @@ export default function AdminDashboard() {
         {/* Feature Toggles */}
         <Card className="bg-card border-border" data-testid="card-feature-toggles">
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+            <CardTitle className="text-foreground flex items-center gap-2">
               <Settings className="w-5 h-5 text-primary" />
               Feature Toggles
             </CardTitle>
@@ -327,7 +327,7 @@ export default function AdminDashboard() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <Label htmlFor={feature.key} className="text-sm font-semibold text-gray-900 dark:text-white">
+                            <Label htmlFor={feature.key} className="text-sm font-semibold text-foreground">
                               {feature.label}
                             </Label>
                             <Badge variant={isEnabled ? "default" : "secondary"} className="text-xs">
@@ -353,7 +353,7 @@ export default function AdminDashboard() {
 
                 {/* Reminder Interval Configuration */}
                 <div className="p-4 rounded-lg bg-muted dark:bg-white/5 border border-border">
-                  <Label className="text-sm font-semibold text-gray-900 dark:text-white mb-2 block">
+                  <Label className="text-sm font-semibold text-foreground mb-2 block">
                     Default Reminder Interval
                   </Label>
                   <p className="text-xs text-muted-foreground mb-3">
@@ -394,7 +394,7 @@ export default function AdminDashboard() {
         {/* Email Configuration */}
         <Card className="bg-card border-border" data-testid="card-email-config">
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+            <CardTitle className="text-foreground flex items-center gap-2">
               <Mail className="w-5 h-5 text-primary" />
               Email Notifications
             </CardTitle>
@@ -447,7 +447,7 @@ export default function AdminDashboard() {
         {/* Module Configuration */}
         <Card className="bg-card border-border" data-testid="card-module-config">
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+            <CardTitle className="text-foreground flex items-center gap-2">
               <Settings className="w-5 h-5 text-primary" />
               Feature Modules
             </CardTitle>
@@ -471,7 +471,7 @@ export default function AdminDashboard() {
                   <div key={module.key} className="flex items-center justify-between p-4 rounded-lg bg-muted dark:bg-white/5 border border-border">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{module.label}</h3>
+                        <h3 className="text-sm font-semibold text-foreground">{module.label}</h3>
                         {tenantConfig.modulesEnabled?.[module.key] && (
                           <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
                             Active
@@ -537,7 +537,7 @@ export default function AdminDashboard() {
         {/* API Keys & Secrets Status */}
         <Card className="bg-card border-border" data-testid="card-secrets-status">
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+            <CardTitle className="text-foreground flex items-center gap-2">
               <Key className="w-5 h-5 text-primary" />
               API Keys & Secrets
             </CardTitle>
@@ -573,7 +573,7 @@ export default function AdminDashboard() {
                       data-testid={`secret-${secret.key}`}
                     >
                       <div>
-                        <p className="text-sm font-mono text-gray-900 dark:text-white">{secret.key}</p>
+                        <p className="text-sm font-mono text-foreground">{secret.key}</p>
                         <p className="text-xs text-muted-foreground">{secret.description}</p>
                       </div>
                       {secret.configured ? (

@@ -120,7 +120,7 @@ export default function Home() {
             </div>
 
             <div>
-              <h3 className="font-bold mb-4 text-white">Solutions</h3>
+              <h3 className="font-bold mb-4 text-foreground">Solutions</h3>
               <ul className="space-y-2 text-gray-400 text-sm">
                 <li><a href="#" className="hover:text-primary transition-colors">Executive Dashboard</a></li>
                 <li><a href="#" className="hover:text-primary transition-colors">Finance Automation</a></li>
@@ -130,7 +130,7 @@ export default function Home() {
             </div>
 
             <div>
-              <h3 className="font-bold mb-4 text-white">Contact</h3>
+              <h3 className="font-bold mb-4 text-foreground">Contact</h3>
               <ul className="space-y-3 text-gray-400 text-sm">
                 <li className="flex items-center gap-2"><Mail className="w-4 h-4" /> contact@ahc.ai</li>
                 <li className="flex items-center gap-2"><Phone className="w-4 h-4" /> +1 (555) 000-0000</li>

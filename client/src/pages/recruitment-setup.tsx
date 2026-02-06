@@ -162,7 +162,7 @@ export default function RecruitmentSetup() {
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+        <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
           <Settings className="h-8 w-8 text-blue-600 dark:text-blue-400" />
           Recruitment Setup
         </h1>
@@ -188,7 +188,7 @@ export default function RecruitmentSetup() {
                         <Globe className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-white flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground flex items-center gap-2">
                           {platform.name}
                           {platform.connected && (
                             <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-0">
@@ -256,21 +256,21 @@ export default function RecruitmentSetup() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-white">Auto-refresh candidate pool</Label>
+                  <Label className="text-foreground">Auto-refresh candidate pool</Label>
                   <p className="text-sm text-muted-foreground">Automatically search for new candidates daily</p>
                 </div>
                 <Switch defaultChecked data-testid="switch-auto-refresh" />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-white">Include passive candidates</Label>
+                  <Label className="text-foreground">Include passive candidates</Label>
                   <p className="text-sm text-muted-foreground">Search profiles not actively looking for jobs</p>
                 </div>
                 <Switch data-testid="switch-passive-candidates" />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-white">Deduplicate across platforms</Label>
+                  <Label className="text-foreground">Deduplicate across platforms</Label>
                   <p className="text-sm text-muted-foreground">Remove duplicate candidates from different sources</p>
                 </div>
                 <Switch defaultChecked data-testid="switch-deduplicate" />

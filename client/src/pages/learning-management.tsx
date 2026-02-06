@@ -392,7 +392,7 @@ export default function LearningManagement() {
 
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Learning Management</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Learning Management</h1>
             <p className="text-muted-foreground">Develop your skills and advance your career</p>
           </div>
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -500,7 +500,7 @@ export default function LearningManagement() {
                 <BookOpen className="w-4 h-4" />
                 Active Courses
               </CardDescription>
-              <CardTitle className="text-2xl text-white">{courses.length}</CardTitle>
+              <CardTitle className="text-2xl text-foreground">{courses.length}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground">Across all departments</p>
@@ -512,7 +512,7 @@ export default function LearningManagement() {
                 <Users className="w-4 h-4" />
                 Enrolled Employees
               </CardDescription>
-              <CardTitle className="text-2xl text-white">{allProgress.length}</CardTitle>
+              <CardTitle className="text-2xl text-foreground">{allProgress.length}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground">Total enrollments</p>
@@ -524,7 +524,7 @@ export default function LearningManagement() {
                 <Target className="w-4 h-4" />
                 Completion Rate
               </CardDescription>
-              <CardTitle className="text-2xl text-white">
+              <CardTitle className="text-2xl text-foreground">
                 {allProgress.length > 0 
                   ? Math.round((allProgress.filter(p => p.status === "completed").length / allProgress.length) * 100)
                   : 0}%
@@ -540,7 +540,7 @@ export default function LearningManagement() {
                 <GraduationCap className="w-4 h-4" />
                 Certifications
               </CardDescription>
-              <CardTitle className="text-2xl text-white">{allBadges.length}</CardTitle>
+              <CardTitle className="text-2xl text-foreground">{allBadges.length}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground">Badges earned</p>
@@ -592,7 +592,7 @@ export default function LearningManagement() {
               <Card className="bg-black/40 border-border dark:border-white/10">
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <BookOpen className="w-12 h-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium text-white mb-2">No courses found</h3>
+                  <h3 className="text-lg font-medium text-foreground mb-2">No courses found</h3>
                   <p className="text-muted-foreground text-center mb-4">
                     {courses.length === 0 ? "Create your first course to get started" : "Try adjusting your search or filters"}
                   </p>
@@ -623,7 +623,7 @@ export default function LearningManagement() {
                       </div>
                       <CardHeader>
                         <div className="flex items-start justify-between gap-2 mb-2">
-                          <CardTitle className="text-white text-lg line-clamp-2">{course.title}</CardTitle>
+                          <CardTitle className="text-foreground text-lg line-clamp-2">{course.title}</CardTitle>
                           {progress === 100 && (
                             <Award className="w-5 h-5 text-yellow-500 shrink-0" />
                           )}
@@ -668,7 +668,7 @@ export default function LearningManagement() {
           <TabsContent value="assignments" className="space-y-6">
             <Card className="bg-black/40 border-border dark:border-white/10">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="text-foreground flex items-center gap-2">
                   <Users className="w-5 h-5" />
                   Assign Courses to Employees
                 </CardTitle>
@@ -678,7 +678,7 @@ export default function LearningManagement() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <Label className="text-white mb-2 block">Select Course</Label>
+                      <Label className="text-foreground mb-2 block">Select Course</Label>
                       <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
                         <SelectTrigger className="bg-black/40 border-border dark:border-white/10" data-testid="select-course">
                           <SelectValue placeholder="Choose a course..." />
@@ -691,7 +691,7 @@ export default function LearningManagement() {
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-white mb-2 block">Select Employee</Label>
+                      <Label className="text-foreground mb-2 block">Select Employee</Label>
                       <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
                         <SelectTrigger className="bg-black/40 border-border dark:border-white/10" data-testid="select-employee">
                           <SelectValue placeholder="Choose an employee..." />
@@ -726,7 +726,7 @@ export default function LearningManagement() {
                 </div>
 
                 <div className="mt-8">
-                  <h4 className="text-white font-medium mb-4">Current Assignments</h4>
+                  <h4 className="text-foreground font-medium mb-4">Current Assignments</h4>
                   <div className="space-y-3">
                     {allProgress.length === 0 ? (
                       <p className="text-muted-foreground text-center py-4">No course assignments yet</p>
@@ -734,7 +734,7 @@ export default function LearningManagement() {
                       allProgress.map((item, idx) => (
                         <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                           <div>
-                            <p className="text-white font-medium">{item.userName}</p>
+                            <p className="text-foreground font-medium">{item.userName}</p>
                             <p className="text-sm text-muted-foreground">{item.courseTitle}</p>
                           </div>
                           <div className="flex items-center gap-3">
@@ -756,32 +756,32 @@ export default function LearningManagement() {
               <Card className="bg-black/40 border-border dark:border-white/10">
                 <CardHeader className="pb-3">
                   <CardDescription>Courses Completed</CardDescription>
-                  <CardTitle className="text-3xl text-white">{allProgress.filter(p => p.status === "completed").length}</CardTitle>
+                  <CardTitle className="text-3xl text-foreground">{allProgress.filter(p => p.status === "completed").length}</CardTitle>
                 </CardHeader>
               </Card>
               <Card className="bg-black/40 border-border dark:border-white/10">
                 <CardHeader className="pb-3">
                   <CardDescription>Hours Learned</CardDescription>
-                  <CardTitle className="text-3xl text-white">{Math.round(allProgress.reduce((sum, p) => sum + (p.timeSpent || 0), 0) / 60)}h</CardTitle>
+                  <CardTitle className="text-3xl text-foreground">{Math.round(allProgress.reduce((sum, p) => sum + (p.timeSpent || 0), 0) / 60)}h</CardTitle>
                 </CardHeader>
               </Card>
               <Card className="bg-black/40 border-border dark:border-white/10">
                 <CardHeader className="pb-3">
                   <CardDescription>In Progress</CardDescription>
-                  <CardTitle className="text-3xl text-white">{allProgress.filter(p => p.status === "in_progress").length}</CardTitle>
+                  <CardTitle className="text-3xl text-foreground">{allProgress.filter(p => p.status === "in_progress").length}</CardTitle>
                 </CardHeader>
               </Card>
               <Card className="bg-black/40 border-border dark:border-white/10">
                 <CardHeader className="pb-3">
                   <CardDescription>Badges Earned</CardDescription>
-                  <CardTitle className="text-3xl text-white">{allBadges.length}</CardTitle>
+                  <CardTitle className="text-3xl text-foreground">{allBadges.length}</CardTitle>
                 </CardHeader>
               </Card>
             </div>
 
             <Card className="bg-black/40 border-border dark:border-white/10">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="text-foreground flex items-center gap-2">
                   <Target className="w-5 h-5 text-yellow-500" />
                   In Progress
                 </CardTitle>
@@ -794,7 +794,7 @@ export default function LearningManagement() {
                     <div key={`${progress.courseId}-${idx}`} className="space-y-2" data-testid={`progress-course-${progress.courseId}`}>
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="text-white font-medium">{progress.userName}</h3>
+                          <h3 className="text-foreground font-medium">{progress.userName}</h3>
                           <p className="text-sm text-muted-foreground">{progress.courseTitle}</p>
                         </div>
                         <span className="text-sm text-muted-foreground">{progress.progress}%</span>
@@ -814,7 +814,7 @@ export default function LearningManagement() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="bg-black/40 border-border dark:border-white/10">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+                  <CardTitle className="text-foreground flex items-center gap-2">
                     <Award className="w-5 h-5 text-green-500" />
                     Completed Courses
                   </CardTitle>
@@ -826,7 +826,7 @@ export default function LearningManagement() {
                     allProgress.filter(p => p.status === "completed").map((progress, idx) => (
                       <div key={`completed-${idx}`} className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/20">
                         <div>
-                          <p className="text-white font-medium">{progress.userName}</p>
+                          <p className="text-foreground font-medium">{progress.userName}</p>
                           <p className="text-sm text-muted-foreground">{progress.courseTitle}</p>
                         </div>
                         <Badge className="bg-green-500 text-white">100%</Badge>
@@ -838,7 +838,7 @@ export default function LearningManagement() {
 
               <Card className="bg-black/40 border-border dark:border-white/10">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+                  <CardTitle className="text-foreground flex items-center gap-2">
                     <Clock className="w-5 h-5 text-gray-400" />
                     Not Started
                   </CardTitle>
@@ -850,7 +850,7 @@ export default function LearningManagement() {
                     allProgress.filter(p => p.status === "not_started").map((progress, idx) => (
                       <div key={`notstarted-${idx}`} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-border dark:border-white/10">
                         <div>
-                          <p className="text-white font-medium">{progress.userName}</p>
+                          <p className="text-foreground font-medium">{progress.userName}</p>
                           <p className="text-sm text-muted-foreground">{progress.courseTitle}</p>
                         </div>
                         <Badge variant="outline">Pending</Badge>
@@ -863,7 +863,7 @@ export default function LearningManagement() {
 
             <Card className="bg-black/40 border-border dark:border-white/10">
               <CardHeader>
-                <CardTitle className="text-white">All Learner Progress</CardTitle>
+                <CardTitle className="text-foreground">All Learner Progress</CardTitle>
                 <CardDescription>Complete overview of all employees' training progress</CardDescription>
               </CardHeader>
               <CardContent>
@@ -889,7 +889,7 @@ export default function LearningManagement() {
                       ) : (
                         allProgress.map((progress, idx) => (
                           <tr key={`row-${idx}`} className="border-b border-border dark:border-white/5 hover:bg-white/5">
-                            <td className="p-3 text-white">{progress.userName}</td>
+                            <td className="p-3 text-foreground">{progress.userName}</td>
                             <td className="p-3 text-muted-foreground">{progress.courseTitle}</td>
                             <td className="p-3">
                               <Badge 
@@ -940,7 +940,7 @@ export default function LearningManagement() {
               <Card className="bg-gradient-to-br from-primary/20 to-blue-500/20 border-primary/30">
                 <CardHeader>
                   <CardDescription>Total Points</CardDescription>
-                  <CardTitle className="text-4xl text-white flex items-center gap-2">
+                  <CardTitle className="text-4xl text-foreground flex items-center gap-2">
                     <Trophy className="w-8 h-8 text-yellow-500" />
                     {stats.totalPoints || 0}
                   </CardTitle>
@@ -949,7 +949,7 @@ export default function LearningManagement() {
               <Card className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border-blue-500/30">
                 <CardHeader>
                   <CardDescription>Current Level</CardDescription>
-                  <CardTitle className="text-4xl text-white flex items-center gap-2">
+                  <CardTitle className="text-4xl text-foreground flex items-center gap-2">
                     <Star className="w-8 h-8 text-blue-500" />
                     {stats.level || 1}
                   </CardTitle>
@@ -958,7 +958,7 @@ export default function LearningManagement() {
               <Card className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-green-500/30">
                 <CardHeader>
                   <CardDescription>Global Rank</CardDescription>
-                  <CardTitle className="text-4xl text-white flex items-center gap-2">
+                  <CardTitle className="text-4xl text-foreground flex items-center gap-2">
                     <TrendingUp className="w-8 h-8 text-green-500" />
                     #{stats.rank || "-"}
                   </CardTitle>
@@ -968,7 +968,7 @@ export default function LearningManagement() {
 
             <Card className="bg-black/40 border-border dark:border-white/10">
               <CardHeader>
-                <CardTitle className="text-white">Badges Earned by Employees</CardTitle>
+                <CardTitle className="text-foreground">Badges Earned by Employees</CardTitle>
                 <CardDescription>Recognition for learning achievements across the organization</CardDescription>
               </CardHeader>
               <CardContent>
@@ -991,7 +991,7 @@ export default function LearningManagement() {
                           <div className="text-4xl">🏆</div>
                         )}
                         <div className="flex-1">
-                          <p className="text-white font-medium">{badge.userName}</p>
+                          <p className="text-foreground font-medium">{badge.userName}</p>
                           <p className="text-sm text-muted-foreground">{badge.name}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <Badge variant="outline" className="text-xs capitalize">
@@ -1011,7 +1011,7 @@ export default function LearningManagement() {
           <TabsContent value="leaderboard" className="space-y-6">
             <Card className="bg-black/40 border-border dark:border-white/10">
               <CardHeader>
-                <CardTitle className="text-white">Top Learners</CardTitle>
+                <CardTitle className="text-foreground">Top Learners</CardTitle>
                 <CardDescription>Employee rankings based on learning achievements</CardDescription>
               </CardHeader>
               <CardContent>
@@ -1036,11 +1036,11 @@ export default function LearningManagement() {
                         }`}>
                           {entry.rank || index + 1}
                         </div>
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-500 text-white font-semibold">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-500 text-foreground font-semibold">
                           {entry.userName?.substring(0, 2).toUpperCase() || "??"}
                         </div>
                         <div className="flex-1">
-                          <p className="text-white font-medium">{entry.userName}</p>
+                          <p className="text-foreground font-medium">{entry.userName}</p>
                           <p className="text-xs text-muted-foreground">Level {entry.level}</p>
                         </div>
                         <div className="text-right">
@@ -1061,7 +1061,7 @@ export default function LearningManagement() {
       <Dialog open={reminderDialogOpen} onOpenChange={setReminderDialogOpen}>
         <DialogContent className="bg-black/95 border-border dark:border-white/10">
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
+            <DialogTitle className="text-foreground flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-primary" />
               Send Course Reminder
             </DialogTitle>
@@ -1069,20 +1069,20 @@ export default function LearningManagement() {
           <div className="space-y-4 py-4">
             <div className="bg-white/5 p-4 rounded-lg border border-border dark:border-white/10">
               <p className="text-sm text-muted-foreground mb-1">Sending reminder to:</p>
-              <p className="text-white font-medium">{reminderProgress?.userName}</p>
+              <p className="text-foreground font-medium">{reminderProgress?.userName}</p>
               <p className="text-sm text-muted-foreground mt-2 mb-1">About course:</p>
-              <p className="text-white">{reminderProgress?.courseTitle}</p>
+              <p className="text-foreground">{reminderProgress?.courseTitle}</p>
               <p className="text-sm text-muted-foreground mt-2">Current progress: {reminderProgress?.progress}%</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reminder-message" className="text-white">Message</Label>
+              <Label htmlFor="reminder-message" className="text-foreground">Message</Label>
               <Textarea
                 id="reminder-message"
                 placeholder="Enter your reminder message..."
                 value={reminderMessage}
                 onChange={(e) => setReminderMessage(e.target.value)}
                 rows={4}
-                className="bg-white/5 border-border dark:border-white/10 text-white"
+                className="bg-white/5 border-border dark:border-white/10 text-foreground"
                 data-testid="input-reminder-message"
               />
               <p className="text-xs text-muted-foreground">This message will be sent via WhatsApp if the employee has a phone number on file.</p>

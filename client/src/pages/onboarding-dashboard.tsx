@@ -444,7 +444,7 @@ export default function OnboardingDashboard() {
                         {getInitials(getCandidateName(log.candidateId || ""))}
                       </div>
                       <div>
-                        <p className="font-semibold text-white">
+                        <p className="font-semibold text-foreground">
                           {getCandidateName(log.candidateId || "")}
                         </p>
                         <p className="text-sm text-muted-foreground capitalize">
@@ -513,7 +513,7 @@ export default function OnboardingDashboard() {
                               {getInitials(candidate?.fullName || "?")}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold truncate text-white">
+                              <p className="font-semibold truncate text-foreground">
                                 {candidate?.fullName || "Unknown"}
                               </p>
                               <p className="text-sm truncate text-muted-foreground capitalize">
@@ -555,7 +555,7 @@ export default function OnboardingDashboard() {
                           {getInitials(selectedCandidate?.fullName || "?")}
                         </div>
                         <div>
-                          <h2 className="text-xl font-bold text-white">{selectedCandidate?.fullName}</h2>
+                          <h2 className="text-xl font-bold text-foreground">{selectedCandidate?.fullName}</h2>
                           <p className="text-muted-foreground">{selectedCandidate?.email}</p>
                           <p className="text-muted-foreground text-sm">{selectedCandidate?.phone}</p>
                         </div>
@@ -564,7 +564,7 @@ export default function OnboardingDashboard() {
                         <p className="text-muted-foreground text-sm mb-2">Document Completion</p>
                         <div className="flex items-center gap-3">
                           <Progress value={getDocumentProgress(documentRequests)} className="w-32 h-2" />
-                          <span className="text-xl font-bold text-white">{getDocumentProgress(documentRequests)}%</span>
+                          <span className="text-xl font-bold text-foreground">{getDocumentProgress(documentRequests)}%</span>
                         </div>
                       </div>
                     </div>
@@ -613,7 +613,7 @@ export default function OnboardingDashboard() {
                                     </div>
                                     <div>
                                       <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="font-semibold text-white">{doc.documentName}</p>
+                                        <p className="font-semibold text-foreground">{doc.documentName}</p>
                                         {doc.isRequired === 1 && (
                                           <Badge className="bg-primary/20 text-primary text-xs border-primary/30">Required</Badge>
                                         )}
@@ -719,7 +719,7 @@ export default function OnboardingDashboard() {
                                             <Badge variant="outline" className={`bg-gradient-to-r ${agentStyle} text-white text-xs`}>
                                               {log.agentType.replace(/_/g, " ")}
                                             </Badge>
-                                            <span className="font-medium text-white capitalize">
+                                            <span className="font-medium text-foreground capitalize">
                                               {log.action.replace(/_/g, " ")}
                                             </span>
                                           </div>
@@ -766,7 +766,7 @@ export default function OnboardingDashboard() {
                   <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
                     <Users className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-xl font-semibold text-white mb-2">Select a Team Member</h3>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">Select a Team Member</h3>
                   <p className="text-muted-foreground max-w-sm mx-auto">
                     Choose an employee from the list to view their onboarding progress, documents, and AI agent activity.
                   </p>
@@ -801,7 +801,7 @@ export default function OnboardingDashboard() {
                     {getInitials(getCandidateName(interventionDialog.candidateId || ""))}
                   </div>
                   <div>
-                    <p className="font-semibold text-white">
+                    <p className="font-semibold text-foreground">
                       {getCandidateName(interventionDialog.candidateId || "")}
                     </p>
                     <p className="text-sm text-muted-foreground capitalize">

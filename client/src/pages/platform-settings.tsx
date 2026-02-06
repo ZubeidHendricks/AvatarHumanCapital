@@ -90,7 +90,7 @@ export default function PlatformSettings() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-foreground">
       <div className="pt-20 pb-8">
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="mb-8">

@@ -246,7 +246,7 @@ export default function DataSourcesPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2" data-testid="page-title">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2" data-testid="page-title">
               <Database className="h-7 w-7 text-blue-500" />
               Data Sources Hub
             </h1>
@@ -270,7 +270,7 @@ export default function DataSourcesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Total Sources</p>
-                  <p className="text-2xl font-bold text-white" data-testid="stat-total">{stats.total}</p>
+                  <p className="text-2xl font-bold text-foreground" data-testid="stat-total">{stats.total}</p>
                 </div>
                 <div className="p-3 bg-blue-500/10 rounded-lg">
                   <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -312,7 +312,7 @@ export default function DataSourcesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Avg Health</p>
-                  <p className="text-2xl font-bold text-white" data-testid="stat-health">{stats.avgHealth}%</p>
+                  <p className="text-2xl font-bold text-foreground" data-testid="stat-health">{stats.avgHealth}%</p>
                 </div>
                 <div className="p-3 bg-blue-500/10 rounded-lg">
                   <Activity className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -361,7 +361,7 @@ export default function DataSourcesPage() {
               <Card className="bg-gray-900/50 border-gray-800">
                 <CardContent className="py-12 text-center">
                   <Database className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-white mb-2">No data sources found</h3>
+                  <h3 className="text-lg font-medium text-foreground mb-2">No data sources found</h3>
                   <p className="text-gray-400 mb-4">
                     {searchQuery ? "Try adjusting your search" : "Get started by adding your first data source"}
                   </p>
@@ -391,7 +391,7 @@ export default function DataSourcesPage() {
                             </div>
                             <RouterLink href={`/data-sources/${source.id}`}>
                               <div className="cursor-pointer hover:opacity-80">
-                                <CardTitle className="text-white text-lg">{source.name}</CardTitle>
+                                <CardTitle className="text-foreground text-lg">{source.name}</CardTitle>
                                 <CardDescription className="text-gray-500 capitalize">
                                   {source.type.replace(/_/g, " ")}
                                 </CardDescription>
@@ -408,14 +408,14 @@ export default function DataSourcesPage() {
 
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-500">Health Score</span>
-                          <span className="text-white font-medium">{source.healthScore || 0}%</span>
+                          <span className="text-foreground font-medium">{source.healthScore || 0}%</span>
                         </div>
                         <Progress value={source.healthScore || 0} className="h-1" />
 
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
                             <span className="text-gray-500">Last Sync</span>
-                            <p className="text-white">
+                            <p className="text-foreground">
                               {source.lastSyncAt
                                 ? formatDistanceToNow(new Date(source.lastSyncAt), { addSuffix: true })
                                 : "Never"}
@@ -423,7 +423,7 @@ export default function DataSourcesPage() {
                           </div>
                           <div>
                             <span className="text-gray-500">Frequency</span>
-                            <p className="text-white capitalize">{source.refreshSchedule || "Manual"}</p>
+                            <p className="text-foreground capitalize">{source.refreshSchedule || "Manual"}</p>
                           </div>
                         </div>
 
@@ -580,7 +580,7 @@ export default function DataSourcesPage() {
                         data-testid={`button-type-${type.value}`}
                       >
                         <TypeIcon className={`h-5 w-5 mb-2 ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`} />
-                        <p className={`font-medium ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-white"}`}>
+                        <p className={`font-medium ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-foreground"}`}>
                           {type.label}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">{type.description}</p>
@@ -592,7 +592,7 @@ export default function DataSourcesPage() {
 
               {selectedType && TYPE_CONFIGS[selectedType] && (
                 <div className="space-y-4 pt-4 border-t border-gray-800">
-                  <h4 className="font-medium text-white flex items-center gap-2">
+                  <h4 className="font-medium text-foreground flex items-center gap-2">
                     <Settings className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     Connection Settings
                   </h4>

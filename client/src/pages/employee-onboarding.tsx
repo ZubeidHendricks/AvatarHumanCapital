@@ -180,7 +180,7 @@ export default function EmployeeOnboarding() {
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+        <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
           <Building2 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
           Employee Onboarding
         </h1>
@@ -319,7 +319,7 @@ export default function EmployeeOnboarding() {
                       <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <h4 className="font-medium text-white">{employee.name}</h4>
+                      <h4 className="font-medium text-foreground">{employee.name}</h4>
                       <p className="text-sm text-muted-foreground">{employee.position} - {employee.department}</p>
                     </div>
                   </div>
