@@ -6,6 +6,8 @@
 **Platform**: Avatar Human Capital — AI-Powered HR Management  
 **Last Updated**: February 2026
 
+> **Screenshots**: All screenshots are located in the `screenshots/` directory. Each page has both light and dark theme captures (108 total images across 54 pages).
+
 ---
 
 ## Table of Contents
@@ -74,6 +76,9 @@ The platform supports **Light Mode** and **Dark Mode**. Toggle between them usin
 
 **URL**: `/`
 
+![Home Page - Light](screenshots/01-home-page-light.png)
+![Home Page - Dark](screenshots/01-home-page-dark.png)
+
 The home page serves as the platform's landing page and product showcase.
 
 ### What You'll See
@@ -102,6 +107,9 @@ The public navbar includes dropdown menus for:
 
 **URL**: `/recruitment-agent`  
 **Sidebar**: RECRUITMENT → AI Recruitment
+
+![AI Recruitment - Light](screenshots/07-ai-recruitment-agent-light.png)
+![AI Recruitment - Dark](screenshots/07-ai-recruitment-agent-dark.png)
 
 This is the core AI-powered recruitment engine. It uses multiple AI agents to source, screen, and rank candidates automatically.
 
@@ -175,6 +183,9 @@ The system deploys category-specific sourcing agents based on the job type:
 **URL**: `/recruitment-dashboard`  
 **Sidebar**: RECRUITMENT → Recruitment Dashboard
 
+![Recruitment Dashboard - Light](screenshots/06-recruitment-dashboard-light.png)
+![Recruitment Dashboard - Dark](screenshots/06-recruitment-dashboard-dark.png)
+
 A high-level analytics view of all recruitment activity.
 
 ### Dashboard Components
@@ -202,6 +213,9 @@ The dashboard supports a **drag-and-drop customizable layout**. Click the custom
 
 **URL**: `/candidates-list`  
 **Sidebar**: RECRUITMENT (accessible via dashboard links)
+
+![Candidates List - Light](screenshots/08-candidates-list-light.png)
+![Candidates List - Dark](screenshots/08-candidates-list-dark.png)
 
 A searchable, sortable table of all candidates in the system.
 
@@ -270,6 +284,9 @@ AI-powered candidate recommendations based on your active job requirements. The 
 **URL**: `/pipeline-board`  
 **Sidebar**: RECRUITMENT → Pipeline Board
 
+![Pipeline Board - Light](screenshots/09-pipeline-board-light.png)
+![Pipeline Board - Dark](screenshots/09-pipeline-board-dark.png)
+
 A **Kanban-style board** for visually managing the recruitment pipeline.
 
 ### How It Works
@@ -298,6 +315,9 @@ The platform offers three interview modes, plus a management console.
 **URL**: `/interview-console`  
 **Sidebar**: RECRUITMENT → Interview Console
 
+![Interview Console - Light](screenshots/13-interview-console-light.png)
+![Interview Console - Dark](screenshots/13-interview-console-dark.png)
+
 Central hub for managing all interview activities.
 
 - View scheduled interviews
@@ -309,6 +329,9 @@ Central hub for managing all interview activities.
 
 **URL**: `/interview/voice`  
 **Sidebar**: INTERVIEWS → Voice
+
+![Voice Interview - Light](screenshots/14-voice-interview-light.png)
+![Voice Interview - Dark](screenshots/14-voice-interview-dark.png)
 
 An AI-powered voice interview system using empathic voice technology.
 
@@ -330,6 +353,9 @@ An AI-powered voice interview system using empathic voice technology.
 **URL**: `/interview/video`  
 **Sidebar**: INTERVIEWS → Video
 
+![Video Interview - Light](screenshots/15-video-interview-light.png)
+![Video Interview - Dark](screenshots/15-video-interview-dark.png)
+
 Personalized video interviews using AI avatar technology (Tavus integration).
 
 #### Workflow
@@ -344,6 +370,9 @@ Personalized video interviews using AI avatar technology (Tavus integration).
 
 **URL**: `/interview/face-to-face`  
 **Sidebar**: INTERVIEWS → Face to Face
+
+![Face to Face - Light](screenshots/16-face-to-face-interview-light.png)
+![Face to Face - Dark](screenshots/16-face-to-face-interview-dark.png)
 
 Tools for managing traditional in-person interviews.
 
@@ -369,6 +398,9 @@ Candidates receive invitation links via email. The invitation page allows them t
 
 **URL**: `/integrity-agent`  
 **Sidebar**: HR COMMAND CENTRE → Integrity Setup (for configuration)
+
+![Integrity Agent - Light](screenshots/17-integrity-agent-light.png)
+![Integrity Agent - Dark](screenshots/17-integrity-agent-dark.png)
 
 An AI agent that automates comprehensive background verification.
 
@@ -416,6 +448,9 @@ Configure which background check providers and check types are available for you
 
 **URL**: `/onboarding-agent`  
 **Sidebar**: HR COMMAND CENTRE → Employee Onboarding Setup (for configuration)
+
+![Onboarding Agent - Light](screenshots/18-onboarding-agent-light.png)
+![Onboarding Agent - Dark](screenshots/18-onboarding-agent-dark.png)
 
 An AI-powered chat agent that automates the entire onboarding process for new hires.
 
@@ -469,6 +504,9 @@ The employee-facing view where new hires can:
 **URL**: `/hr-management-agent`  
 **Sidebar**: Via HR COMMAND CENTRE
 
+![HR Management Agent - Light](screenshots/19-hr-management-agent-light.png)
+![HR Management Agent - Dark](screenshots/19-hr-management-agent-dark.png)
+
 An AI assistant for ongoing HR management tasks.
 
 ### Capabilities
@@ -508,6 +546,9 @@ The right panel shows real-time HR metrics:
 **URL**: `/social-screening-agent`  
 **Sidebar**: Via Solutions menu
 
+![Social Screening Agent - Light](screenshots/20-social-screening-agent-light.png)
+![Social Screening Agent - Dark](screenshots/20-social-screening-agent-dark.png)
+
 An AI agent that conducts automated social media and public record screening for candidates.
 
 ### What It Checks
@@ -531,6 +572,9 @@ An AI agent that conducts automated social media and public record screening for
 
 **URL**: `/executive-dashboard`  
 **Sidebar**: HR COMMAND CENTRE → Executive Dashboard
+
+![Executive Dashboard - Light](screenshots/04-executive-dashboard-light.png)
+![Executive Dashboard - Dark](screenshots/04-executive-dashboard-dark.png)
 
 A high-level analytics dashboard designed for executive leadership.
 
@@ -562,6 +606,9 @@ A fully customizable version where you can:
 **URL**: `/hr-dashboard` or `/hr`  
 **Sidebar**: HR COMMAND CENTRE → HR Command
 
+![HR Dashboard - Light](screenshots/03-hr-dashboard-light.png)
+![HR Dashboard - Dark](screenshots/03-hr-dashboard-dark.png)
+
 The primary workspace for HR professionals.
 
 #### Features
@@ -576,6 +623,9 @@ The primary workspace for HR professionals.
 
 **URL**: `/kpi-hr-dashboard`  
 **Sidebar**: PERFORMANCE → HR Performance
+
+![KPI HR Dashboard - Light](screenshots/23-kpi-hr-dashboard-light.png)
+![KPI HR Dashboard - Dark](screenshots/23-kpi-hr-dashboard-dark.png)
 
 Focused analytics for HR key performance indicators:
 - Recruitment efficiency metrics
@@ -594,6 +644,9 @@ Focused analytics for HR key performance indicators:
 **URL**: `/kpi-management`  
 **Sidebar**: PERFORMANCE → KPI Management
 
+![KPI Management - Light](screenshots/21-kpi-management-light.png)
+![KPI Management - Dark](screenshots/21-kpi-management-dark.png)
+
 Define and manage Key Performance Indicators for your organization.
 
 #### Features
@@ -611,6 +664,9 @@ Define and manage Key Performance Indicators for your organization.
 
 **URL**: `/kpi-manager-review`  
 **Sidebar**: PERFORMANCE → Manager Review
+
+![Manager Review - Light](screenshots/22-kpi-manager-review-light.png)
+![Manager Review - Dark](screenshots/22-kpi-manager-review-dark.png)
 
 Interface for managers to:
 - Review direct reports' KPI performance
@@ -640,6 +696,9 @@ Employee-facing view where individuals can:
 **URL**: `/learning-management`  
 **Sidebar**: TRAINING → LMS Dashboard
 
+![Learning Management - Light](screenshots/24-learning-management-light.png)
+![Learning Management - Dark](screenshots/24-learning-management-dark.png)
+
 Administration interface for the Learning Management System.
 
 #### Features
@@ -653,6 +712,9 @@ Administration interface for the Learning Management System.
 ### Course Catalogue
 
 **URL**: `/courses`
+
+![Course Catalogue - Light](screenshots/25-course-catalogue-light.png)
+![Course Catalogue - Dark](screenshots/25-course-catalogue-dark.png)
 
 The browsable catalogue of available training courses:
 - Filter by category, difficulty level, or duration
@@ -681,6 +743,9 @@ Advanced LMS configuration:
 **URL**: `/certificate-templates`  
 **Sidebar**: Via Training section
 
+![Certificate Templates - Light](screenshots/26-certificate-templates-light.png)
+![Certificate Templates - Dark](screenshots/26-certificate-templates-dark.png)
+
 Design and manage certificate templates:
 - Visual template editor
 - Customizable fields (name, course, date, instructor, etc.)
@@ -692,6 +757,9 @@ Design and manage certificate templates:
 
 **URL**: `/certificates`
 
+![Certificates - Light](screenshots/27-certificates-light.png)
+![Certificates - Dark](screenshots/27-certificates-dark.png)
+
 Manage all issued certificates:
 - View all certificates issued
 - Filter by course, employee, or date
@@ -701,6 +769,9 @@ Manage all issued certificates:
 ### My Certificates
 
 **URL**: `/my-certificates`
+
+![My Certificates - Light](screenshots/28-my-certificates-light.png)
+![My Certificates - Dark](screenshots/28-my-certificates-dark.png)
 
 Employee-facing view to:
 - View all earned certificates
@@ -723,6 +794,9 @@ Public-facing page where anyone can verify a certificate's authenticity by enter
 
 **URL**: `/leaderboard`
 
+![Leaderboard - Light](screenshots/29-leaderboard-light.png)
+![Leaderboard - Dark](screenshots/29-leaderboard-dark.png)
+
 Gamification element showing top performers:
 - Ranking by certificates earned
 - Points and achievements
@@ -735,6 +809,9 @@ Gamification element showing top performers:
 
 **URL**: `/document-automation`  
 **Sidebar**: DOCUMENTS → Document Automation
+
+![Document Automation - Light](screenshots/30-document-automation-light.png)
+![Document Automation - Dark](screenshots/30-document-automation-dark.png)
 
 Automated generation of HR documents.
 
@@ -761,6 +838,9 @@ Automated generation of HR documents.
 
 **URL**: `/document-library`  
 **Sidebar**: DOCUMENTS → Document Library
+
+![Document Library - Light](screenshots/31-document-library-light.png)
+![Document Library - Dark](screenshots/31-document-library-dark.png)
 
 Centralized storage for all company documents:
 - Company policies
@@ -796,6 +876,9 @@ Library of CV/resume templates for candidate profiling:
 **URL**: `/workforce-intelligence`  
 **Sidebar**: INTELLIGENCE → Workforce Intelligence
 
+![Workforce Intelligence - Light](screenshots/34-workforce-intelligence-light.png)
+![Workforce Intelligence - Dark](screenshots/34-workforce-intelligence-dark.png)
+
 Advanced analytics and insights for strategic workforce planning.
 
 ### Features
@@ -814,6 +897,9 @@ Advanced analytics and insights for strategic workforce planning.
 
 **URL**: `/whatsapp-monitor`  
 **Sidebar**: COMMUNICATIONS → WhatsApp Monitor
+
+![WhatsApp Monitor - Light](screenshots/36-whatsapp-monitor-light.png)
+![WhatsApp Monitor - Dark](screenshots/36-whatsapp-monitor-dark.png)
 
 Monitor and manage WhatsApp-based candidate communications.
 
@@ -842,6 +928,9 @@ Log and manage internal HR communications:
 
 **URL**: `/offer-management`  
 **Sidebar**: Via HR COMMAND CENTRE
+
+![Offer Management - Light](screenshots/35-offer-management-light.png)
+![Offer Management - Dark](screenshots/35-offer-management-dark.png)
 
 Track and manage employment offers.
 
@@ -874,6 +963,9 @@ Configure offer letter templates and approval workflows:
 **URL**: `/admin-dashboard`  
 **Sidebar**: ADMIN → System Admin
 
+![Admin Dashboard - Light](screenshots/40-admin-dashboard-light.png)
+![Admin Dashboard - Dark](screenshots/40-admin-dashboard-dark.png)
+
 Central hub for system administrators.
 
 #### Features
@@ -889,6 +981,9 @@ Central hub for system administrators.
 
 **URL**: `/tenant-management`  
 **Sidebar**: ADMIN → Tenant Management
+
+![Tenant Management - Light](screenshots/41-tenant-management-light.png)
+![Tenant Management - Dark](screenshots/41-tenant-management-dark.png)
 
 Manage platform tenants (client organizations):
 - View all tenants and their subscription status
@@ -946,6 +1041,9 @@ Define and manage AI personas used across the platform's agents:
 
 **URL**: `/platform-settings`  
 **Sidebar**: ADMIN → Platform Settings (or via top header)
+
+![Platform Settings - Light](screenshots/43-platform-settings-light.png)
+![Platform Settings - Dark](screenshots/43-platform-settings-dark.png)
 
 Global configuration for your organization's workspace.
 
@@ -1066,6 +1164,73 @@ The platform offers four subscription tiers:
 - **In-App**: Visit `/ai-support` for AI-powered assistance
 - **Documentation**: Visit `/platform-docs` for detailed feature guides
 - **Support**: Contact your system administrator or submit a request via the Tenant Requests system
+
+---
+
+---
+
+## Appendix: Screenshot Index
+
+All screenshots are in the `screenshots/` directory. Each page has been captured in both Light and Dark themes.
+
+| # | Page | Light Mode | Dark Mode |
+|:--|:-----|:-----------|:----------|
+| 01 | Home Page | `01-home-page-light.png` | `01-home-page-dark.png` |
+| 02 | Login | `02-login-light.png` | `02-login-dark.png` |
+| 03 | HR Dashboard | `03-hr-dashboard-light.png` | `03-hr-dashboard-dark.png` |
+| 04 | Executive Dashboard | `04-executive-dashboard-light.png` | `04-executive-dashboard-dark.png` |
+| 05 | Custom Executive Dashboard | `05-executive-dashboard-custom-light.png` | `05-executive-dashboard-custom-dark.png` |
+| 06 | Recruitment Dashboard | `06-recruitment-dashboard-light.png` | `06-recruitment-dashboard-dark.png` |
+| 07 | AI Recruitment Agent | `07-ai-recruitment-agent-light.png` | `07-ai-recruitment-agent-dark.png` |
+| 08 | Candidates List | `08-candidates-list-light.png` | `08-candidates-list-dark.png` |
+| 09 | Pipeline Board | `09-pipeline-board-light.png` | `09-pipeline-board-dark.png` |
+| 10 | Shortlisted Candidates | `10-shortlisted-candidates-light.png` | `10-shortlisted-candidates-dark.png` |
+| 11 | External Candidates | `11-external-candidates-light.png` | `11-external-candidates-dark.png` |
+| 12 | AI Recommendations | `12-ai-recommendations-light.png` | `12-ai-recommendations-dark.png` |
+| 13 | Interview Console | `13-interview-console-light.png` | `13-interview-console-dark.png` |
+| 14 | Voice Interview | `14-voice-interview-light.png` | `14-voice-interview-dark.png` |
+| 15 | Video Interview | `15-video-interview-light.png` | `15-video-interview-dark.png` |
+| 16 | Face to Face Interview | `16-face-to-face-interview-light.png` | `16-face-to-face-interview-dark.png` |
+| 17 | Integrity Agent | `17-integrity-agent-light.png` | `17-integrity-agent-dark.png` |
+| 18 | Onboarding Agent | `18-onboarding-agent-light.png` | `18-onboarding-agent-dark.png` |
+| 19 | HR Management Agent | `19-hr-management-agent-light.png` | `19-hr-management-agent-dark.png` |
+| 20 | Social Screening Agent | `20-social-screening-agent-light.png` | `20-social-screening-agent-dark.png` |
+| 21 | KPI Management | `21-kpi-management-light.png` | `21-kpi-management-dark.png` |
+| 22 | Manager KPI Review | `22-kpi-manager-review-light.png` | `22-kpi-manager-review-dark.png` |
+| 23 | KPI HR Dashboard | `23-kpi-hr-dashboard-light.png` | `23-kpi-hr-dashboard-dark.png` |
+| 24 | Learning Management | `24-learning-management-light.png` | `24-learning-management-dark.png` |
+| 25 | Course Catalogue | `25-course-catalogue-light.png` | `25-course-catalogue-dark.png` |
+| 26 | Certificate Templates | `26-certificate-templates-light.png` | `26-certificate-templates-dark.png` |
+| 27 | Certificates | `27-certificates-light.png` | `27-certificates-dark.png` |
+| 28 | My Certificates | `28-my-certificates-light.png` | `28-my-certificates-dark.png` |
+| 29 | Leaderboard | `29-leaderboard-light.png` | `29-leaderboard-dark.png` |
+| 30 | Document Automation | `30-document-automation-light.png` | `30-document-automation-dark.png` |
+| 31 | Document Library | `31-document-library-light.png` | `31-document-library-dark.png` |
+| 32 | Templates | `32-templates-light.png` | `32-templates-dark.png` |
+| 33 | CV Templates | `33-cv-templates-light.png` | `33-cv-templates-dark.png` |
+| 34 | Workforce Intelligence | `34-workforce-intelligence-light.png` | `34-workforce-intelligence-dark.png` |
+| 35 | Offer Management | `35-offer-management-light.png` | `35-offer-management-dark.png` |
+| 36 | WhatsApp Monitor | `36-whatsapp-monitor-light.png` | `36-whatsapp-monitor-dark.png` |
+| 37 | HR Conversations | `37-hr-conversations-light.png` | `37-hr-conversations-dark.png` |
+| 38 | Onboarding Dashboard | `38-onboarding-dashboard-light.png` | `38-onboarding-dashboard-dark.png` |
+| 39 | Employee Onboarding | `39-employee-onboarding-light.png` | `39-employee-onboarding-dark.png` |
+| 40 | Admin Dashboard | `40-admin-dashboard-light.png` | `40-admin-dashboard-dark.png` |
+| 41 | Tenant Management | `41-tenant-management-light.png` | `41-tenant-management-dark.png` |
+| 42 | Tenant Requests | `42-tenant-requests-light.png` | `42-tenant-requests-dark.png` |
+| 43 | Platform Settings | `43-platform-settings-light.png` | `43-platform-settings-dark.png` |
+| 44 | Persona Management | `44-persona-management-light.png` | `44-persona-management-dark.png` |
+| 45 | Data Sources | `45-data-sources-light.png` | `45-data-sources-dark.png` |
+| 46 | Dashboard Builder | `46-dashboard-builder-light.png` | `46-dashboard-builder-dark.png` |
+| 47 | AI Support | `47-ai-support-light.png` | `47-ai-support-dark.png` |
+| 48 | Platform Documentation | `48-platform-docs-light.png` | `48-platform-docs-dark.png` |
+| 49 | Recruitment Setup | `49-recruitment-setup-light.png` | `49-recruitment-setup-dark.png` |
+| 50 | Integrity Setup | `50-integrity-setup-light.png` | `50-integrity-setup-dark.png` |
+| 51 | Onboarding Setup | `51-onboarding-setup-light.png` | `51-onboarding-setup-dark.png` |
+| 52 | Offer Setup | `52-offer-setup-light.png` | `52-offer-setup-dark.png` |
+| 53 | Workflow Showcase | `53-workflow-showcase-light.png` | `53-workflow-showcase-dark.png` |
+| 54 | Customer Onboarding | `54-customer-onboarding-light.png` | `54-customer-onboarding-dark.png` |
+
+**Total: 108 screenshots (54 pages x 2 themes)**
 
 ---
 
