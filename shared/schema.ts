@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, jsonb, vector, index, real, date, decimal, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, jsonb, index, real, date, decimal, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -55,7 +55,7 @@ export const jobs = pgTable("jobs", {
   closedReason: text("closed_reason"),
   
   // RAG Embeddings
-  requirementsEmbedding: vector("requirements_embedding", { dimensions: 1536 }),
+  requirementsEmbedding: text("requirements_embedding"),
   
   // Archival (soft delete for historical data preservation)
   archivedAt: timestamp("archived_at"),
@@ -231,7 +231,7 @@ export const recruitmentSessions = pgTable("recruitment_sessions", {
   candidatesAdded: integer("candidates_added").notNull().default(0),
   searchCriteria: jsonb("search_criteria"),
   results: jsonb("results"),
-  embedding: vector("embedding", { dimensions: 1536 }),
+  embedding: text("embedding"),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -1351,14 +1351,13 @@ export const interviewTranscripts = pgTable("interview_transcripts", {
   sentiment: text("sentiment"), // 'positive', 'negative', 'neutral'
   emotionScores: jsonb("emotion_scores"), // { joy: 0.8, sadness: 0.1, anger: 0.05, ... }
   keywords: text("keywords").array(), // Extracted key terms
-  embedding: vector("embedding", { dimensions: 1536 }), // For semantic search
+  embedding: text("embedding"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   tenantIdIdx: index("interview_transcripts_tenant_id_idx").on(table.tenantId),
   sessionIdIdx: index("interview_transcripts_session_id_idx").on(table.sessionId),
   recordingIdIdx: index("interview_transcripts_recording_id_idx").on(table.recordingId),
   speakerRoleIdx: index("interview_transcripts_speaker_role_idx").on(table.speakerRole),
-  embeddingIdx: index("interview_transcripts_embedding_idx").using("hnsw", table.embedding.op("vector_cosine_ops")),
 }));
 
 // Interview Feedback - Human/AI evaluations and decisions
@@ -1408,7 +1407,7 @@ export const candidateRecommendations = pgTable("candidate_recommendations", {
   reasoning: text("reasoning"),
   suggestedJobId: varchar("suggested_job_id").references(() => jobs.id), // Alternative job suggestion
   suggestedCandidateId: varchar("suggested_candidate_id").references(() => candidates.id), // Similar candidate
-  featureVector: vector("feature_vector", { dimensions: 1536 }), // For similarity search
+  featureVector: text("feature_vector"),
   metadata: jsonb("metadata"), // Additional context
   isActive: integer("is_active").default(1), // 0 = dismissed, 1 = active
   viewedAt: timestamp("viewed_at"),
@@ -1422,7 +1421,6 @@ export const candidateRecommendations = pgTable("candidate_recommendations", {
   jobIdIdx: index("candidate_recommendations_job_id_idx").on(table.jobId),
   sessionIdIdx: index("candidate_recommendations_session_id_idx").on(table.sessionId),
   typeIdx: index("candidate_recommendations_type_idx").on(table.recommendationType),
-  featureVectorIdx: index("candidate_recommendations_vector_idx").using("hnsw", table.featureVector.op("vector_cosine_ops")),
 }));
 
 // Model Training Events - For reinforcement learning
