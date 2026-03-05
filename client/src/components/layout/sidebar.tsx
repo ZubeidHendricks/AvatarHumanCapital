@@ -1,10 +1,10 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { 
-  LayoutDashboard, 
-  UserSearch, 
-  Users, 
+import {
+  LayoutDashboard,
+  UserSearch,
+  Users,
   Briefcase,
   TrendingUp,
   Shield,
@@ -27,7 +27,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Bot,
-  Cpu
+  Cpu,
+  Crosshair,
+  Heart,
+  Scale
 } from "lucide-react";
 import { useTenant } from "@/hooks/useTenant";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -54,86 +57,43 @@ export function Sidebar() {
     {
       title: "INTELLIGENCE",
       items: [
-        { name: "Workforce Intelligence", href: "/workforce-intelligence", icon: TrendingUp },
-        { name: "AI Recommendations", href: "/recommendations", icon: Sparkles },
-      ]
-    },
-    {
-      title: "HR COMMAND CENTRE",
-      items: [
-        { name: "HR Command", href: "/hr-dashboard", icon: Users, module: "hr_management" },
+        { name: "HRM-GPT", href: "/workforce-intelligence", icon: Bot },
         { name: "Executive Dashboard", href: "/executive-dashboard-custom", icon: TrendingUp },
-        { name: "Recruitment Setup", href: "/recruitment-setup", icon: Settings },
-        { name: "Integrity Setup", href: "/integrity-setup", icon: Shield, module: "integrity" },
-        { name: "Offer Setup", href: "/offer-setup", icon: FileText },
-        { name: "Employee Onboarding Setup", href: "/onboarding-setup", icon: Building2, module: "onboarding" },
+        { name: "Reports", href: "/recommendations", icon: BarChart3 },
+        { name: "WhatsApp Monitor", href: "/whatsapp-monitor", icon: MessageCircle },
       ]
     },
     {
-      title: "RECRUITMENT",
+      title: "HR MANAGEMENT",
       items: [
-        { name: "Recruitment Dashboard", href: "/recruitment-dashboard", icon: TrendingUp },
-        { name: "AI Recruitment", href: "/recruitment-agent", icon: UserSearch, module: "recruitment" },
-        { name: "Pipeline Board", href: "/pipeline-board", icon: LayoutGrid },
-        { name: "Interview Console", href: "/interview-console", icon: ClipboardList },
-      ]
-    },
-    {
-      title: "INTERVIEWS",
-      items: [
-        { name: "Face to Face Interview", href: "/interview/face-to-face", icon: Users },
-        { name: "Voice Interview", href: "/interview/voice", icon: Mic },
-        { name: "Video Interview", href: "/interview/video", icon: Video },
-      ]
-    },
-    {
-      title: "PERFORMANCE MANAGEMENT",
-      items: [
-        { name: "HR Performance", href: "/kpi-hr-dashboard", icon: BarChart3 },
-        { name: "KPI Management", href: "/kpi-management", icon: Target },
-        { name: "My KPI Review", href: "/kpi-review", icon: Star },
-        { name: "Manager Review", href: "/kpi-manager-review", icon: UserCheck },
+        { name: "KPI's", href: "/kpi-management", icon: Target },
+        { name: "OKR's", href: "/okr-management", icon: Crosshair },
+        { name: "Leave", href: "/leave-management", icon: ClipboardList },
+        { name: "Claims", href: "/claims-management", icon: FileText },
+        { name: "Pulse Survey", href: "/pulse-survey", icon: Heart },
+        { name: "Compliance", href: "/compliance", icon: Scale },
         { name: "Time & Attendance", href: "https://carta-ta-ji5og.ondigitalocean.app/", icon: Cpu, external: true },
+        { name: "LMS", href: "http://165.227.113.197/", icon: BookOpen, external: true },
       ]
     },
     {
-      title: "DOCUMENTS",
+      title: "SETUP",
       items: [
+        { name: "KPI Setup", href: "/kpi-hr-dashboard", icon: Target },
+        { name: "Leave Setup", href: "/leave-setup", icon: ClipboardList },
+        { name: "Claims Setup", href: "/claims-setup", icon: FileText },
+        { name: "Wellness Setup", href: "/wellness-setup", icon: Heart },
         { name: "Document Automation", href: "/document-automation", icon: FileText },
         { name: "Document Library", href: "/document-library", icon: ClipboardList },
-        { name: "Templates", href: "/cv-templates", icon: FileText },
-      ]
-    },
-    {
-      title: "COMMUNICATIONS",
-      items: [
-        { name: "WhatsApp Monitor", href: "/whatsapp-monitor", icon: MessageCircle },
-        { name: "Conversations", href: "/hr-conversations", icon: MessageCircle },
-      ]
-    },
-    {
-      title: "SUPPORT",
-      items: [
-        { name: "AI Support", href: "/ai-support", icon: Bot },
-      ]
-    },
-    {
-      title: "TRAINING",
-      items: [
-        { name: "LMS Dashboard", href: "http://165.227.113.197/", icon: BookOpen, external: true },
-        { name: "Attendance", href: "http://208.68.39.111/", icon: ClipboardList, external: true },
       ]
     },
     {
       title: "ADMIN",
       items: [
         { name: "System Admin", href: "/admin-dashboard", icon: Settings },
-        { name: "Tenant Management", href: "/tenant-management", icon: Building2 },
-        { name: "Tenant Requests", href: "/tenant-requests", icon: FileText },
         { name: "Customer Onboarding", href: "/onboarding", icon: UserPlus },
         { name: "Persona Management", href: "/persona-management", icon: Users },
         { name: "Platform Docs", href: "/platform-docs", icon: BookOpen },
-        { name: "Product Demo", href: "/demo", icon: Sparkles },
       ]
     },
   ];

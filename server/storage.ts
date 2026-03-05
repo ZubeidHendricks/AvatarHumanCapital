@@ -198,6 +198,47 @@ import {
   weighbridgeSlips,
   type WeighbridgeSlip,
   type InsertWeighbridgeSlip,
+  okrObjectives,
+  okrKeyResults,
+  okrObjectiveKeyResultLinks,
+  okrReviewCycles,
+  okrAssignments,
+  okrScores,
+  okrReviewSubmissions,
+  type OkrObjective,
+  type InsertOkrObjective,
+  type UpdateOkrObjective,
+  type OkrKeyResult,
+  type InsertOkrKeyResult,
+  type UpdateOkrKeyResult,
+  type OkrReviewCycle,
+  type InsertOkrReviewCycle,
+  type UpdateOkrReviewCycle,
+  type OkrAssignment,
+  type InsertOkrAssignment,
+  type UpdateOkrAssignment,
+  type OkrScore,
+  type OkrObjectiveKeyResultLink,
+  type OkrReviewSubmission,
+  pulseSurveys,
+  pulseSurveyResponses,
+  pulseSurveyAnalysis,
+  type PulseSurvey,
+  type InsertPulseSurvey,
+  type UpdatePulseSurvey,
+  type PulseSurveyResponse,
+  type PulseSurveyAnalysisType,
+  employeeConsent,
+  complianceDocuments,
+  complianceChatHistory,
+  type EmployeeConsent,
+  type InsertEmployeeConsent,
+  type ComplianceDocument,
+  type ComplianceChatHistory,
+  wellnessProviders,
+  type WellnessProvider,
+  type InsertWellnessProvider,
+  type UpdateWellnessProvider,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte, sql, isNull, isNotNull, or } from "drizzle-orm";
@@ -599,6 +640,78 @@ export interface IStorage {
   createDocumentTemplate(tenantId: string, template: InsertDocumentTemplate): Promise<DocumentTemplate>;
   activateDocumentTemplate(tenantId: string, id: string): Promise<DocumentTemplate | undefined>;
   deleteDocumentTemplate(tenantId: string, id: string): Promise<boolean>;
+
+  // OKR Objectives
+  getAllOkrObjectives(tenantId: string): Promise<OkrObjective[]>;
+  getOkrObjective(tenantId: string, id: string): Promise<OkrObjective | undefined>;
+  createOkrObjective(tenantId: string, objective: InsertOkrObjective): Promise<OkrObjective>;
+  updateOkrObjective(tenantId: string, id: string, updates: UpdateOkrObjective): Promise<OkrObjective | undefined>;
+  deleteOkrObjective(tenantId: string, id: string): Promise<boolean>;
+
+  // OKR Key Results
+  getAllOkrKeyResults(tenantId: string): Promise<OkrKeyResult[]>;
+  getOkrKeyResult(tenantId: string, id: string): Promise<OkrKeyResult | undefined>;
+  getOkrKeyResultsByObjective(tenantId: string, objectiveId: string): Promise<OkrKeyResult[]>;
+  createOkrKeyResult(tenantId: string, keyResult: InsertOkrKeyResult): Promise<OkrKeyResult>;
+  updateOkrKeyResult(tenantId: string, id: string, updates: UpdateOkrKeyResult): Promise<OkrKeyResult | undefined>;
+  deleteOkrKeyResult(tenantId: string, id: string): Promise<boolean>;
+
+  // OKR Objective-KeyResult Links
+  getOkrLinks(tenantId: string, objectiveId?: string, keyResultId?: string): Promise<OkrObjectiveKeyResultLink[]>;
+  createOkrLink(tenantId: string, objectiveId: string, keyResultId: string): Promise<OkrObjectiveKeyResultLink>;
+  deleteOkrLink(tenantId: string, id: string): Promise<boolean>;
+
+  // OKR Review Cycles
+  getAllOkrReviewCycles(tenantId: string): Promise<OkrReviewCycle[]>;
+  getOkrReviewCycle(tenantId: string, id: string): Promise<OkrReviewCycle | undefined>;
+  createOkrReviewCycle(tenantId: string, cycle: InsertOkrReviewCycle): Promise<OkrReviewCycle>;
+  updateOkrReviewCycle(tenantId: string, id: string, updates: UpdateOkrReviewCycle): Promise<OkrReviewCycle | undefined>;
+  deleteOkrReviewCycle(tenantId: string, id: string): Promise<boolean>;
+
+  // OKR Assignments
+  getOkrAssignments(tenantId: string, reviewCycleId?: string): Promise<OkrAssignment[]>;
+  createOkrAssignment(tenantId: string, assignment: InsertOkrAssignment): Promise<OkrAssignment>;
+  createOkrAssignmentsBatch(tenantId: string, assignments: InsertOkrAssignment[]): Promise<OkrAssignment[]>;
+  updateOkrAssignment(tenantId: string, id: string, updates: UpdateOkrAssignment): Promise<OkrAssignment | undefined>;
+  deleteOkrAssignment(tenantId: string, id: string): Promise<boolean>;
+
+  // OKR Review Submissions
+  getOkrReviewSubmissions(tenantId: string, reviewCycleId?: string): Promise<OkrReviewSubmission[]>;
+
+  // Pulse Surveys
+  getAllPulseSurveys(tenantId: string): Promise<PulseSurvey[]>;
+  getPulseSurvey(tenantId: string, id: string): Promise<PulseSurvey | undefined>;
+  createPulseSurvey(tenantId: string, survey: InsertPulseSurvey): Promise<PulseSurvey>;
+  updatePulseSurvey(tenantId: string, id: string, updates: UpdatePulseSurvey): Promise<PulseSurvey | undefined>;
+  deletePulseSurvey(tenantId: string, id: string): Promise<boolean>;
+
+  // Pulse Survey Responses
+  getPulseSurveyResponses(tenantId: string, surveyId?: string): Promise<PulseSurveyResponse[]>;
+  createPulseSurveyResponse(tenantId: string, response: Partial<PulseSurveyResponse>): Promise<PulseSurveyResponse>;
+
+  // Pulse Survey Analysis
+  getPulseSurveyAnalysis(tenantId: string, surveyId?: string): Promise<PulseSurveyAnalysisType[]>;
+
+  // Employee Consent (POPIA)
+  getAllEmployeeConsent(tenantId: string): Promise<EmployeeConsent[]>;
+  getEmployeeConsent(tenantId: string, employeeId: string): Promise<EmployeeConsent | undefined>;
+  createEmployeeConsent(tenantId: string, consent: InsertEmployeeConsent): Promise<EmployeeConsent>;
+  updateEmployeeConsent(tenantId: string, id: string, updates: Partial<InsertEmployeeConsent>): Promise<EmployeeConsent | undefined>;
+
+  // Compliance Documents
+  getComplianceDocuments(tenantId: string, documentType?: string): Promise<ComplianceDocument[]>;
+  createComplianceDocument(tenantId: string, doc: Partial<ComplianceDocument>): Promise<ComplianceDocument>;
+
+  // Compliance Chat
+  getComplianceChatHistory(tenantId: string, userId: string, chatType: string): Promise<ComplianceChatHistory[]>;
+  createComplianceChatEntry(tenantId: string, entry: Partial<ComplianceChatHistory>): Promise<ComplianceChatHistory>;
+
+  // Wellness Providers
+  getAllWellnessProviders(tenantId: string): Promise<WellnessProvider[]>;
+  getWellnessProvider(tenantId: string, id: string): Promise<WellnessProvider | undefined>;
+  createWellnessProvider(tenantId: string, provider: InsertWellnessProvider): Promise<WellnessProvider>;
+  updateWellnessProvider(tenantId: string, id: string, updates: UpdateWellnessProvider): Promise<WellnessProvider | undefined>;
+  deleteWellnessProvider(tenantId: string, id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3594,6 +3707,321 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return true;
+  }
+
+  // ==================== OKR OBJECTIVES ====================
+
+  async getAllOkrObjectives(tenantId: string): Promise<OkrObjective[]> {
+    return await db.select().from(okrObjectives)
+      .where(eq(okrObjectives.tenantId, tenantId))
+      .orderBy(okrObjectives.category, okrObjectives.name);
+  }
+
+  async getOkrObjective(tenantId: string, id: string): Promise<OkrObjective | undefined> {
+    const [obj] = await db.select().from(okrObjectives)
+      .where(and(eq(okrObjectives.id, id), eq(okrObjectives.tenantId, tenantId)));
+    return obj || undefined;
+  }
+
+  async createOkrObjective(tenantId: string, objective: InsertOkrObjective): Promise<OkrObjective> {
+    const [newObj] = await db.insert(okrObjectives).values({ ...objective, tenantId }).returning();
+    return newObj;
+  }
+
+  async updateOkrObjective(tenantId: string, id: string, updates: UpdateOkrObjective): Promise<OkrObjective | undefined> {
+    const [obj] = await db.update(okrObjectives)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(okrObjectives.id, id), eq(okrObjectives.tenantId, tenantId)))
+      .returning();
+    return obj || undefined;
+  }
+
+  async deleteOkrObjective(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(okrObjectives)
+      .where(and(eq(okrObjectives.id, id), eq(okrObjectives.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ==================== OKR KEY RESULTS ====================
+
+  async getAllOkrKeyResults(tenantId: string): Promise<OkrKeyResult[]> {
+    return await db.select().from(okrKeyResults)
+      .where(eq(okrKeyResults.tenantId, tenantId))
+      .orderBy(okrKeyResults.category, okrKeyResults.name);
+  }
+
+  async getOkrKeyResult(tenantId: string, id: string): Promise<OkrKeyResult | undefined> {
+    const [kr] = await db.select().from(okrKeyResults)
+      .where(and(eq(okrKeyResults.id, id), eq(okrKeyResults.tenantId, tenantId)));
+    return kr || undefined;
+  }
+
+  async getOkrKeyResultsByObjective(tenantId: string, objectiveId: string): Promise<OkrKeyResult[]> {
+    return await db.select().from(okrKeyResults)
+      .where(and(eq(okrKeyResults.tenantId, tenantId), eq(okrKeyResults.objectiveId, objectiveId)));
+  }
+
+  async createOkrKeyResult(tenantId: string, keyResult: InsertOkrKeyResult): Promise<OkrKeyResult> {
+    const [newKR] = await db.insert(okrKeyResults).values({ ...keyResult, tenantId }).returning();
+    return newKR;
+  }
+
+  async updateOkrKeyResult(tenantId: string, id: string, updates: UpdateOkrKeyResult): Promise<OkrKeyResult | undefined> {
+    const [kr] = await db.update(okrKeyResults)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(okrKeyResults.id, id), eq(okrKeyResults.tenantId, tenantId)))
+      .returning();
+    return kr || undefined;
+  }
+
+  async deleteOkrKeyResult(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(okrKeyResults)
+      .where(and(eq(okrKeyResults.id, id), eq(okrKeyResults.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ==================== OKR LINKS ====================
+
+  async getOkrLinks(tenantId: string, objectiveId?: string, keyResultId?: string): Promise<OkrObjectiveKeyResultLink[]> {
+    const conditions = [eq(okrObjectiveKeyResultLinks.tenantId, tenantId)];
+    if (objectiveId) conditions.push(eq(okrObjectiveKeyResultLinks.objectiveId, objectiveId));
+    if (keyResultId) conditions.push(eq(okrObjectiveKeyResultLinks.keyResultId, keyResultId));
+    return await db.select().from(okrObjectiveKeyResultLinks).where(and(...conditions));
+  }
+
+  async createOkrLink(tenantId: string, objectiveId: string, keyResultId: string): Promise<OkrObjectiveKeyResultLink> {
+    const [link] = await db.insert(okrObjectiveKeyResultLinks).values({ tenantId, objectiveId, keyResultId }).returning();
+    return link;
+  }
+
+  async deleteOkrLink(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(okrObjectiveKeyResultLinks)
+      .where(and(eq(okrObjectiveKeyResultLinks.id, id), eq(okrObjectiveKeyResultLinks.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ==================== OKR REVIEW CYCLES ====================
+
+  async getAllOkrReviewCycles(tenantId: string): Promise<OkrReviewCycle[]> {
+    return await db.select().from(okrReviewCycles)
+      .where(eq(okrReviewCycles.tenantId, tenantId))
+      .orderBy(desc(okrReviewCycles.startDate));
+  }
+
+  async getOkrReviewCycle(tenantId: string, id: string): Promise<OkrReviewCycle | undefined> {
+    const [cycle] = await db.select().from(okrReviewCycles)
+      .where(and(eq(okrReviewCycles.id, id), eq(okrReviewCycles.tenantId, tenantId)));
+    return cycle || undefined;
+  }
+
+  async createOkrReviewCycle(tenantId: string, cycle: InsertOkrReviewCycle): Promise<OkrReviewCycle> {
+    const [newCycle] = await db.insert(okrReviewCycles).values({ ...cycle, tenantId }).returning();
+    return newCycle;
+  }
+
+  async updateOkrReviewCycle(tenantId: string, id: string, updates: UpdateOkrReviewCycle): Promise<OkrReviewCycle | undefined> {
+    const [cycle] = await db.update(okrReviewCycles)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(okrReviewCycles.id, id), eq(okrReviewCycles.tenantId, tenantId)))
+      .returning();
+    return cycle || undefined;
+  }
+
+  async deleteOkrReviewCycle(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(okrReviewCycles)
+      .where(and(eq(okrReviewCycles.id, id), eq(okrReviewCycles.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ==================== OKR ASSIGNMENTS ====================
+
+  async getOkrAssignments(tenantId: string, reviewCycleId?: string): Promise<OkrAssignment[]> {
+    if (reviewCycleId) {
+      return await db.select().from(okrAssignments)
+        .where(and(eq(okrAssignments.tenantId, tenantId), eq(okrAssignments.reviewCycleId, reviewCycleId)));
+    }
+    return await db.select().from(okrAssignments).where(eq(okrAssignments.tenantId, tenantId));
+  }
+
+  async createOkrAssignment(tenantId: string, assignment: InsertOkrAssignment): Promise<OkrAssignment> {
+    const [newAssignment] = await db.insert(okrAssignments).values({ ...assignment, tenantId }).returning();
+    return newAssignment;
+  }
+
+  async createOkrAssignmentsBatch(tenantId: string, assignments: InsertOkrAssignment[]): Promise<OkrAssignment[]> {
+    if (assignments.length === 0) return [];
+    const values = assignments.map(a => ({ ...a, tenantId }));
+    return await db.insert(okrAssignments).values(values).returning();
+  }
+
+  async updateOkrAssignment(tenantId: string, id: string, updates: UpdateOkrAssignment): Promise<OkrAssignment | undefined> {
+    const [assignment] = await db.update(okrAssignments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(okrAssignments.id, id), eq(okrAssignments.tenantId, tenantId)))
+      .returning();
+    return assignment || undefined;
+  }
+
+  async deleteOkrAssignment(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(okrAssignments)
+      .where(and(eq(okrAssignments.id, id), eq(okrAssignments.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ==================== OKR REVIEW SUBMISSIONS ====================
+
+  async getOkrReviewSubmissions(tenantId: string, reviewCycleId?: string): Promise<OkrReviewSubmission[]> {
+    if (reviewCycleId) {
+      return await db.select().from(okrReviewSubmissions)
+        .where(and(eq(okrReviewSubmissions.tenantId, tenantId), eq(okrReviewSubmissions.reviewCycleId, reviewCycleId)));
+    }
+    return await db.select().from(okrReviewSubmissions).where(eq(okrReviewSubmissions.tenantId, tenantId));
+  }
+
+  // ==================== PULSE SURVEYS ====================
+
+  async getAllPulseSurveys(tenantId: string): Promise<PulseSurvey[]> {
+    return await db.select().from(pulseSurveys)
+      .where(eq(pulseSurveys.tenantId, tenantId))
+      .orderBy(desc(pulseSurveys.createdAt));
+  }
+
+  async getPulseSurvey(tenantId: string, id: string): Promise<PulseSurvey | undefined> {
+    const [survey] = await db.select().from(pulseSurveys)
+      .where(and(eq(pulseSurveys.id, id), eq(pulseSurveys.tenantId, tenantId)));
+    return survey || undefined;
+  }
+
+  async createPulseSurvey(tenantId: string, survey: InsertPulseSurvey): Promise<PulseSurvey> {
+    const [newSurvey] = await db.insert(pulseSurveys).values({ ...survey, tenantId }).returning();
+    return newSurvey;
+  }
+
+  async updatePulseSurvey(tenantId: string, id: string, updates: UpdatePulseSurvey): Promise<PulseSurvey | undefined> {
+    const [survey] = await db.update(pulseSurveys)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(pulseSurveys.id, id), eq(pulseSurveys.tenantId, tenantId)))
+      .returning();
+    return survey || undefined;
+  }
+
+  async deletePulseSurvey(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(pulseSurveys)
+      .where(and(eq(pulseSurveys.id, id), eq(pulseSurveys.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getPulseSurveyResponses(tenantId: string, surveyId?: string): Promise<PulseSurveyResponse[]> {
+    if (surveyId) {
+      return await db.select().from(pulseSurveyResponses)
+        .where(and(eq(pulseSurveyResponses.tenantId, tenantId), eq(pulseSurveyResponses.surveyId, surveyId)));
+    }
+    return await db.select().from(pulseSurveyResponses).where(eq(pulseSurveyResponses.tenantId, tenantId));
+  }
+
+  async createPulseSurveyResponse(tenantId: string, response: Partial<PulseSurveyResponse>): Promise<PulseSurveyResponse> {
+    const [newResponse] = await db.insert(pulseSurveyResponses).values({ ...response, tenantId } as any).returning();
+    return newResponse;
+  }
+
+  async getPulseSurveyAnalysis(tenantId: string, surveyId?: string): Promise<PulseSurveyAnalysisType[]> {
+    if (surveyId) {
+      return await db.select().from(pulseSurveyAnalysis)
+        .where(and(eq(pulseSurveyAnalysis.tenantId, tenantId), eq(pulseSurveyAnalysis.surveyId, surveyId)));
+    }
+    return await db.select().from(pulseSurveyAnalysis).where(eq(pulseSurveyAnalysis.tenantId, tenantId));
+  }
+
+  // ==================== EMPLOYEE CONSENT (POPIA) ====================
+
+  async getAllEmployeeConsent(tenantId: string): Promise<EmployeeConsent[]> {
+    return await db.select().from(employeeConsent)
+      .where(eq(employeeConsent.tenantId, tenantId))
+      .orderBy(desc(employeeConsent.createdAt));
+  }
+
+  async getEmployeeConsent(tenantId: string, employeeId: string): Promise<EmployeeConsent | undefined> {
+    const [consent] = await db.select().from(employeeConsent)
+      .where(and(eq(employeeConsent.tenantId, tenantId), eq(employeeConsent.employeeId, employeeId)));
+    return consent || undefined;
+  }
+
+  async createEmployeeConsent(tenantId: string, consent: InsertEmployeeConsent): Promise<EmployeeConsent> {
+    const [newConsent] = await db.insert(employeeConsent).values({ ...consent, tenantId }).returning();
+    return newConsent;
+  }
+
+  async updateEmployeeConsent(tenantId: string, id: string, updates: Partial<InsertEmployeeConsent>): Promise<EmployeeConsent | undefined> {
+    const [consent] = await db.update(employeeConsent)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(employeeConsent.id, id), eq(employeeConsent.tenantId, tenantId)))
+      .returning();
+    return consent || undefined;
+  }
+
+  // ==================== COMPLIANCE DOCUMENTS ====================
+
+  async getComplianceDocuments(tenantId: string, documentType?: string): Promise<ComplianceDocument[]> {
+    if (documentType) {
+      return await db.select().from(complianceDocuments)
+        .where(and(eq(complianceDocuments.tenantId, tenantId), eq(complianceDocuments.documentType, documentType)));
+    }
+    return await db.select().from(complianceDocuments).where(eq(complianceDocuments.tenantId, tenantId));
+  }
+
+  async createComplianceDocument(tenantId: string, doc: Partial<ComplianceDocument>): Promise<ComplianceDocument> {
+    const [newDoc] = await db.insert(complianceDocuments).values({ ...doc, tenantId } as any).returning();
+    return newDoc;
+  }
+
+  // ==================== COMPLIANCE CHAT ====================
+
+  async getComplianceChatHistory(tenantId: string, userId: string, chatType: string): Promise<ComplianceChatHistory[]> {
+    return await db.select().from(complianceChatHistory)
+      .where(and(
+        eq(complianceChatHistory.tenantId, tenantId),
+        eq(complianceChatHistory.userId, userId),
+        eq(complianceChatHistory.chatType, chatType)
+      ))
+      .orderBy(desc(complianceChatHistory.createdAt));
+  }
+
+  async createComplianceChatEntry(tenantId: string, entry: Partial<ComplianceChatHistory>): Promise<ComplianceChatHistory> {
+    const [newEntry] = await db.insert(complianceChatHistory).values({ ...entry, tenantId } as any).returning();
+    return newEntry;
+  }
+
+  // ==================== WELLNESS PROVIDERS ====================
+
+  async getAllWellnessProviders(tenantId: string): Promise<WellnessProvider[]> {
+    return await db.select().from(wellnessProviders)
+      .where(eq(wellnessProviders.tenantId, tenantId))
+      .orderBy(wellnessProviders.category, wellnessProviders.name);
+  }
+
+  async getWellnessProvider(tenantId: string, id: string): Promise<WellnessProvider | undefined> {
+    const [provider] = await db.select().from(wellnessProviders)
+      .where(and(eq(wellnessProviders.id, id), eq(wellnessProviders.tenantId, tenantId)));
+    return provider || undefined;
+  }
+
+  async createWellnessProvider(tenantId: string, provider: InsertWellnessProvider): Promise<WellnessProvider> {
+    const [newProvider] = await db.insert(wellnessProviders).values({ ...provider, tenantId }).returning();
+    return newProvider;
+  }
+
+  async updateWellnessProvider(tenantId: string, id: string, updates: UpdateWellnessProvider): Promise<WellnessProvider | undefined> {
+    const [provider] = await db.update(wellnessProviders)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(wellnessProviders.id, id), eq(wellnessProviders.tenantId, tenantId)))
+      .returning();
+    return provider || undefined;
+  }
+
+  async deleteWellnessProvider(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(wellnessProviders)
+      .where(and(eq(wellnessProviders.id, id), eq(wellnessProviders.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 

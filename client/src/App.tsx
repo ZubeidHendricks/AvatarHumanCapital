@@ -73,6 +73,10 @@ import EmployeeOnboarding from "@/pages/employee-onboarding";
 import TemplatesPage from "@/pages/templates";
 import AISupport from "@/pages/ai-support";
 import DemoShowcase from "@/pages/demo-showcase";
+import OkrManagement from "@/pages/okr-management";
+import PulseSurvey from "@/pages/pulse-survey";
+import Compliance from "@/pages/compliance";
+import WellnessSetup from "@/pages/wellness-setup";
 
 function Router() {
   return (
@@ -143,6 +147,10 @@ function Router() {
       <Route path="/onboarding-setup" component={OnboardingSetup} />
       <Route path="/ai-support" component={AISupport} />
       <Route path="/demo" component={DemoShowcase} />
+      <Route path="/okr-management" component={OkrManagement} />
+      <Route path="/pulse-survey" component={PulseSurvey} />
+      <Route path="/compliance" component={Compliance} />
+      <Route path="/wellness-setup" component={WellnessSetup} />
       <Route component={NotFound} />
     </Switch>
   );

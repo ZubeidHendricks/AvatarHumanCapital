@@ -9904,6 +9904,460 @@ Format your response as JSON:
     }
   });
 
+  // ==================== OKR OBJECTIVES ====================
+
+  app.get("/api/okr-objectives", async (req, res) => {
+    try {
+      const objectives = await storage.getAllOkrObjectives(req.tenant.id);
+      res.json(objectives);
+    } catch (error) {
+      console.error("Error fetching OKR objectives:", error);
+      res.status(500).json({ message: "Failed to fetch OKR objectives" });
+    }
+  });
+
+  app.post("/api/okr-objectives", async (req, res) => {
+    try {
+      const objective = await storage.createOkrObjective(req.tenant.id, req.body);
+      res.status(201).json(objective);
+    } catch (error) {
+      console.error("Error creating OKR objective:", error);
+      res.status(500).json({ message: "Failed to create OKR objective" });
+    }
+  });
+
+  app.patch("/api/okr-objectives/:id", async (req, res) => {
+    try {
+      const objective = await storage.updateOkrObjective(req.tenant.id, req.params.id, req.body);
+      if (!objective) return res.status(404).json({ message: "OKR objective not found" });
+      res.json(objective);
+    } catch (error) {
+      console.error("Error updating OKR objective:", error);
+      res.status(500).json({ message: "Failed to update OKR objective" });
+    }
+  });
+
+  app.delete("/api/okr-objectives/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteOkrObjective(req.tenant.id, req.params.id);
+      if (!success) return res.status(404).json({ message: "OKR objective not found" });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting OKR objective:", error);
+      res.status(500).json({ message: "Failed to delete OKR objective" });
+    }
+  });
+
+  // ==================== OKR KEY RESULTS ====================
+
+  app.get("/api/okr-key-results", async (req, res) => {
+    try {
+      const { objectiveId } = req.query;
+      let keyResults;
+      if (objectiveId) {
+        keyResults = await storage.getOkrKeyResultsByObjective(req.tenant.id, objectiveId as string);
+      } else {
+        keyResults = await storage.getAllOkrKeyResults(req.tenant.id);
+      }
+      res.json(keyResults);
+    } catch (error) {
+      console.error("Error fetching OKR key results:", error);
+      res.status(500).json({ message: "Failed to fetch OKR key results" });
+    }
+  });
+
+  app.post("/api/okr-key-results", async (req, res) => {
+    try {
+      const keyResult = await storage.createOkrKeyResult(req.tenant.id, req.body);
+      res.status(201).json(keyResult);
+    } catch (error) {
+      console.error("Error creating OKR key result:", error);
+      res.status(500).json({ message: "Failed to create OKR key result" });
+    }
+  });
+
+  app.patch("/api/okr-key-results/:id", async (req, res) => {
+    try {
+      const keyResult = await storage.updateOkrKeyResult(req.tenant.id, req.params.id, req.body);
+      if (!keyResult) return res.status(404).json({ message: "OKR key result not found" });
+      res.json(keyResult);
+    } catch (error) {
+      console.error("Error updating OKR key result:", error);
+      res.status(500).json({ message: "Failed to update OKR key result" });
+    }
+  });
+
+  app.delete("/api/okr-key-results/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteOkrKeyResult(req.tenant.id, req.params.id);
+      if (!success) return res.status(404).json({ message: "OKR key result not found" });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting OKR key result:", error);
+      res.status(500).json({ message: "Failed to delete OKR key result" });
+    }
+  });
+
+  // ==================== OKR LINKS ====================
+
+  app.get("/api/okr-links", async (req, res) => {
+    try {
+      const { objectiveId, keyResultId } = req.query;
+      const links = await storage.getOkrLinks(req.tenant.id, objectiveId as string, keyResultId as string);
+      res.json(links);
+    } catch (error) {
+      console.error("Error fetching OKR links:", error);
+      res.status(500).json({ message: "Failed to fetch OKR links" });
+    }
+  });
+
+  app.post("/api/okr-links", async (req, res) => {
+    try {
+      const { objectiveId, keyResultId } = req.body;
+      const link = await storage.createOkrLink(req.tenant.id, objectiveId, keyResultId);
+      res.status(201).json(link);
+    } catch (error) {
+      console.error("Error creating OKR link:", error);
+      res.status(500).json({ message: "Failed to create OKR link" });
+    }
+  });
+
+  app.delete("/api/okr-links/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteOkrLink(req.tenant.id, req.params.id);
+      if (!success) return res.status(404).json({ message: "OKR link not found" });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting OKR link:", error);
+      res.status(500).json({ message: "Failed to delete OKR link" });
+    }
+  });
+
+  // ==================== OKR REVIEW CYCLES ====================
+
+  app.get("/api/okr-review-cycles", async (req, res) => {
+    try {
+      const cycles = await storage.getAllOkrReviewCycles(req.tenant.id);
+      res.json(cycles);
+    } catch (error) {
+      console.error("Error fetching OKR review cycles:", error);
+      res.status(500).json({ message: "Failed to fetch OKR review cycles" });
+    }
+  });
+
+  app.post("/api/okr-review-cycles", async (req, res) => {
+    try {
+      const cycleData = {
+        ...req.body,
+        startDate: new Date(req.body.startDate),
+        endDate: new Date(req.body.endDate),
+        selfAssessmentDueDate: req.body.selfAssessmentDueDate ? new Date(req.body.selfAssessmentDueDate) : null,
+        managerReviewDueDate: req.body.managerReviewDueDate ? new Date(req.body.managerReviewDueDate) : null,
+      };
+      const cycle = await storage.createOkrReviewCycle(req.tenant.id, cycleData);
+      res.status(201).json(cycle);
+    } catch (error) {
+      console.error("Error creating OKR review cycle:", error);
+      res.status(500).json({ message: "Failed to create OKR review cycle" });
+    }
+  });
+
+  app.patch("/api/okr-review-cycles/:id", async (req, res) => {
+    try {
+      const updateData = { ...req.body };
+      if (req.body.startDate) updateData.startDate = new Date(req.body.startDate);
+      if (req.body.endDate) updateData.endDate = new Date(req.body.endDate);
+      if (req.body.selfAssessmentDueDate) updateData.selfAssessmentDueDate = new Date(req.body.selfAssessmentDueDate);
+      if (req.body.managerReviewDueDate) updateData.managerReviewDueDate = new Date(req.body.managerReviewDueDate);
+      const cycle = await storage.updateOkrReviewCycle(req.tenant.id, req.params.id, updateData);
+      if (!cycle) return res.status(404).json({ message: "OKR review cycle not found" });
+      res.json(cycle);
+    } catch (error) {
+      console.error("Error updating OKR review cycle:", error);
+      res.status(500).json({ message: "Failed to update OKR review cycle" });
+    }
+  });
+
+  app.delete("/api/okr-review-cycles/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteOkrReviewCycle(req.tenant.id, req.params.id);
+      if (!success) return res.status(404).json({ message: "OKR review cycle not found" });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting OKR review cycle:", error);
+      res.status(500).json({ message: "Failed to delete OKR review cycle" });
+    }
+  });
+
+  // ==================== OKR ASSIGNMENTS ====================
+
+  app.get("/api/okr-assignments", async (req, res) => {
+    try {
+      const { reviewCycleId } = req.query;
+      const assignments = await storage.getOkrAssignments(req.tenant.id, reviewCycleId as string);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching OKR assignments:", error);
+      res.status(500).json({ message: "Failed to fetch OKR assignments" });
+    }
+  });
+
+  app.post("/api/okr-assignments", async (req, res) => {
+    try {
+      const assignment = await storage.createOkrAssignment(req.tenant.id, req.body);
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Error creating OKR assignment:", error);
+      res.status(500).json({ message: "Failed to create OKR assignment" });
+    }
+  });
+
+  app.post("/api/okr-assignments/batch", async (req, res) => {
+    try {
+      const { assignments } = req.body;
+      const created = await storage.createOkrAssignmentsBatch(req.tenant.id, assignments);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error batch creating OKR assignments:", error);
+      res.status(500).json({ message: "Failed to batch create OKR assignments" });
+    }
+  });
+
+  app.delete("/api/okr-assignments/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteOkrAssignment(req.tenant.id, req.params.id);
+      if (!success) return res.status(404).json({ message: "OKR assignment not found" });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting OKR assignment:", error);
+      res.status(500).json({ message: "Failed to delete OKR assignment" });
+    }
+  });
+
+  // ==================== OKR REVIEW SUBMISSIONS ====================
+
+  app.get("/api/okr-review-submissions", async (req, res) => {
+    try {
+      const { reviewCycleId } = req.query;
+      const submissions = await storage.getOkrReviewSubmissions(req.tenant.id, reviewCycleId as string);
+      res.json(submissions);
+    } catch (error) {
+      console.error("Error fetching OKR review submissions:", error);
+      res.status(500).json({ message: "Failed to fetch OKR review submissions" });
+    }
+  });
+
+  // ==================== PULSE SURVEYS ====================
+
+  app.get("/api/pulse-surveys", async (req, res) => {
+    try {
+      const surveys = await storage.getAllPulseSurveys(req.tenant.id);
+      res.json(surveys);
+    } catch (error) {
+      console.error("Error fetching pulse surveys:", error);
+      res.status(500).json({ message: "Failed to fetch pulse surveys" });
+    }
+  });
+
+  app.post("/api/pulse-surveys", async (req, res) => {
+    try {
+      const survey = await storage.createPulseSurvey(req.tenant.id, req.body);
+      res.status(201).json(survey);
+    } catch (error) {
+      console.error("Error creating pulse survey:", error);
+      res.status(500).json({ message: "Failed to create pulse survey" });
+    }
+  });
+
+  app.patch("/api/pulse-surveys/:id", async (req, res) => {
+    try {
+      const survey = await storage.updatePulseSurvey(req.tenant.id, req.params.id, req.body);
+      if (!survey) return res.status(404).json({ message: "Pulse survey not found" });
+      res.json(survey);
+    } catch (error) {
+      console.error("Error updating pulse survey:", error);
+      res.status(500).json({ message: "Failed to update pulse survey" });
+    }
+  });
+
+  app.delete("/api/pulse-surveys/:id", async (req, res) => {
+    try {
+      const success = await storage.deletePulseSurvey(req.tenant.id, req.params.id);
+      if (!success) return res.status(404).json({ message: "Pulse survey not found" });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting pulse survey:", error);
+      res.status(500).json({ message: "Failed to delete pulse survey" });
+    }
+  });
+
+  // ==================== PULSE SURVEY RESPONSES ====================
+
+  app.get("/api/pulse-survey-responses", async (req, res) => {
+    try {
+      const { surveyId } = req.query;
+      const responses = await storage.getPulseSurveyResponses(req.tenant.id, surveyId as string);
+      res.json(responses);
+    } catch (error) {
+      console.error("Error fetching pulse survey responses:", error);
+      res.status(500).json({ message: "Failed to fetch pulse survey responses" });
+    }
+  });
+
+  app.post("/api/pulse-survey-responses", async (req, res) => {
+    try {
+      const response = await storage.createPulseSurveyResponse(req.tenant.id, req.body);
+      res.status(201).json(response);
+    } catch (error) {
+      console.error("Error creating pulse survey response:", error);
+      res.status(500).json({ message: "Failed to create pulse survey response" });
+    }
+  });
+
+  // ==================== PULSE SURVEY ANALYSIS ====================
+
+  app.get("/api/pulse-survey-analysis", async (req, res) => {
+    try {
+      const { surveyId } = req.query;
+      const analysis = await storage.getPulseSurveyAnalysis(req.tenant.id, surveyId as string);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error fetching pulse survey analysis:", error);
+      res.status(500).json({ message: "Failed to fetch pulse survey analysis" });
+    }
+  });
+
+  // ==================== EMPLOYEE CONSENT (POPIA) ====================
+
+  app.get("/api/employee-consent", async (req, res) => {
+    try {
+      const consents = await storage.getAllEmployeeConsent(req.tenant.id);
+      res.json(consents);
+    } catch (error) {
+      console.error("Error fetching employee consent:", error);
+      res.status(500).json({ message: "Failed to fetch employee consent" });
+    }
+  });
+
+  app.post("/api/employee-consent", async (req, res) => {
+    try {
+      const consent = await storage.createEmployeeConsent(req.tenant.id, req.body);
+      res.status(201).json(consent);
+    } catch (error) {
+      console.error("Error creating employee consent:", error);
+      res.status(500).json({ message: "Failed to create employee consent" });
+    }
+  });
+
+  app.patch("/api/employee-consent/:id", async (req, res) => {
+    try {
+      const consent = await storage.updateEmployeeConsent(req.tenant.id, req.params.id, req.body);
+      if (!consent) return res.status(404).json({ message: "Employee consent not found" });
+      res.json(consent);
+    } catch (error) {
+      console.error("Error updating employee consent:", error);
+      res.status(500).json({ message: "Failed to update employee consent" });
+    }
+  });
+
+  // ==================== COMPLIANCE DOCUMENTS ====================
+
+  app.get("/api/compliance-documents", async (req, res) => {
+    try {
+      const { documentType } = req.query;
+      const docs = await storage.getComplianceDocuments(req.tenant.id, documentType as string);
+      res.json(docs);
+    } catch (error) {
+      console.error("Error fetching compliance documents:", error);
+      res.status(500).json({ message: "Failed to fetch compliance documents" });
+    }
+  });
+
+  app.post("/api/compliance-documents", async (req, res) => {
+    try {
+      const doc = await storage.createComplianceDocument(req.tenant.id, req.body);
+      res.status(201).json(doc);
+    } catch (error) {
+      console.error("Error creating compliance document:", error);
+      res.status(500).json({ message: "Failed to create compliance document" });
+    }
+  });
+
+  // ==================== COMPLIANCE CHAT (RAG) ====================
+
+  app.get("/api/compliance-chat", async (req, res) => {
+    try {
+      const { chatType } = req.query;
+      const userId = (req as any).user?.id || "anonymous";
+      const history = await storage.getComplianceChatHistory(req.tenant.id, userId, chatType as string);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching compliance chat:", error);
+      res.status(500).json({ message: "Failed to fetch compliance chat" });
+    }
+  });
+
+  app.post("/api/compliance-chat", async (req, res) => {
+    try {
+      const { question, chatType } = req.body;
+      const userId = (req as any).user?.id || "anonymous";
+      const entry = await storage.createComplianceChatEntry(req.tenant.id, {
+        userId,
+        chatType,
+        question,
+        answer: "AI analysis of your query is being processed. The system will reference the relevant legislation and provide guidance based on the latest Government Gazette updates.",
+      });
+      res.status(201).json(entry);
+    } catch (error) {
+      console.error("Error creating compliance chat:", error);
+      res.status(500).json({ message: "Failed to create compliance chat entry" });
+    }
+  });
+
+  // ==================== WELLNESS PROVIDERS ====================
+
+  app.get("/api/wellness-providers", async (req, res) => {
+    try {
+      const providers = await storage.getAllWellnessProviders(req.tenant.id);
+      res.json(providers);
+    } catch (error) {
+      console.error("Error fetching wellness providers:", error);
+      res.status(500).json({ message: "Failed to fetch wellness providers" });
+    }
+  });
+
+  app.post("/api/wellness-providers", async (req, res) => {
+    try {
+      const provider = await storage.createWellnessProvider(req.tenant.id, req.body);
+      res.status(201).json(provider);
+    } catch (error) {
+      console.error("Error creating wellness provider:", error);
+      res.status(500).json({ message: "Failed to create wellness provider" });
+    }
+  });
+
+  app.patch("/api/wellness-providers/:id", async (req, res) => {
+    try {
+      const provider = await storage.updateWellnessProvider(req.tenant.id, req.params.id, req.body);
+      if (!provider) return res.status(404).json({ message: "Wellness provider not found" });
+      res.json(provider);
+    } catch (error) {
+      console.error("Error updating wellness provider:", error);
+      res.status(500).json({ message: "Failed to update wellness provider" });
+    }
+  });
+
+  app.delete("/api/wellness-providers/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteWellnessProvider(req.tenant.id, req.params.id);
+      if (!success) return res.status(404).json({ message: "Wellness provider not found" });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting wellness provider:", error);
+      res.status(500).json({ message: "Failed to delete wellness provider" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

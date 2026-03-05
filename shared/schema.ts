@@ -2652,3 +2652,392 @@ export const weighbridgeSlips = pgTable("weighbridge_slips", {
 export const insertWeighbridgeSlipSchema = createInsertSchema(weighbridgeSlips);
 export type WeighbridgeSlip = typeof weighbridgeSlips.$inferSelect;
 export type InsertWeighbridgeSlip = typeof weighbridgeSlips.$inferInsert;
+
+// ============================================
+// OKR (OBJECTIVES & KEY RESULTS) SYSTEM
+// ============================================
+
+// OKR Objectives - Master objective definitions
+export const okrObjectives = pgTable("okr_objectives", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category"), // 'strategic', 'operational', 'growth', 'innovation', 'customer', 'financial', 'team', 'process'
+  measurementType: text("measurement_type").notNull().default("scale"), // 'scale', 'percentage', 'number', 'boolean'
+  targetValue: integer("target_value"),
+  weight: integer("weight").default(1),
+  frequency: text("frequency").default("weekly"), // 'weekly', 'monthly', 'quarterly', 'annually'
+  projectName: text("project_name"), // Link to a specific project
+  projectId: varchar("project_id"),
+  ownerId: varchar("owner_id").references(() => users.id),
+  ownerType: text("owner_type"), // 'person', 'department', 'division'
+  ownerDepartment: text("owner_department"),
+  department: text("department"),
+  role: text("role"),
+  isActive: integer("is_active").default(1),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("okr_objectives_tenant_id_idx").on(table.tenantId),
+  categoryIdx: index("okr_objectives_category_idx").on(table.category),
+  departmentIdx: index("okr_objectives_department_idx").on(table.department),
+  ownerIdIdx: index("okr_objectives_owner_id_idx").on(table.ownerId),
+}));
+
+// OKR Key Results - Key result definitions linked to objectives
+export const okrKeyResults = pgTable("okr_key_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  name: text("name").notNull(),
+  description: text("description"),
+  objectiveId: varchar("objective_id").references(() => okrObjectives.id), // Link to parent objective
+  category: text("category"),
+  measurementType: text("measurement_type").notNull().default("percentage"), // 'scale', 'percentage', 'number', 'boolean'
+  targetValue: integer("target_value"),
+  currentValue: real("current_value"),
+  weight: integer("weight").default(1),
+  frequency: text("frequency").default("weekly"),
+  projectName: text("project_name"),
+  projectId: varchar("project_id"),
+  ownerId: varchar("owner_id").references(() => users.id),
+  ownerType: text("owner_type"),
+  ownerDepartment: text("owner_department"),
+  department: text("department"),
+  role: text("role"),
+  isActive: integer("is_active").default(1),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("okr_key_results_tenant_id_idx").on(table.tenantId),
+  objectiveIdIdx: index("okr_key_results_objective_id_idx").on(table.objectiveId),
+  categoryIdx: index("okr_key_results_category_idx").on(table.category),
+  ownerIdIdx: index("okr_key_results_owner_id_idx").on(table.ownerId),
+}));
+
+// OKR Objective-KeyResult Links - Many-to-many linking
+export const okrObjectiveKeyResultLinks = pgTable("okr_objective_key_result_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  objectiveId: varchar("objective_id").notNull().references(() => okrObjectives.id),
+  keyResultId: varchar("key_result_id").notNull().references(() => okrKeyResults.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("okr_obj_kr_links_tenant_id_idx").on(table.tenantId),
+  objectiveIdIdx: index("okr_obj_kr_links_objective_id_idx").on(table.objectiveId),
+  keyResultIdIdx: index("okr_obj_kr_links_key_result_id_idx").on(table.keyResultId),
+}));
+
+// OKR Review Cycles
+export const okrReviewCycles = pgTable("okr_review_cycles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  name: text("name").notNull(),
+  description: text("description"),
+  cycleType: text("cycle_type").notNull().default("weekly"), // 'weekly', 'monthly', 'quarterly', 'semi_annual', 'annual'
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  selfAssessmentDueDate: timestamp("self_assessment_due_date"),
+  managerReviewDueDate: timestamp("manager_review_due_date"),
+  status: text("status").notNull().default("draft"), // 'draft', 'active', 'self_assessment', 'manager_review', 'completed', 'archived'
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("okr_review_cycles_tenant_id_idx").on(table.tenantId),
+  statusIdx: index("okr_review_cycles_status_idx").on(table.status),
+}));
+
+// OKR Assignments - Assign objectives/key results to employees
+export const okrAssignments = pgTable("okr_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  reviewCycleId: varchar("review_cycle_id").notNull().references(() => okrReviewCycles.id),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  objectiveId: varchar("objective_id").references(() => okrObjectives.id),
+  keyResultId: varchar("key_result_id").references(() => okrKeyResults.id),
+  assignmentType: text("assignment_type").notNull().default("objective"), // 'objective', 'key_result'
+  customTarget: integer("custom_target"),
+  customWeight: integer("custom_weight"),
+  managerId: varchar("manager_id").references(() => employees.id),
+  status: text("status").notNull().default("pending"), // 'pending', 'self_scored', 'manager_reviewed', 'finalized'
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("okr_assignments_tenant_id_idx").on(table.tenantId),
+  reviewCycleIdIdx: index("okr_assignments_review_cycle_idx").on(table.reviewCycleId),
+  employeeIdIdx: index("okr_assignments_employee_id_idx").on(table.employeeId),
+  statusIdx: index("okr_assignments_status_idx").on(table.status),
+}));
+
+// OKR Scores
+export const okrScores = pgTable("okr_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  assignmentId: varchar("assignment_id").notNull().references(() => okrAssignments.id),
+  scorerType: text("scorer_type").notNull(), // 'self', 'manager', 'peer'
+  scorerId: varchar("scorer_id").references(() => users.id),
+  score: integer("score").notNull(), // 1-5 scale
+  comments: text("comments"),
+  evidence: text("evidence"),
+  submittedAt: timestamp("submitted_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("okr_scores_tenant_id_idx").on(table.tenantId),
+  assignmentIdIdx: index("okr_scores_assignment_id_idx").on(table.assignmentId),
+}));
+
+// OKR Review Submissions
+export const okrReviewSubmissions = pgTable("okr_review_submissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  reviewCycleId: varchar("review_cycle_id").notNull().references(() => okrReviewCycles.id),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  managerId: varchar("manager_id").references(() => employees.id),
+  selfAssessmentStatus: text("self_assessment_status").notNull().default("pending"),
+  managerReviewStatus: text("manager_review_status").notNull().default("pending"),
+  overallSelfScore: integer("overall_self_score"),
+  overallManagerScore: integer("overall_manager_score"),
+  finalScore: integer("final_score"),
+  managerComments: text("manager_comments"),
+  employeeComments: text("employee_comments"),
+  selfSubmittedAt: timestamp("self_submitted_at"),
+  managerSubmittedAt: timestamp("manager_submitted_at"),
+  finalizedAt: timestamp("finalized_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("okr_review_submissions_tenant_id_idx").on(table.tenantId),
+  reviewCycleIdIdx: index("okr_review_submissions_cycle_idx").on(table.reviewCycleId),
+  employeeIdIdx: index("okr_review_submissions_employee_idx").on(table.employeeId),
+}));
+
+// OKR Schemas
+export const insertOkrObjectiveSchema = createInsertSchema(okrObjectives).omit({
+  id: true, tenantId: true, createdAt: true, updatedAt: true,
+});
+export const updateOkrObjectiveSchema = insertOkrObjectiveSchema.partial();
+export type InsertOkrObjective = z.infer<typeof insertOkrObjectiveSchema>;
+export type UpdateOkrObjective = z.infer<typeof updateOkrObjectiveSchema>;
+export type OkrObjective = typeof okrObjectives.$inferSelect;
+
+export const insertOkrKeyResultSchema = createInsertSchema(okrKeyResults).omit({
+  id: true, tenantId: true, createdAt: true, updatedAt: true,
+});
+export const updateOkrKeyResultSchema = insertOkrKeyResultSchema.partial();
+export type InsertOkrKeyResult = z.infer<typeof insertOkrKeyResultSchema>;
+export type UpdateOkrKeyResult = z.infer<typeof updateOkrKeyResultSchema>;
+export type OkrKeyResult = typeof okrKeyResults.$inferSelect;
+
+export const insertOkrReviewCycleSchema = createInsertSchema(okrReviewCycles).omit({
+  id: true, tenantId: true, createdAt: true, updatedAt: true,
+});
+export const updateOkrReviewCycleSchema = insertOkrReviewCycleSchema.partial();
+export type InsertOkrReviewCycle = z.infer<typeof insertOkrReviewCycleSchema>;
+export type UpdateOkrReviewCycle = z.infer<typeof updateOkrReviewCycleSchema>;
+export type OkrReviewCycle = typeof okrReviewCycles.$inferSelect;
+
+export const insertOkrAssignmentSchema = createInsertSchema(okrAssignments).omit({
+  id: true, tenantId: true, createdAt: true, updatedAt: true,
+});
+export const updateOkrAssignmentSchema = insertOkrAssignmentSchema.partial();
+export type InsertOkrAssignment = z.infer<typeof insertOkrAssignmentSchema>;
+export type UpdateOkrAssignment = z.infer<typeof updateOkrAssignmentSchema>;
+export type OkrAssignment = typeof okrAssignments.$inferSelect;
+
+export type OkrScore = typeof okrScores.$inferSelect;
+export type OkrObjectiveKeyResultLink = typeof okrObjectiveKeyResultLinks.$inferSelect;
+export type OkrReviewSubmission = typeof okrReviewSubmissions.$inferSelect;
+
+// ============================================
+// PULSE SURVEY SYSTEM
+// ============================================
+
+// Pulse Surveys - Survey definitions
+export const pulseSurveys = pgTable("pulse_surveys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  title: text("title").notNull(),
+  description: text("description"),
+  surveyType: text("survey_type").notNull(), // 'nps', 'wellbeing', 'relationship', 'open_feedback'
+  questions: jsonb("questions"), // [{id, question, type, options}]
+  isAnonymous: integer("is_anonymous").default(1),
+  isActive: integer("is_active").default(1),
+  frequency: text("frequency").default("weekly"), // 'daily', 'weekly', 'biweekly', 'monthly'
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("pulse_surveys_tenant_id_idx").on(table.tenantId),
+  surveyTypeIdx: index("pulse_surveys_type_idx").on(table.surveyType),
+}));
+
+// Pulse Survey Responses
+export const pulseSurveyResponses = pgTable("pulse_survey_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  surveyId: varchar("survey_id").notNull().references(() => pulseSurveys.id),
+  employeeId: varchar("employee_id").references(() => employees.id),
+  responses: jsonb("responses"), // [{questionId, answer, score}]
+  npsScore: integer("nps_score"), // 0-10 for NPS surveys
+  comments: text("comments"),
+  sentiment: text("sentiment"), // AI-analyzed: 'positive', 'neutral', 'negative'
+  redFlags: jsonb("red_flags"), // AI-identified concerns [{type, severity, description}]
+  submittedAt: timestamp("submitted_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("pulse_responses_tenant_id_idx").on(table.tenantId),
+  surveyIdIdx: index("pulse_responses_survey_id_idx").on(table.surveyId),
+  employeeIdIdx: index("pulse_responses_employee_id_idx").on(table.employeeId),
+}));
+
+// Pulse Survey AI Analysis
+export const pulseSurveyAnalysis = pgTable("pulse_survey_analysis", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  surveyId: varchar("survey_id").references(() => pulseSurveys.id),
+  analysisType: text("analysis_type").notNull(), // 'individual', 'department', 'company', 'trend'
+  targetId: varchar("target_id"), // employee_id or department name
+  period: text("period"), // 'week', 'month', 'quarter'
+  enpsScore: integer("enps_score"), // Calculated eNPS
+  promoterCount: integer("promoter_count"),
+  passiveCount: integer("passive_count"),
+  detractorCount: integer("detractor_count"),
+  wellbeingScore: real("wellbeing_score"),
+  relationshipScore: real("relationship_score"),
+  redFlags: jsonb("red_flags"), // [{type, severity, description, affectedCount}]
+  recommendations: jsonb("recommendations"), // [{category, priority, recommendation, targetType}]
+  insights: text("insights"), // AI-generated narrative
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("pulse_analysis_tenant_id_idx").on(table.tenantId),
+  surveyIdIdx: index("pulse_analysis_survey_id_idx").on(table.surveyId),
+  analysisTypeIdx: index("pulse_analysis_type_idx").on(table.analysisType),
+}));
+
+// Pulse Survey Schemas
+export const insertPulseSurveySchema = createInsertSchema(pulseSurveys).omit({
+  id: true, tenantId: true, createdAt: true, updatedAt: true,
+});
+export const updatePulseSurveySchema = insertPulseSurveySchema.partial();
+export type InsertPulseSurvey = z.infer<typeof insertPulseSurveySchema>;
+export type UpdatePulseSurvey = z.infer<typeof updatePulseSurveySchema>;
+export type PulseSurvey = typeof pulseSurveys.$inferSelect;
+
+export type PulseSurveyResponse = typeof pulseSurveyResponses.$inferSelect;
+export type PulseSurveyAnalysisType = typeof pulseSurveyAnalysis.$inferSelect;
+
+// ============================================
+// COMPLIANCE SYSTEM
+// ============================================
+
+// Employee Consent - POPIA consent tracking
+export const employeeConsent = pgTable("employee_consent", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  consentType: text("consent_type").notNull().default("data_processing"), // 'data_processing', 'data_storage', 'data_sharing'
+  status: text("status").notNull().default("pending"), // 'received', 'pending', 'denied'
+  consentDate: timestamp("consent_date"),
+  expiryDate: timestamp("expiry_date"),
+  documentUrl: text("document_url"),
+  ipAddress: text("ip_address"),
+  notes: text("notes"),
+  requestedBy: varchar("requested_by").references(() => users.id),
+  requestedAt: timestamp("requested_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("employee_consent_tenant_id_idx").on(table.tenantId),
+  employeeIdIdx: index("employee_consent_employee_id_idx").on(table.employeeId),
+  statusIdx: index("employee_consent_status_idx").on(table.status),
+}));
+
+// Compliance Documents - Legislation and employment contract references
+export const complianceDocuments = pgTable("compliance_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  documentType: text("document_type").notNull(), // 'legislation', 'employment_contract', 'policy'
+  title: text("title").notNull(),
+  description: text("description"),
+  legislationName: text("legislation_name"), // e.g. 'Basic Conditions of Employment Act'
+  fileUrl: text("file_url"),
+  employeeId: varchar("employee_id").references(() => employees.id), // For employment contracts
+  contractType: text("contract_type"), // 'permanent', 'fixed_term', 'temporary'
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  status: text("status").default("active"), // 'active', 'expired', 'terminated'
+  lastUpdatedFromGazette: timestamp("last_updated_from_gazette"),
+  embedding: text("embedding"), // For RAG
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("compliance_docs_tenant_id_idx").on(table.tenantId),
+  documentTypeIdx: index("compliance_docs_type_idx").on(table.documentType),
+  employeeIdIdx: index("compliance_docs_employee_id_idx").on(table.employeeId),
+}));
+
+// Compliance Chat History - RAG Q&A for legislation and contracts
+export const complianceChatHistory = pgTable("compliance_chat_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  userId: varchar("user_id").references(() => users.id),
+  chatType: text("chat_type").notNull(), // 'legislation', 'contracts'
+  question: text("question").notNull(),
+  answer: text("answer"),
+  sourcesUsed: jsonb("sources_used"), // [{documentId, title, relevanceScore}]
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("compliance_chat_tenant_id_idx").on(table.tenantId),
+  userIdIdx: index("compliance_chat_user_id_idx").on(table.userId),
+}));
+
+// Compliance Schemas
+export const insertEmployeeConsentSchema = createInsertSchema(employeeConsent).omit({
+  id: true, tenantId: true, createdAt: true, updatedAt: true,
+});
+export type InsertEmployeeConsent = z.infer<typeof insertEmployeeConsentSchema>;
+export type EmployeeConsent = typeof employeeConsent.$inferSelect;
+
+export type ComplianceDocument = typeof complianceDocuments.$inferSelect;
+export type ComplianceChatHistory = typeof complianceChatHistory.$inferSelect;
+
+// ============================================
+// WELLNESS PARTNER SYSTEM
+// ============================================
+
+// Wellness Providers - Third-party wellness provider integrations
+export const wellnessProviders = pgTable("wellness_providers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  name: text("name").notNull(),
+  category: text("category").notNull(), // 'mental_emotional', 'physical', 'financial'
+  description: text("description"),
+  apiEndpoint: text("api_endpoint"),
+  apiKey: text("api_key"), // Encrypted
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  websiteUrl: text("website_url"),
+  isActive: integer("is_active").default(1),
+  connectionStatus: text("connection_status").default("disconnected"), // 'connected', 'disconnected', 'error'
+  lastSyncAt: timestamp("last_sync_at"),
+  metadata: jsonb("metadata"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("wellness_providers_tenant_id_idx").on(table.tenantId),
+  categoryIdx: index("wellness_providers_category_idx").on(table.category),
+}));
+
+// Wellness Schemas
+export const insertWellnessProviderSchema = createInsertSchema(wellnessProviders).omit({
+  id: true, tenantId: true, createdAt: true, updatedAt: true,
+});
+export const updateWellnessProviderSchema = insertWellnessProviderSchema.partial();
+export type InsertWellnessProvider = z.infer<typeof insertWellnessProviderSchema>;
+export type UpdateWellnessProvider = z.infer<typeof updateWellnessProviderSchema>;
+export type WellnessProvider = typeof wellnessProviders.$inferSelect;
