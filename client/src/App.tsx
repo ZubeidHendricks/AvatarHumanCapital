@@ -77,6 +77,10 @@ import OkrManagement from "@/pages/okr-management";
 import PulseSurvey from "@/pages/pulse-survey";
 import Compliance from "@/pages/compliance";
 import WellnessSetup from "@/pages/wellness-setup";
+import LeaveManagement from "@/pages/leave-management";
+import ClaimsManagement from "@/pages/claims-management";
+import LeaveSetup from "@/pages/leave-setup";
+import ClaimsSetup from "@/pages/claims-setup";
 
 function Router() {
   return (
@@ -151,6 +155,10 @@ function Router() {
       <Route path="/pulse-survey" component={PulseSurvey} />
       <Route path="/compliance" component={Compliance} />
       <Route path="/wellness-setup" component={WellnessSetup} />
+      <Route path="/leave-management" component={LeaveManagement} />
+      <Route path="/claims-management" component={ClaimsManagement} />
+      <Route path="/leave-setup" component={LeaveSetup} />
+      <Route path="/claims-setup" component={ClaimsSetup} />
       <Route component={NotFound} />
     </Switch>
   );

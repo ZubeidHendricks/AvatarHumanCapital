@@ -91,8 +91,6 @@ export function Sidebar() {
       title: "ADMIN",
       items: [
         { name: "System Admin", href: "/admin-dashboard", icon: Settings },
-        { name: "Customer Onboarding", href: "/onboarding", icon: UserPlus },
-        { name: "Persona Management", href: "/persona-management", icon: Users },
         { name: "Platform Docs", href: "/platform-docs", icon: BookOpen },
       ]
     },
