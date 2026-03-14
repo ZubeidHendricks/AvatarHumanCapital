@@ -416,7 +416,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                       <Button
                         onClick={handleAIResearch}
                         disabled={isResearching || !researchJobTitle.trim()}
-                        className="flex-1 bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold"
+                        className="flex-1 bg-[#00B4D8] hover:bg-[#0096B4] text-black font-semibold"
                         data-testid="button-start-research"
                       >
                         {isResearching ? (
@@ -451,7 +451,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                       <Button
                         onClick={() => handleCreateJob(false)}
                         disabled={isLoading}
-                        className="flex-1 bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold"
+                        className="flex-1 bg-[#00B4D8] hover:bg-[#0096B4] text-black font-semibold"
                         data-testid="button-create-job-research"
                       >
                         {isLoading ? (
@@ -571,7 +571,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                       <Button
                         onClick={() => handleCreateJob(false)}
                         disabled={isLoading}
-                        className="flex-1 bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold"
+                        className="flex-1 bg-[#00B4D8] hover:bg-[#0096B4] text-black font-semibold"
                         data-testid="button-create-job"
                       >
                         {isLoading ? (
@@ -605,7 +605,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                         onClick={handleSendMessage}
                         disabled={isLoading || !inputValue.trim()}
                         size="icon"
-                        className="bg-[#FFCB00] hover:bg-[#E6B800] text-black"
+                        className="bg-[#00B4D8] hover:bg-[#0096B4] text-black"
                         data-testid="button-send-message"
                       >
                         <Send className="w-4 h-4" />
@@ -700,7 +700,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       <Button
                         onClick={() => handleCreateJob(false)}
                         disabled={isLoading}
-                        className="flex-1 bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold"
+                        className="flex-1 bg-[#00B4D8] hover:bg-[#0096B4] text-black font-semibold"
                         data-testid="button-create-job-paste"
                       >
                         {isLoading ? (
@@ -729,7 +729,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                     <Button
                       onClick={handleParseFullSpec}
                       disabled={isParsing || !fullJobSpec.trim()}
-                      className="flex-1 bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold"
+                      className="flex-1 bg-[#00B4D8] hover:bg-[#0096B4] text-black font-semibold"
                       data-testid="button-parse-spec"
                     >
                       {isParsing ? (

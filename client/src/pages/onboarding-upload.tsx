@@ -132,7 +132,7 @@ function DocumentCard({
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="bg-[#FFCB00] hover:bg-[#E6B800] text-black border-[#FFCB00] font-semibold"
+                  className="bg-[#00B4D8] hover:bg-[#0096B4] text-black border-[#00B4D8] font-semibold"
                 >
                   {uploading ? (
                     <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Uploading...</>

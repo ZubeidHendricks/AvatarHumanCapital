@@ -328,7 +328,7 @@ function WorkflowDetail({ workflowId, onViewDocument }: { workflowId: string; on
       <div className="pt-3">
         <div className="flex items-center justify-between mb-2">
           <h5 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-            <FileText className="h-3.5 w-3.5 text-[#FFCB00]" />
+            <FileText className="h-3.5 w-3.5 text-[#00B4D8]" />
             Document Requests ({docRequests.length})
           </h5>
           {docRequests.some((d: any) => d.status === "pending" || d.status === "requested" || d.status === "overdue") && (
@@ -461,7 +461,7 @@ function WorkflowDetail({ workflowId, onViewDocument }: { workflowId: string; on
         return (
           <div>
             <h5 className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-2">
-              <Monitor className="h-3.5 w-3.5 text-[#FFCB00]" />
+              <Monitor className="h-3.5 w-3.5 text-[#00B4D8]" />
               Provisioning Status
             </h5>
             <div className="space-y-1.5">
@@ -1033,7 +1033,7 @@ export default function EmployeeOnboarding() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-            <Building2 className="h-8 w-8 text-[#FFCB00]" />
+            <Building2 className="h-8 w-8 text-[#00B4D8]" />
             Employee Onboarding
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -1050,7 +1050,7 @@ export default function EmployeeOnboarding() {
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-[#FFCB00]" />
+              <Package className="h-5 w-5 text-[#00B4D8]" />
               Send Onboarding Pack
             </CardTitle>
             <CardDescription>Prepare and send onboarding documents to a new employee</CardDescription>
@@ -1255,7 +1255,7 @@ export default function EmployeeOnboarding() {
                     variant="outline"
                     onClick={handleGenerateAllPreviews}
                     disabled={selectedDocuments.length === 0 || isGeneratingAll}
-                    className="border-blue-300 text-[#FFCB00] hover:bg-[#FFCB00]/10"
+                    className="border-blue-300 text-[#00B4D8] hover:bg-[#00B4D8]/10"
                   >
                     {isGeneratingAll ? (
                       <>
@@ -1299,7 +1299,7 @@ export default function EmployeeOnboarding() {
                     return (
                       <div key={preview.docId} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50">
                         <div className="flex items-center gap-2 text-sm min-w-0">
-                          <Icon className="h-4 w-4 text-[#FFCB00] shrink-0" />
+                          <Icon className="h-4 w-4 text-[#00B4D8] shrink-0" />
                           <span className="font-medium truncate">{preview.filename}</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">

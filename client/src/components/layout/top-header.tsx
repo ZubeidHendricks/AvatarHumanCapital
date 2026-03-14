@@ -59,7 +59,7 @@ export function TopHeader() {
         <Button
           variant="outline"
           size="sm"
-          className="hidden md:flex border-[#FFCB00]/30 bg-[#FFCB00]/10 hover:bg-[#FFCB00]/20 text-[#FFCB00]"
+          className="hidden md:flex border-[#00B4D8]/30 bg-[#00B4D8]/10 hover:bg-[#00B4D8]/20 text-[#00B4D8]"
           onClick={() => setIsCareersOpen(true)}
         >
           <Briefcase className="w-4 h-4 mr-2" />

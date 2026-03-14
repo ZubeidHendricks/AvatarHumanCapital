@@ -123,7 +123,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {!collapsed && (
           <Link href="/" className="px-4 pt-4 pb-2">
             <img
-              src="/logos/ahc-logo.svg"
+              src="/logos/ahc-logo.png"
               alt="AHC"
               className="w-full object-contain"
             />

@@ -10,7 +10,7 @@ export function Hero() {
   const [showDemo, setShowDemo] = useState(false);
 
   return (
-    <section className="relative min-h-screen flex items-center pt-20 overflow-hidden" style={{ backgroundColor: '#FFCB00' }}>
+    <section className="relative min-h-screen flex items-center pt-20 overflow-hidden" style={{ background: 'linear-gradient(135deg, #E0F7FA 0%, #B2EBF2 50%, #80DEEA 100%)' }}>
       <div className="container mx-auto px-6 relative z-10">
         <div className="max-w-5xl mx-auto text-center">
           <motion.div
@@ -20,7 +20,7 @@ export function Hero() {
             className="flex flex-col items-center"
           >
             <img
-              src="/logos/ahc-logo.svg"
+              src="/logos/ahc-logo.png"
               alt="AHC"
               className="w-[280px] sm:w-[360px] md:w-[450px] lg:w-[550px] h-auto object-contain mb-10"
               data-testid="img-hero-logo"
@@ -32,26 +32,26 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <span className="inline-block py-1.5 px-4 rounded-full bg-black/10 text-black text-xs font-medium tracking-wide mb-6">
+            <span className="inline-block py-1.5 px-4 rounded-full bg-[#1E3A5F]/10 text-[#1E3A5F] text-xs font-medium tracking-wide mb-6">
               NEXT GEN ADVISORY SERVICES
             </span>
           </motion.div>
-          
+
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-6 text-black"
+            className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-6 text-[#1E3A5F]"
           >
             Operational Excellence <br />
-            <span className="text-black/40">Powered by Intelligence</span>
+            <span className="text-[#1E3A5F]/50">Powered by Intelligence</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="text-xl text-black/60 mb-10 max-w-2xl mx-auto"
+            className="text-xl text-[#1E3A5F]/70 mb-10 max-w-2xl mx-auto"
           >
             Unify your HR, Finance, and Operations with our AI-driven advisory platform. 
             Automate compliance, streamline workflows, and visualize success.
@@ -64,14 +64,14 @@ export function Hero() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link href="/login">
-              <Button size="lg" className="h-12 px-8 text-base shadow-lg bg-black text-white font-semibold hover:bg-gray-800" data-testid="button-start-transformation">
+              <Button size="lg" className="h-12 px-8 text-base shadow-lg bg-[#1E3A5F] text-white font-semibold hover:bg-[#152A45]" data-testid="button-start-transformation">
                 Start Transformation <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="h-12 px-8 text-base border-black/30 text-black hover:bg-black/10 bg-transparent"
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-12 px-8 text-base border-[#1E3A5F]/30 text-[#1E3A5F] hover:bg-[#1E3A5F]/10 bg-transparent"
               onClick={() => setShowDemo(true)}
               data-testid="button-watch-demo"
             >

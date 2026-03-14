@@ -438,7 +438,7 @@ export default function OfferManagement() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-            <FileText className="h-8 w-8 text-[#FFCB00]" />
+            <FileText className="h-8 w-8 text-[#00B4D8]" />
             Offer Management
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -454,7 +454,7 @@ export default function OfferManagement() {
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Send className="h-5 w-5 text-[#FFCB00]" />
+            <Send className="h-5 w-5 text-[#00B4D8]" />
             Send New Offer
           </CardTitle>
           <CardDescription>Create and send an offer letter to a candidate</CardDescription>
@@ -594,7 +594,7 @@ export default function OfferManagement() {
                 variant="outline"
                 onClick={handleGeneratePreview}
                 disabled={!canGeneratePreview || isGeneratingPreview}
-                className="border-blue-300 text-[#FFCB00] hover:bg-[#FFCB00]/10"
+                className="border-blue-300 text-[#00B4D8] hover:bg-[#00B4D8]/10"
               >
                 {isGeneratingPreview ? (
                   <>
@@ -615,7 +615,7 @@ export default function OfferManagement() {
               )}
               {previewUrl && (
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 text-sm text-[#FFCB00]">
+                  <div className="flex items-center gap-2 text-sm text-[#00B4D8]">
                     <FileText className="h-4 w-4" />
                     <span className="font-medium">{previewFilename}</span>
                   </div>
@@ -676,7 +676,7 @@ export default function OfferManagement() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Table className="h-5 w-5 text-[#FFCB00]" />
+              <Table className="h-5 w-5 text-[#00B4D8]" />
               Recent Offers
             </CardTitle>
             <Button

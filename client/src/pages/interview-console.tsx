@@ -1743,7 +1743,7 @@ function PipelineStageIndicator({ candidateId, decision, isTransitioning }: {
               <div
                 className={`px-2 py-1 rounded text-xs whitespace-nowrap ${
                   isActive
-                    ? "bg-[#FFCB00] text-black font-medium"
+                    ? "bg-[#00B4D8] text-black font-medium"
                     : isPast
                     ? "bg-primary/20 text-primary"
                     : isNext

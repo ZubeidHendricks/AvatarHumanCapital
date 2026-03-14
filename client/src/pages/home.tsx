@@ -30,7 +30,7 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               <Card className="bg-white border-border hover:border-black/20 transition-all group" data-testid="card-voice-interview">
                 <CardHeader>
-                  <div className="w-12 h-12 rounded-xl bg-black/5 flex items-center justify-center mb-4 border border-border group-hover:bg-black group-hover:scale-110 transition-all">
+                  <div className="w-12 h-12 rounded-xl bg-black/5 flex items-center justify-center mb-4 border border-border group-hover:bg-[#1E3A5F] group-hover:scale-110 transition-all">
                     <Mic className="w-6 h-6 text-black group-hover:text-white transition-colors" />
                   </div>
                   <CardTitle className="text-2xl text-black">AI Voice Interview</CardTitle>
@@ -41,7 +41,7 @@ export default function Home() {
                     Practice with an AI that transforms into any interviewer character you need. Get real-time feedback on your performance with empathic voice technology.
                   </p>
                   <Link href="/interview/voice">
-                    <Button className="w-full bg-black hover:bg-gray-800 text-white group-hover:shadow-lg" data-testid="button-voice-demo">
+                    <Button className="w-full bg-[#1E3A5F] hover:bg-[#152A45] text-white group-hover:shadow-lg" data-testid="button-voice-demo">
                       Try Voice Demo <ArrowRight className="ml-2 w-4 h-4" />
                     </Button>
                   </Link>
@@ -50,7 +50,7 @@ export default function Home() {
 
               <Card className="bg-white border-border hover:border-black/20 transition-all group" data-testid="card-video-interview">
                 <CardHeader>
-                  <div className="w-12 h-12 rounded-xl bg-black/5 flex items-center justify-center mb-4 border border-border group-hover:bg-black group-hover:scale-110 transition-all">
+                  <div className="w-12 h-12 rounded-xl bg-black/5 flex items-center justify-center mb-4 border border-border group-hover:bg-[#1E3A5F] group-hover:scale-110 transition-all">
                     <Video className="w-6 h-6 text-black group-hover:text-white transition-colors" />
                   </div>
                   <CardTitle className="text-2xl text-black">Cloned Video Interview</CardTitle>
@@ -61,7 +61,7 @@ export default function Home() {
                     Conduct personalized video interviews using digital twin technology. Cloned avatars ask role-specific questions with human-like presence.
                   </p>
                   <Link href="/interview/video">
-                    <Button className="w-full bg-black hover:bg-gray-800 text-white group-hover:shadow-lg" data-testid="button-video-demo">
+                    <Button className="w-full bg-[#1E3A5F] hover:bg-[#152A45] text-white group-hover:shadow-lg" data-testid="button-video-demo">
                       Try Video Demo <ArrowRight className="ml-2 w-4 h-4" />
                     </Button>
                   </Link>
@@ -95,14 +95,14 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="bg-black text-white py-12">
+      <footer className="bg-[#1E3A5F] text-white py-12">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
             
             <div className="md:col-span-2">
               <div className="flex items-center mb-6 py-6 px-6">
                 <img
-                  src="/logos/ahc-logo.svg"
+                  src="/logos/ahc-logo.png"
                   alt="AHC - Human Capital"
                   className="h-16 w-auto object-contain"
                   data-testid="img-footer-logo"

@@ -284,7 +284,7 @@ AHC Recruiting Team`;
                 <ClipboardList className="h-4 w-4" />
                 View in Interview Console
               </Button>
-              <Button className="bg-[#FFCB00] hover:bg-[#FFCB00]/80 text-black" onClick={() => onOpenChange(false)}>Close</Button>
+              <Button className="bg-[#00B4D8] hover:bg-[#00B4D8]/80 text-black" onClick={() => onOpenChange(false)}>Close</Button>
             </div>
           </>
         ) : (

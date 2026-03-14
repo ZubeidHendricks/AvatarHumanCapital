@@ -98,7 +98,7 @@ export function InterestCheckDialog({ open, onOpenChange, candidate, job, onSent
               </p>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button className="bg-[#FFCB00] hover:bg-[#FFCB00]/80 text-black" onClick={() => onOpenChange(false)}>Close</Button>
+              <Button className="bg-[#00B4D8] hover:bg-[#00B4D8]/80 text-black" onClick={() => onOpenChange(false)}>Close</Button>
             </div>
           </>
         ) : (

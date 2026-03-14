@@ -37,7 +37,7 @@ export function Navbar() {
         <Link href="/">
           <div className="flex items-center group cursor-pointer">
             <img
-              src="/logos/ahc-logo.svg"
+              src="/logos/ahc-logo.png"
               alt="AHC - Human Capital"
               className="h-14 md:h-20 w-auto object-contain"
             />
@@ -328,7 +328,7 @@ export function Navbar() {
           <ThemeToggle />
 
           <Link href="/login">
-            <Button size="sm" className="bg-black text-white font-semibold hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-secondary">
+            <Button size="sm" className="bg-[#1E3A5F] text-white font-semibold hover:bg-[#152A45] dark:bg-[#00B4D8] dark:text-white dark:hover:bg-[#0096B4]">
               Sign In
             </Button>
           </Link>
@@ -455,7 +455,7 @@ export function Navbar() {
               <div className="h-px bg-border my-2" />
               
               <Link href="/login">
-                <Button className="w-full bg-black text-white font-semibold hover:bg-gray-800">Sign In</Button>
+                <Button className="w-full bg-[#1E3A5F] text-white font-semibold hover:bg-[#152A45]">Sign In</Button>
               </Link>
             </div>
           </motion.div>

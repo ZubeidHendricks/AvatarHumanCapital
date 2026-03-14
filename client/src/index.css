@@ -50,9 +50,10 @@
 }
 
 :root {
-  --ahc-yellow:       #FFCB00;
-  --ahc-yellow-hover: #E6B800;
-  --ahc-black:        #000000;
+  --ahc-navy:         #1E3A5F;
+  --ahc-navy-dark:    #152A45;
+  --ahc-cyan:         #00B4D8;
+  --ahc-cyan-hover:   #0096B4;
   --ahc-white:        #FFFFFF;
   --ahc-error:        #D0021B;
   --ahc-success:      #2D9C45;
@@ -98,56 +99,56 @@
 
   --border: 0 0% 90%;
   --input: 0 0% 90%;
-  --ring: 48 100% 50%;
+  --ring: 193 100% 42%;
 
   --button-outline: hsl(0 0% 80%);
   --radius: 4px;
 
-  --chart-1: 0 0% 0%;
-  --chart-2: 0 0% 30%;
+  --chart-1: 210 52% 24%;
+  --chart-2: 193 100% 42%;
   --chart-3: 140 62% 39%;
-  --chart-4: 0 0% 60%;
-  --chart-5: 0 0% 45%;
+  --chart-4: 210 30% 50%;
+  --chart-5: 193 60% 60%;
 }
 
 .dark {
-  --background: 0 0% 4%;
+  --background: 210 52% 8%;
   --foreground: 0 0% 96%;
 
-  --card: 0 0% 8%;
+  --card: 210 52% 12%;
   --card-foreground: 0 0% 96%;
 
-  --popover: 0 0% 10%;
+  --popover: 210 52% 14%;
   --popover-foreground: 0 0% 96%;
 
-  --primary: 48 100% 50%;
-  --primary-foreground: 0 0% 0%;
+  --primary: 193 100% 42%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 0 0% 4%;
+  --secondary: 210 52% 10%;
   --secondary-foreground: 0 0% 96%;
 
-  --muted: 0 0% 4%;
+  --muted: 210 52% 10%;
   --muted-foreground: 0 0% 70%;
 
-  --accent: 0 0% 12%;
+  --accent: 210 52% 18%;
   --accent-foreground: 0 0% 96%;
 
   --destructive: 354 95% 50%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 0 0% 22%;
-  --input: 0 0% 15%;
-  --ring: 48 100% 50%;
+  --border: 210 30% 25%;
+  --input: 210 52% 15%;
+  --ring: 193 100% 42%;
 
-  --chart-1: 48 100% 50%;
-  --chart-2: 0 0% 70%;
+  --chart-1: 193 100% 42%;
+  --chart-2: 210 52% 50%;
   --chart-3: 140 62% 50%;
-  --chart-4: 0 0% 45%;
-  --chart-5: 0 0% 55%;
+  --chart-4: 193 60% 60%;
+  --chart-5: 210 30% 55%;
 }
 
 .sidebar-nav {
-  background-color: #000000 !important;
+  background-color: #1E3A5F !important;
   color: #FFFFFF !important;
   border-right: none !important;
 }
@@ -188,18 +189,18 @@
 }
 
 .sidebar-nav .bg-primary\/10 {
-  background-color: rgba(255,203,0,0.10) !important;
-  border-left: 3px solid #FFCB00 !important;
+  background-color: rgba(0,180,216,0.15) !important;
+  border-left: 3px solid #00B4D8 !important;
   border-radius: 6px !important;
 }
 
 .sidebar-nav .text-primary {
-  color: #FFCB00 !important;
+  color: #00B4D8 !important;
 }
 
 .sidebar-nav .text-primary svg,
 .sidebar-nav .bg-primary\/10 svg {
-  color: #FFCB00 !important;
+  color: #00B4D8 !important;
 }
 
 .sidebar-nav .bg-primary {
@@ -235,7 +236,7 @@
     color: hsl(var(--foreground));
   }
   .dark h1, .dark h2 {
-    color: #FFCB00;
+    color: #00B4D8;
   }
   /* Public portal headers: keep black text on yellow banners even in dark mode */
   .dark .text-black h1, .dark .text-black h2 {
@@ -257,29 +258,29 @@
     letter-spacing: 0.3px;
   }
   .dark label {
-    color: #FFCB00;
+    color: #00B4D8;
   }
   .dark input, .dark select, .dark textarea,
   .dark [role="combobox"], .dark [role="listbox"] {
-    background-color: hsl(0 0% 12%) !important;
+    background-color: hsl(210 52% 15%) !important;
     color: hsl(0 0% 96%) !important;
-    border-color: hsl(0 0% 25%) !important;
+    border-color: hsl(210 30% 30%) !important;
   }
   .dark input::placeholder, .dark textarea::placeholder {
-    color: hsl(0 0% 50%) !important;
+    color: hsl(210 20% 50%) !important;
   }
   .dark [role="checkbox"] {
-    border-color: #FFCB00 !important;
+    border-color: #00B4D8 !important;
   }
   .dark [role="checkbox"][data-state="checked"] {
-    background-color: #FFCB00 !important;
-    color: #000000 !important;
-    border-color: #FFCB00 !important;
+    background-color: #00B4D8 !important;
+    color: #FFFFFF !important;
+    border-color: #00B4D8 !important;
   }
   .dark input[type="date"]::-webkit-calendar-picker-indicator,
   .dark input[type="time"]::-webkit-calendar-picker-indicator,
   .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-    filter: invert(83%) sepia(55%) saturate(1000%) hue-rotate(360deg) brightness(105%) contrast(104%);
+    filter: invert(60%) sepia(90%) saturate(500%) hue-rotate(160deg) brightness(95%) contrast(95%);
   }
   .dark .bg-white\/5 {
     background-color: hsl(0 0% 6%) !important;

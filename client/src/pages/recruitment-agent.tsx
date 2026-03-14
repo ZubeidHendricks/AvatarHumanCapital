@@ -136,7 +136,7 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
   return (
     <div className="flex flex-wrap gap-2 mt-2">
       {candidate.email ? (
-        <a href={`mailto:${candidate.email}`} className="inline-flex items-center gap-1 text-xs text-[#FFCB00] hover:text-[#E6B800]">
+        <a href={`mailto:${candidate.email}`} className="inline-flex items-center gap-1 text-xs text-[#00B4D8] hover:text-[#0096B4]">
           <Mail className="h-3 w-3" /> {candidate.email}
         </a>
       ) : null}
@@ -146,7 +146,7 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
         </a>
       ) : null}
       {metadata?.linkedinUrl && (
-        <a href={metadata.linkedinUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-[#FFCB00] hover:text-[#E6B800]">
+        <a href={metadata.linkedinUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-[#00B4D8] hover:text-[#0096B4]">
           <Linkedin className="h-3 w-3" /> LinkedIn
         </a>
       )}
@@ -156,7 +156,7 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
         <Button
           variant="outline"
           size="sm"
-          className="h-7 text-xs gap-1 border-[#FFCB00]/50 text-[#FFCB00] hover:bg-[#FFCB00]/10"
+          className="h-7 text-xs gap-1 border-[#00B4D8]/50 text-[#00B4D8] hover:bg-[#00B4D8]/10"
           onClick={handleEnrichContact}
           disabled={isEnriching}
           data-testid={`enrich-contact-${candidate.id}`}
@@ -180,7 +180,7 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
         <Button
           variant="outline"
           size="sm"
-          className="h-7 text-xs gap-1 border-[#FFCB00]/50 text-[#FFCB00] hover:bg-[#FFCB00]/10"
+          className="h-7 text-xs gap-1 border-[#00B4D8]/50 text-[#00B4D8] hover:bg-[#00B4D8]/10"
           onClick={() => window.open(`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(candidate.fullName || '')}`, '_blank')}
           data-testid={`linkedin-search-${candidate.id}`}
         >
@@ -570,11 +570,11 @@ export default function RecruitmentAgent() {
           {/* Header */}
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-full bg-[#FFCB00]/10 flex items-center justify-center">
-                <Bot className="w-7 h-7 text-[#FFCB00]" />
+              <div className="w-12 h-12 rounded-full bg-[#00B4D8]/10 flex items-center justify-center">
+                <Bot className="w-7 h-7 text-[#00B4D8]" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-foreground dark:text-[#FFCB00]">
+                <h1 className="text-3xl font-bold text-foreground dark:text-[#00B4D8]">
                   AI Recruitment Command Center
                 </h1>
                 <p className="text-muted-foreground">
@@ -611,7 +611,7 @@ export default function RecruitmentAgent() {
                 </div>
                 {selectedJob && (
                   <div className="hidden md:flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 px-3 py-2 bg-muted/50 rounded-lg border border-border">
-                    <Briefcase className="h-4 w-4 text-[#FFCB00]" />
+                    <Briefcase className="h-4 w-4 text-[#00B4D8]" />
                     <span className="font-medium text-foreground">{selectedJob.title}</span>
                     {selectedJob.department && <span>• {selectedJob.department}</span>}
                     {selectedJob.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{selectedJob.location}</span>}
@@ -640,7 +640,7 @@ export default function RecruitmentAgent() {
                 <Button
                   onClick={handleStartRecruitment}
                   disabled={!selectedJobId || startRecruitmentMutation.isPending || isSimulating}
-                  className="bg-[#FFCB00] hover:bg-[#E6B800] text-black h-10 px-6"
+                  className="bg-[#00B4D8] hover:bg-[#0096B4] text-black h-10 px-6"
                   data-testid="button-start-recruitment"
                 >
                   {startRecruitmentMutation.isPending || isSimulating ? (
@@ -663,11 +663,11 @@ export default function RecruitmentAgent() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-[#FFCB00]/10">
-                  <Activity className="h-5 w-5 text-[#FFCB00]" />
+                <div className="p-2 rounded-lg bg-[#00B4D8]/10">
+                  <Activity className="h-5 w-5 text-[#00B4D8]" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[#FFCB00]">{sessions?.length || 0}</p>
+                  <p className="text-2xl font-bold text-[#00B4D8]">{sessions?.length || 0}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-500">Sessions</p>
                 </div>
               </CardContent>
@@ -783,7 +783,7 @@ export default function RecruitmentAgent() {
                       <div
                         key={candidate.id}
                         onClick={() => handleCandidateClick(candidate)}
-                        className="group p-5 rounded-xl border border-border bg-card hover:border-[#FFCB00]/40 hover:shadow-lg hover:shadow-[#FFCB00]/5 transition-all cursor-pointer relative"
+                        className="group p-5 rounded-xl border border-border bg-card hover:border-[#00B4D8]/40 hover:shadow-lg hover:shadow-[#00B4D8]/5 transition-all cursor-pointer relative"
                         data-testid={`candidate-card-${candidate.id}`}
                       >
                         {index < 3 && (
@@ -842,7 +842,7 @@ export default function RecruitmentAgent() {
                         <div className="mt-3 pt-3 border-t border-border flex gap-2">
                           <Button
                             size="sm"
-                            className="bg-[#FFCB00] hover:bg-[#E6B800] text-black text-xs h-7"
+                            className="bg-[#00B4D8] hover:bg-[#0096B4] text-black text-xs h-7"
                             onClick={(e: any) => { e.stopPropagation(); handleCandidateClick(candidate); }}
                           >
                             <Eye className="h-3 w-3 mr-1" />
@@ -921,7 +921,7 @@ export default function RecruitmentAgent() {
                           </span>
                           <Badge className={`text-[10px] ml-2 ${
                             session.status === 'Completed' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
-                            session.status === 'Running' ? 'bg-blue-500/20 text-[#FFCB00]' :
+                            session.status === 'Running' ? 'bg-blue-500/20 text-[#00B4D8]' :
                             'bg-red-500/20 text-red-600 dark:text-red-400'
                           }`}>
                             {session.status}
@@ -952,7 +952,7 @@ export default function RecruitmentAgent() {
         <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden bg-card border-border text-foreground">
           <DialogHeader className="border-b border-border pb-4">
             <DialogTitle className="text-xl flex items-center gap-2">
-              <Bot className="h-6 w-6 text-[#FFCB00]" />
+              <Bot className="h-6 w-6 text-[#00B4D8]" />
               AI Agents Working
               {isSimulating && (
                 <Badge className="ml-2 bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
@@ -1001,7 +1001,7 @@ export default function RecruitmentAgent() {
             <div className="border border-border rounded-lg overflow-hidden">
               <div className="px-4 py-3 bg-muted/50 border-b border-border">
                 <h3 className="font-medium text-sm flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-[#FFCB00]" />
+                  <Bot className="h-4 w-4 text-[#00B4D8]" />
                   AI Agent Workflow
                 </h3>
               </div>
@@ -1025,12 +1025,12 @@ export default function RecruitmentAgent() {
                             <div
                               key={agent.platform}
                               className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
-                                isActive ? 'bg-[#FFCB00]/10' : hasResult ? 'bg-green-500/5' : ''
+                                isActive ? 'bg-[#00B4D8]/10' : hasResult ? 'bg-green-500/5' : ''
                               }`}
                               data-testid={`agent-${agent.platform.toLowerCase().replace(/\s+/g, '-')}`}
                             >
                               <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                isActive ? 'bg-[#FFCB00]' : hasResult ? 'bg-green-500' : 'bg-gray-300 dark:bg-zinc-700'
+                                isActive ? 'bg-[#00B4D8]' : hasResult ? 'bg-green-500' : 'bg-gray-300 dark:bg-zinc-700'
                               }`}>
                                 {isActive ? (
                                   <Loader2 className="h-3 w-3 animate-spin text-white" />
@@ -1062,7 +1062,7 @@ export default function RecruitmentAgent() {
             <div className="border border-border rounded-lg overflow-hidden">
               <div className="px-4 py-3 bg-muted/50 border-b border-border">
                 <h3 className="font-medium text-sm flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-[#FFCB00]" />
+                  <MessageSquare className="h-4 w-4 text-[#00B4D8]" />
                   Live Agent Activity
                 </h3>
               </div>
@@ -1094,14 +1094,14 @@ export default function RecruitmentAgent() {
                   )}
                   {isSimulating && (
                     <div className="flex gap-2 animate-pulse">
-                      <Avatar className="h-7 w-7 bg-[#FFCB00] flex-shrink-0">
+                      <Avatar className="h-7 w-7 bg-[#00B4D8] flex-shrink-0">
                         <AvatarFallback className="text-[10px] font-bold text-white bg-transparent">AI</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 bg-muted/50 rounded-lg p-2 border border-border">
                         <div className="flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 bg-[#FFCB00] rounded-full animate-bounce" />
-                          <span className="w-1.5 h-1.5 bg-[#FFCB00] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1.5 h-1.5 bg-[#FFCB00] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          <span className="w-1.5 h-1.5 bg-[#00B4D8] rounded-full animate-bounce" />
+                          <span className="w-1.5 h-1.5 bg-[#00B4D8] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 bg-[#00B4D8] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                         </div>
                       </div>
                     </div>
@@ -1180,7 +1180,7 @@ export default function RecruitmentAgent() {
                     return (
                       <div
                         key={candidate.id}
-                        className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/50 hover:border-[#FFCB00]/30 transition-all overflow-hidden w-full min-w-0"
+                        className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/50 hover:border-[#00B4D8]/30 transition-all overflow-hidden w-full min-w-0"
                       >
                         <Avatar className="h-11 w-11 bg-[#0A0A0A] flex-shrink-0">
                           <AvatarFallback className="text-white text-sm font-bold bg-transparent">
@@ -1219,7 +1219,7 @@ export default function RecruitmentAgent() {
                               return (
                                 <Button
                                   size="sm"
-                                  className="bg-[#FFCB00] hover:bg-[#E6B800] text-black h-8 text-xs shrink-0"
+                                  className="bg-[#00B4D8] hover:bg-[#0096B4] text-black h-8 text-xs shrink-0"
                                   data-testid={`ai-interview-${candidate.id}`}
                                   onClick={() => {
                                     setInviteCandidate(candidate);
@@ -1326,7 +1326,7 @@ export default function RecruitmentAgent() {
                     }}
                     className={`p-4 rounded-lg border transition-all ${
                       selectedCandidate?.id === candidate.id
-                        ? 'bg-[#FFCB00]/10 border-[#FFCB00]/50'
+                        ? 'bg-[#00B4D8]/10 border-[#00B4D8]/50'
                         : 'bg-muted/50 border-border hover:border-border'
                     }`}
                   >
@@ -1408,8 +1408,8 @@ export default function RecruitmentAgent() {
 
                         {/* AI Reasoning */}
                         {metadata?.aiReasoning && (
-                          <div className="mt-3 p-3 bg-[#FFCB00]/10 rounded-lg border border-[#FFCB00]/20">
-                            <p className="text-xs text-[#FFCB00] mb-1 flex items-center gap-1">
+                          <div className="mt-3 p-3 bg-[#00B4D8]/10 rounded-lg border border-[#00B4D8]/20">
+                            <p className="text-xs text-[#00B4D8] mb-1 flex items-center gap-1">
                               <Brain className="h-3 w-3" /> AI Analysis
                             </p>
                             <p className="text-sm text-gray-700 dark:text-gray-300">{metadata.aiReasoning}</p>

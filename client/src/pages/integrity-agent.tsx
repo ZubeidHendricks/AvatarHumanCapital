@@ -519,7 +519,7 @@ export default function IntegrityAgent() {
                   <Button
                     onClick={startIntegrityEvaluation}
                     disabled={!selectedCandidateId || isRunningEvaluation}
-                    className="w-full bg-[#FFCB00] text-black font-semibold hover:bg-[#FFCB00]/90"
+                    className="w-full bg-[#00B4D8] text-black font-semibold hover:bg-[#00B4D8]/90"
                     data-testid="button-start-evaluation"
                   >
                     {isRunningEvaluation ? (

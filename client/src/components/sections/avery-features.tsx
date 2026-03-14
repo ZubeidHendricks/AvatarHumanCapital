@@ -5,7 +5,7 @@ import { Zap, Sparkles, Users, MessageSquare, Mail } from "lucide-react";
 
 export function AHCFeatures() {
   return (
-    <div className="w-full bg-black text-white py-20">
+    <div className="w-full bg-[#1E3A5F] text-white py-20">
       <div className="container mx-auto px-6">
         
         <div className="text-center mb-20 max-w-3xl mx-auto">
@@ -31,7 +31,7 @@ export function AHCFeatures() {
              transition={{ duration: 0.8 }}
              className="order-2 md:order-1"
           >
-            <div className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-zinc-900 to-black border border-white/10 p-8 flex items-center justify-center">
+            <div className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-[#152A45] to-[#1E3A5F] border border-white/10 p-8 flex items-center justify-center">
                <div className="relative z-10 flex flex-col gap-4 w-full max-w-xs">
                   {[1, 2, 3].map((i) => (
                     <motion.div 
@@ -89,7 +89,7 @@ export function AHCFeatures() {
              whileInView={{ opacity: 1, x: 0 }}
              transition={{ duration: 0.8 }}
           >
-             <div className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-zinc-900 to-black border border-white/10 p-8 flex items-center justify-center">
+             <div className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-[#152A45] to-[#1E3A5F] border border-white/10 p-8 flex items-center justify-center">
                <div className="relative z-10 grid grid-cols-2 gap-4">
                   <div className="bg-white/5 p-4 rounded-xl border border-white/5 blur-sm opacity-50"></div>
                   <motion.div 
@@ -114,7 +114,7 @@ export function AHCFeatures() {
              transition={{ duration: 0.8 }}
              className="order-2 md:order-1"
           >
-            <div className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-zinc-900 to-black border border-white/10 p-8 flex items-center justify-center">
+            <div className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-[#152A45] to-[#1E3A5F] border border-white/10 p-8 flex items-center justify-center">
                <div className="flex gap-4 items-end">
                   <motion.div initial={{ height: 20 }} whileInView={{ height: 120 }} className="w-12 bg-white/10 rounded-t-lg"></motion.div>
                   <motion.div initial={{ height: 20 }} whileInView={{ height: 180 }} className="w-12 bg-white rounded-t-lg shadow-[0_0_20px_rgba(255,255,255,0.3)]"></motion.div>
@@ -172,7 +172,7 @@ export function AHCFeatures() {
         </div>
 
         <div className="relative border border-white/10 rounded-3xl p-12 overflow-hidden">
-           <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 to-black -z-10"></div>
+           <div className="absolute inset-0 bg-gradient-to-br from-[#152A45] to-[#1E3A5F] -z-10"></div>
            <div className="absolute top-0 right-0 p-4">
               <Badge variant="outline" className="border-white/30 text-white bg-white/5">COMING SOON</Badge>
            </div>

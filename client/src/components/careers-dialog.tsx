@@ -144,7 +144,7 @@ function UploadCvDialog({ open, onOpenChange, jobId, jobTitle }: {
             <CheckCircle2 className="w-12 h-12 text-green-500" />
             <p className="font-medium">CV Uploaded Successfully!</p>
             <p className="text-sm text-muted-foreground">Your application has been submitted.</p>
-            <Button onClick={() => handleClose(false)} className="mt-2 bg-[#FFCB00] hover:bg-[#FFCB00]/80 text-black">Close</Button>
+            <Button onClick={() => handleClose(false)} className="mt-2 bg-[#00B4D8] hover:bg-[#00B4D8]/80 text-black">Close</Button>
           </div>
         ) : (
           <div
@@ -153,13 +153,13 @@ function UploadCvDialog({ open, onOpenChange, jobId, jobTitle }: {
             onDragLeave={handleDragLeave}
             className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
               isDragging
-                ? "border-[#FFCB00] bg-[#FFCB00]/10"
-                : "border-border hover:border-[#FFCB00]/50"
+                ? "border-[#00B4D8] bg-[#00B4D8]/10"
+                : "border-border hover:border-[#00B4D8]/50"
             }`}
           >
             {uploading ? (
               <div className="flex flex-col items-center gap-3">
-                <Loader2 className="w-10 h-10 animate-spin text-[#FFCB00]" />
+                <Loader2 className="w-10 h-10 animate-spin text-[#00B4D8]" />
                 <p className="text-sm text-muted-foreground">Uploading your CV...</p>
               </div>
             ) : (
@@ -171,7 +171,7 @@ function UploadCvDialog({ open, onOpenChange, jobId, jobTitle }: {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-[#FFCB00]/30 bg-[#FFCB00]/10 hover:bg-[#FFCB00]/20 text-[#FFCB00]"
+                  className="border-[#00B4D8]/30 bg-[#00B4D8]/10 hover:bg-[#00B4D8]/20 text-[#00B4D8]"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <FileText className="w-4 h-4 mr-2" />
@@ -229,7 +229,7 @@ export function CareersDialog({ open, onOpenChange }: {
         <DialogContent className="max-w-4xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
-              <Briefcase className="w-5 h-5 text-[#FFCB00]" />
+              <Briefcase className="w-5 h-5 text-[#00B4D8]" />
               Open Careers
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
@@ -238,10 +238,10 @@ export function CareersDialog({ open, onOpenChange }: {
           </DialogHeader>
 
           {/* Summary Card */}
-          <Card className="border-[#FFCB00]/20 bg-[#FFCB00]/5">
+          <Card className="border-[#00B4D8]/20 bg-[#00B4D8]/5">
             <CardContent className="py-3 px-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-[#FFCB00]/20 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-[#FFCB00]" />
+              <div className="h-10 w-10 rounded-lg bg-[#00B4D8]/20 flex items-center justify-center">
+                <Briefcase className="w-5 h-5 text-[#00B4D8]" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{activeJobs.length}</p>
@@ -265,7 +265,7 @@ export function CareersDialog({ open, onOpenChange }: {
               {/* Loading */}
               {loadingJobs && (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-6 h-6 animate-spin text-[#FFCB00]" />
+                  <Loader2 className="w-6 h-6 animate-spin text-[#00B4D8]" />
                 </div>
               )}
 
@@ -308,7 +308,7 @@ export function CareersDialog({ open, onOpenChange }: {
                     <div className="col-span-2 text-right flex justify-end gap-2">
                       <Button
                         size="sm"
-                        className="bg-[#FFCB00] hover:bg-[#FFCB00]/80 text-black font-medium h-8"
+                        className="bg-[#00B4D8] hover:bg-[#00B4D8]/80 text-black font-medium h-8"
                         onClick={() => setUploadJob({ id: job.id, title: job.title })}
                       >
                         <Upload className="w-3.5 h-3.5 mr-1.5" />

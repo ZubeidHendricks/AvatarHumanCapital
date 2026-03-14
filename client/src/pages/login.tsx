@@ -55,7 +55,7 @@ export default function Login() {
       >
         <div className="text-center mb-8">
           <img
-            src="/logos/ahc-logo.svg"
+            src="/logos/ahc-logo.png"
             alt="AHC"
             className="h-20 w-auto object-contain mx-auto mb-6"
             data-testid="img-login-logo"
