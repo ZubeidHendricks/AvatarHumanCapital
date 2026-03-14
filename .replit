@@ -10,7 +10,7 @@ packages = ["unzip", "chromium", "glib", "nss", "nspr", "xorg.libX11", "xorg.lib
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 publicDir = "dist/public"
-run = ["npm", "run", "start"]
+run = ["node", "./dist/index.cjs"]
 
 [[ports]]
 localPort = 5000

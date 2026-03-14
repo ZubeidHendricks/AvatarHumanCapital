@@ -136,7 +136,7 @@ Preferred communication style: Simple, everyday language.
 **Framework & Technology Stack:**
 - **Framework**: Express.js (Node.js) with TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
-- **Database Driver**: Neon Serverless (supports WebSocket connections)
+- **Database Driver**: node-postgres (pg) with Replit PostgreSQL
 - **Development**: tsx for TypeScript execution
 - **Build**: esbuild for production bundling
 
