@@ -1,13 +1,14 @@
 import Groq from "groq-sdk";
 import { Hume, HumeClient } from "hume";
 import { storage } from "./storage";
-import type { 
-  InterviewSession, 
+import { recordingStorage } from "./recording-storage";
+import type {
+  InterviewSession,
   InsertInterviewSession,
   InterviewRecording,
   InterviewTranscript,
   InterviewFeedback,
-  Candidate 
+  Candidate
 } from "@shared/schema";
 
 interface TranscriptSegment {
@@ -79,6 +80,31 @@ export class InterviewOrchestrator {
     return session;
   }
 
+  async addVideoStage(
+    tenantId: string,
+    sessionId: string,
+    prompt?: string
+  ): Promise<InterviewSession | null> {
+    const session = await storage.getInterviewSession(tenantId, sessionId);
+    if (!session) return null;
+
+    const videoToken = this.generateToken();
+    const videoExpiresAt = new Date();
+    videoExpiresAt.setHours(videoExpiresAt.getHours() + 72);
+
+    const updated = await storage.updateInterviewSession(tenantId, sessionId, {
+      videoToken,
+      videoStatus: 'pending',
+      videoPrompt: prompt || this.getTavusPrompt(session.jobTitle || 'the position'),
+      videoSentAt: new Date(),
+      videoExpiresAt,
+      status: 'video_pending',
+    } as any);
+
+    console.log(`[Interview] Added video stage to session ${sessionId}, videoToken: ${videoToken}`);
+    return updated || null;
+  }
+
   async startInterview(tenantId: string, sessionId: string): Promise<InterviewSession | null> {
     const session = await storage.getInterviewSession(tenantId, sessionId);
     if (!session) return null;
@@ -98,37 +124,83 @@ export class InterviewOrchestrator {
     transcripts: TranscriptSegment[],
     emotionAnalysis?: Record<string, any>,
     recordingUrl?: string,
-    duration?: number
+    duration?: number,
+    stage: 'voice' | 'video' = 'voice'
   ): Promise<{ session: InterviewSession; feedback: InterviewFeedback } | null> {
     const session = await storage.getInterviewSession(tenantId, sessionId);
     if (!session) return null;
 
-    const updated = await storage.updateInterviewSession(tenantId, sessionId, {
-      status: 'completed',
-      completedAt: new Date(),
+    // Build stage-specific updates
+    const sessionUpdates: Record<string, any> = {
       transcripts: transcripts as any,
       emotionAnalysis: emotionAnalysis as any,
-      duration,
-    });
+    };
 
+    if (stage === 'video') {
+      sessionUpdates.videoStatus = 'completed';
+      sessionUpdates.videoCompletedAt = new Date();
+      sessionUpdates.videoDuration = duration;
+      sessionUpdates.status = 'completed';
+    } else {
+      sessionUpdates.voiceStatus = 'completed';
+      sessionUpdates.status = session.videoStatus != null ? 'voice_completed' : 'completed';
+      sessionUpdates.completedAt = new Date();
+      sessionUpdates.duration = duration;
+    }
+
+    const updated = await storage.updateInterviewSession(tenantId, sessionId, sessionUpdates as any);
     if (!updated) return null;
 
     if (recordingUrl) {
+      // Check for existing recording to prevent duplicates
+      const existingRecordings = await storage.getInterviewRecordings(tenantId, sessionId, stage);
+      if (existingRecordings.length > 0) {
+        console.log(`[Interview] Recording already exists for session ${sessionId} stage ${stage}, skipping duplicate`);
+      } else {
+      let finalMediaUrl = recordingUrl;
+      let finalStorageProvider = 'hume';
+      let fileSize: number | null = null;
+
+      // Download the recording from the provider and save locally
+      // to avoid signed URL expiry issues
+      try {
+        console.log(`[Interview] Downloading recording from provider for session ${sessionId}...`);
+        const response = await fetch(recordingUrl);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const ext = stage === 'video' ? 'mp4' : 'mp4';
+          const filename = `${Date.now()}_${stage}.${ext}`;
+          const { key, size } = await recordingStorage.uploadRecording(tenantId, sessionId, filename, buffer, `${stage === 'video' ? 'video' : 'audio'}/mp4`);
+          finalMediaUrl = `/api/recordings/${key}`;
+          finalStorageProvider = 'local';
+          fileSize = size;
+          console.log(`[Interview] Recording saved locally: ${key} (${size} bytes)`);
+        } else {
+          console.warn(`[Interview] Failed to download recording (${response.status}), storing signed URL as fallback`);
+        }
+      } catch (err) {
+        console.warn(`[Interview] Error downloading recording, storing signed URL as fallback:`, err);
+      }
+
       await storage.createInterviewRecording(tenantId, {
         sessionId,
         candidateId: session.candidateId || undefined,
-        recordingType: session.interviewType === 'video' ? 'video' : 'audio',
-        mediaUrl: recordingUrl,
+        recordingType: stage === 'video' ? 'video' : 'audio',
+        mediaUrl: finalMediaUrl,
         duration,
-        storageProvider: 'hume',
-      });
+        storageProvider: finalStorageProvider,
+        fileSize,
+        interviewStage: stage,
+      } as any);
+      }
     }
 
-    await this.saveTranscriptSegments(tenantId, sessionId, transcripts);
+    await this.saveTranscriptSegments(tenantId, sessionId, transcripts, stage);
 
     const analysis = await this.analyzeInterview(session, transcripts);
 
-    const feedback = await storage.createInterviewFeedback(tenantId, {
+    const feedbackData = {
       sessionId,
       candidateId: session.candidateId || undefined,
       evaluatorType: 'ai',
@@ -146,32 +218,50 @@ export class InterviewOrchestrator {
       recommendations: analysis.recommendations,
       flaggedConcerns: analysis.flaggedConcerns,
       competencyScores: analysis.competencyScores,
-    });
+      interviewStage: stage,
+    } as any;
 
-    await storage.updateInterviewSession(tenantId, sessionId, {
-      overallScore: analysis.overallScore,
-      feedback: analysis.rationale,
-    });
+    // Check for existing feedback for this stage to avoid duplicates (e.g. Tavus re-analysis)
+    const existingFeedback = await storage.getInterviewFeedback(tenantId, sessionId, stage);
+    let feedback;
+    if (existingFeedback.length > 0 && existingFeedback[0].evaluatorType === 'ai' && !existingFeedback[0].isFinalized) {
+      feedback = await storage.updateInterviewFeedback(tenantId, existingFeedback[0].id, feedbackData) || existingFeedback[0];
+    } else {
+      feedback = await storage.createInterviewFeedback(tenantId, feedbackData);
+    }
+
+    if (stage === 'video') {
+      await storage.updateInterviewSession(tenantId, sessionId, {
+        videoScore: analysis.overallScore,
+      } as any);
+    } else {
+      await storage.updateInterviewSession(tenantId, sessionId, {
+        overallScore: analysis.overallScore,
+        feedback: analysis.rationale,
+      });
+    }
 
     await this.createTrainingEvent(tenantId, sessionId, session.candidateId, analysis);
 
-    console.log(`[Interview] Session ${sessionId} completed with score ${analysis.overallScore}`);
+    console.log(`[Interview] Session ${sessionId} ${stage} stage completed with score ${analysis.overallScore}`);
     return { session: updated, feedback };
   }
 
   private async saveTranscriptSegments(
     tenantId: string,
     sessionId: string,
-    transcripts: TranscriptSegment[]
+    transcripts: TranscriptSegment[],
+    stage: 'voice' | 'video' = 'voice'
   ): Promise<void> {
     const segments = transcripts.map((t, index) => ({
       sessionId,
       segmentIndex: index,
       speakerRole: t.role,
       text: t.text,
-      startTime: t.timestamp,
+      startTime: t.timestamp != null && t.timestamp > 2147483647 ? Math.round(t.timestamp / 1000) : t.timestamp,
       sentiment: t.emotion,
       emotionScores: t.emotionScores,
+      interviewStage: stage,
     }));
 
     await storage.createInterviewTranscriptsBatch(tenantId, segments);
@@ -194,9 +284,16 @@ export class InterviewOrchestrator {
       .map(t => `${t.role}: ${t.emotion}`)
       .join(', ');
 
+    if (!transcriptText.trim()) {
+      console.warn('[Interview] No transcript text to analyze — returning default analysis');
+      return this.getDefaultAnalysis();
+    }
+
+    console.log(`[Interview] Running AI analysis for ${session.jobTitle} (${transcripts.length} segments, ${transcriptText.length} chars)`);
+
     try {
       const response = await this.groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [
           {
             role: "system",
@@ -242,10 +339,13 @@ Return ONLY valid JSON, no additional text.`
       const content = response.choices[0]?.message?.content || '';
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]) as InterviewAnalysis;
+        const analysis = JSON.parse(jsonMatch[0]) as InterviewAnalysis;
+        console.log(`[Interview] AI analysis complete — score: ${analysis.overallScore}, decision: ${analysis.decision}`);
+        return analysis;
       }
-    } catch (error) {
-      console.error('[Interview] Analysis error:', error);
+      console.warn('[Interview] AI response did not contain valid JSON:', content.substring(0, 200));
+    } catch (error: any) {
+      console.error('[Interview] Analysis error:', error?.message || error, error?.status ? `(HTTP ${error.status})` : '');
     }
 
     return this.getDefaultAnalysis();
@@ -298,7 +398,67 @@ Return ONLY valid JSON, no additional text.`
     });
   }
 
-  async getInterviewDetails(tenantId: string, sessionId: string): Promise<{
+  async reanalyzeInterview(
+    tenantId: string,
+    sessionId: string,
+    stage?: 'voice' | 'video'
+  ): Promise<InterviewAnalysis | null> {
+    const session = await storage.getInterviewSession(tenantId, sessionId);
+    if (!session) return null;
+
+    const transcripts = await storage.getInterviewTranscripts(tenantId, sessionId, stage);
+    if (!transcripts || transcripts.length === 0) return null;
+
+    const segments: TranscriptSegment[] = transcripts.map(t => ({
+      role: t.speakerRole as 'candidate' | 'ai' | 'interviewer',
+      text: t.text,
+      timestamp: t.startTime ?? undefined,
+      emotion: t.sentiment ?? undefined,
+      emotionScores: t.emotionScores as Record<string, number> | undefined,
+    }));
+
+    const analysis = await this.analyzeInterview(session, segments);
+
+    // Update existing feedback or create new
+    const feedbackData = {
+      evaluatorType: 'ai',
+      decision: analysis.decision,
+      decisionConfidence: analysis.decisionConfidence,
+      overallScore: analysis.overallScore,
+      technicalScore: analysis.technicalScore,
+      communicationScore: analysis.communicationScore,
+      cultureFitScore: analysis.cultureFitScore,
+      problemSolvingScore: analysis.problemSolvingScore,
+      strengths: analysis.strengths,
+      weaknesses: analysis.weaknesses,
+      keyInsights: analysis.keyInsights,
+      rationale: analysis.rationale,
+      recommendations: analysis.recommendations,
+      flaggedConcerns: analysis.flaggedConcerns,
+      competencyScores: analysis.competencyScores,
+      interviewStage: stage,
+    } as any;
+
+    const existingFeedback = await storage.getInterviewFeedback(tenantId, sessionId, stage);
+    if (existingFeedback.length > 0 && existingFeedback[0].evaluatorType === 'ai' && !existingFeedback[0].isFinalized) {
+      await storage.updateInterviewFeedback(tenantId, existingFeedback[0].id, feedbackData);
+    } else {
+      feedbackData.sessionId = sessionId;
+      feedbackData.candidateId = session.candidateId || undefined;
+      await storage.createInterviewFeedback(tenantId, feedbackData);
+    }
+
+    if (stage === 'video') {
+      await storage.updateInterviewSession(tenantId, sessionId, { videoScore: analysis.overallScore } as any);
+    } else {
+      await storage.updateInterviewSession(tenantId, sessionId, { overallScore: analysis.overallScore, feedback: analysis.rationale });
+    }
+
+    console.log(`[Interview] Re-analysis complete for ${sessionId} (${stage || 'all'}) — score: ${analysis.overallScore}`);
+    return analysis;
+  }
+
+  async getInterviewDetails(tenantId: string, sessionId: string, stage?: 'voice' | 'video'): Promise<{
     session: InterviewSession;
     recordings: InterviewRecording[];
     transcripts: InterviewTranscript[];
@@ -308,9 +468,9 @@ Return ONLY valid JSON, no additional text.`
     if (!session) return null;
 
     const [recordings, transcripts, feedback] = await Promise.all([
-      storage.getInterviewRecordings(tenantId, sessionId),
-      storage.getInterviewTranscripts(tenantId, sessionId),
-      storage.getInterviewFeedback(tenantId, sessionId),
+      storage.getInterviewRecordings(tenantId, sessionId, stage),
+      storage.getInterviewTranscripts(tenantId, sessionId, stage),
+      storage.getInterviewFeedback(tenantId, sessionId, stage),
     ]);
 
     return { session, recordings, transcripts, feedback };
@@ -327,7 +487,7 @@ Return ONLY valid JSON, no additional text.`
       decision,
       isFinalized: 1,
       finalizedAt: new Date(),
-      finalizedBy: userId,
+      finalizedBy: userId === 'system' ? null : userId,
       recommendations: notes,
     });
 
@@ -397,8 +557,62 @@ Return ONLY valid JSON, no additional text.`
   }
 
   private getDefaultPrompt(jobTitle: string): string {
-    return `You are conducting an interview for the position of ${jobTitle}. 
-    
+    const isAIStrategist = jobTitle.toLowerCase().includes('ai strategist') || jobTitle.toLowerCase().includes('ai strategy') || jobTitle.toLowerCase().includes('senior ai strategist');
+
+    if (isAIStrategist) {
+      return `You are a senior interviewer for AHC Human Capital conducting an in-depth screening interview for the position of ${jobTitle}.
+
+TIME MANAGEMENT (STRICT — 25 MINUTES TOTAL):
+- Your introduction must be under 20 seconds. Say your name, the company, the role, that it will take about 25 minutes, and ask your first question immediately.
+- Ask the 5 main questions below with their follow-ups. Spend roughly 5 minutes per question area.
+- YOUR responses between questions must be under 10 seconds — one brief acknowledgment sentence, then your next question.
+- Do NOT summarize, paraphrase, or repeat what the candidate said. Move straight to the next question.
+
+${this.getAIStrategistPrompt()}
+
+TURN-TAKING RULES (CRITICAL):
+- After asking a question, remain completely silent and wait. Do not speak again until the candidate has clearly finished their answer.
+- Allow at least 3 seconds of silence before assuming the candidate is done speaking.
+- If the candidate pauses mid-thought, wait up to 5 seconds before prompting them to continue or moving on.
+- Never interrupt the candidate mid-sentence.
+
+CLOSING THE INTERVIEW (CRITICAL):
+- After you have asked all your questions and received answers, you MUST close the interview verbally.
+- Say something like: "Thank you so much for your time today. I really enjoyed our conversation. The recruiting team will review your responses and be in touch with next steps soon. Have a great day!"
+- After your closing statement, remain silent. Do NOT end the conversation or disconnect.
+
+Start by introducing yourself briefly and warmly, explain the interview will take about 25 minutes, then ask your first question.`;
+    }
+
+    return `You are an HR interviewer for AHC Human Capital conducting a screening interview for the position of ${jobTitle}.
+
+TIME MANAGEMENT (STRICT — 12 MINUTES TOTAL):
+- Your introduction must be under 20 seconds. Do not ramble. Say your name, the company, the role, that it will take about 12 minutes, and ask your first question immediately.
+- You have roughly 90 seconds per question (your question + candidate answer). Track this mentally.
+- YOUR responses between questions must be under 10 seconds — one brief acknowledgment sentence, then your next question. Examples: "Great, thanks for sharing that." or "Interesting, that's helpful."
+- Do NOT summarize, paraphrase, or repeat what the candidate said. Move straight to the next question.
+- Ask 6–8 questions total. After question 5, if you sense time is running out, skip to your most important remaining question and then close.
+- If a candidate's answer runs over 90 seconds, wait for a natural pause and gently redirect: "Thanks — let me move us along to the next question."
+
+INTERVIEW GUIDELINES:
+- Ask ONE question at a time. Keep questions short and direct (1–2 sentences max).
+- Ask follow-up questions only when an answer is too vague to evaluate. Do not ask follow-ups out of curiosity.
+- Prioritize high-value questions first so you cover them even if time runs short.
+- Maintain a friendly, professional, and conversational tone.
+- Keep transitions smooth and natural — avoid sounding scripted.
+
+TURN-TAKING RULES (CRITICAL):
+- After asking a question, remain completely silent and wait. Do not speak again until the candidate has clearly finished their answer.
+- Allow at least 3 seconds of silence before assuming the candidate is done speaking.
+- If the candidate pauses mid-thought, wait up to 5 seconds before prompting them to continue or moving on.
+- Never interrupt the candidate mid-sentence.
+
+CLOSING THE INTERVIEW (CRITICAL):
+- After you have asked all your questions and received answers, you MUST close the interview verbally.
+- Say something like: "Thank you so much for your time today. I really enjoyed our conversation. The recruiting team will review your responses and be in touch with next steps soon. Have a great day!"
+- After your closing statement, remain silent. Do NOT end the conversation or disconnect. Wait for the candidate to say goodbye or end the call on their side.
+- NEVER abruptly stop talking or disconnect. Always give a proper farewell.
+
 Your objectives:
 1. Assess the candidate's relevant experience and skills
 2. Evaluate their problem-solving abilities
@@ -406,8 +620,81 @@ Your objectives:
 4. Determine cultural fit with the organization
 5. Identify any potential concerns or red flags
 
-Be professional, friendly, and encouraging. Ask follow-up questions based on the candidate's responses.
-Start by introducing yourself and explaining the interview process.`;
+Start by introducing yourself briefly and warmly, explain the interview will take about 12 minutes, then ask your first question.`;
+  }
+
+  private getAIStrategistPrompt(): string {
+    return `INTERVIEW STRUCTURE (25-30 minutes, 5 questions with follow-ups):
+
+1) AI SOLUTION ARCHITECTURE
+Ask: "Describe your approach to designing an AI solution architecture for aligning technical solutions with business objectives, addressing regulatory constraints such as GDPR and other prevalent regulatory acts, and integrating AI into existing application workflows."
+Follow-up I: "How do you balance model accuracy — both analytical models and GenAI models of choice — explainability, and integration with BSS/OSS domain, enterprise apps domain, and third-party integration, while adhering to regulatory requirements?"
+Follow-up II: "Have you demonstrated Responsible AI in practice, and how was it achieved?"
+
+2) AI PLATFORM ARCHITECTURE
+Ask: "How would you design a scalable AI platform architecture to support diverse use cases — such as NLP chatbots, analytical models, and GenAI use cases — across a group of operating companies? Include considerations for AI landing zones, MLOps, LLMOps pipelines, and real-time data processing."
+
+3) AI INFRASTRUCTURE ARCHITECTURE
+Ask: "In a telecom environment with strict latency requirements, what infrastructure components would you prioritize for AI workloads? How do you ensure scalability and security while optimizing costs?"
+
+4) AI PROGRAM GOVERNANCE
+Ask: "Walk us through your framework for governing an AI portfolio with 20+ projects. How do you prioritize demands, mitigate risks such as bias, hallucinations, and data quality issues, and enforce ethical AI practices across geographically dispersed teams?"
+
+5) AI VALUE REALIZATION
+Ask: "Share an example where you quantified the ROI of an AI initiative in your AI Transformation Program."
+Follow-up I: "How did you track metrics like cost savings, revenue uplift, or customer satisfaction, and how did you adjust the strategy post-deployment?"
+Follow-up II: "Give your views on the construct of a value realization framework and reporting on the value impact — your approach pre and post AI implementation with a reference use case."`;
+  }
+
+  getTavusPrompt(jobTitle: string): string {
+    const isAIStrategist = jobTitle.toLowerCase().includes('ai strategist') || jobTitle.toLowerCase().includes('ai strategy') || jobTitle.toLowerCase().includes('senior ai strategist');
+    const roleSpecificQuestions = isAIStrategist ? this.getAIStrategistPrompt() : null;
+
+    if (roleSpecificQuestions) {
+      return `You are Charles Molapisi, Group Chief Technology and Information Officer (GCTIO) at AHC. You are conducting a professional interview for the ${jobTitle} position at AHC.
+
+INTERVIEW STYLE:
+- This is a senior strategic role — conduct a rigorous, in-depth interview
+- You are personally invested in this hire as the GCTIO who will work closely with this person
+- Ask the specific questions provided below — these have been carefully designed for this role
+- Use follow-up questions to probe deeper into the candidate's expertise
+- Evaluate both strategic thinking and hands-on technical depth
+
+${roleSpecificQuestions}
+
+GUIDELINES:
+- Ask ONE question at a time and listen fully before responding
+- Use the follow-up questions after the candidate answers the main question — do not skip them
+- Keep your responses between questions brief — acknowledge their answer in one sentence, then move to the next question or follow-up
+- Be warm but intellectually rigorous — push for specifics and real examples
+- Never mention you are an AI — you are Charles Molapisi conducting this interview
+- After all questions, close with a proper farewell: thank them for their time and let them know the team will follow up`;
+    }
+
+    return `You are Charles Molapisi, Group Chief Technology and Information Officer (GCTIO) at AHC. You are conducting a professional interview for the ${jobTitle} position at AHC.
+
+INTERVIEW STYLE:
+- Conduct a structured interview appropriate for a ${jobTitle} role
+- Ask questions relevant to the specific role and its requirements
+- Adapt your questioning level to match the seniority and nature of the position
+- For entry-level/retail roles: focus on customer service, teamwork, reliability, and basic role-specific skills
+- For technical roles: focus on technical knowledge, problem-solving, and relevant experience
+- For management roles: focus on leadership, strategy, team management, and decision-making
+
+INTERVIEW STRUCTURE (20-25 minutes, 5-6 questions):
+1) Background & Motivation — Ask about their background and why they are interested in the ${jobTitle} position at AHC
+2) Relevant Experience — Ask about their most relevant experience for this specific role
+3) Role-Specific Scenario — Present a realistic scenario they would face as a ${jobTitle} and ask how they would handle it
+4) Skills & Competencies — Ask about specific skills needed for the ${jobTitle} role
+5) Cultural Fit & Values — Ask about teamwork, integrity, or how they align with AHC's values
+6) Closing Question — Ask if they have any questions about the role or AHC
+
+GUIDELINES:
+- Ask ONE question at a time and listen fully before responding
+- Keep your responses between questions brief — acknowledge their answer in one sentence, then move to the next question
+- Be warm, professional, and encouraging
+- Never mention you are an AI — you are Charles Molapisi conducting this interview
+- After all questions, close with a proper farewell: thank them for their time and let them know the team will follow up`;
   }
 
   isConfigured(): boolean {

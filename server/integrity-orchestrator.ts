@@ -223,9 +223,19 @@ export class IntegrityOrchestrator {
     // Final update - remove progress marker since check is complete
     const finalFindings = { ...allFindings };
     delete (finalFindings as any)._progress;
-    
+
+    // Create document requirements BEFORE setting final status to avoid race condition
+    // (client polls for "Completed" status and stops polling, missing the subsequent "Documents Required" update)
+    await this.createDocumentRequirementsFromFindings(tenantId, checkId, candidateId, finalFindings);
+
+    // Determine final status: "Documents Required" if any agent identified missing docs
+    const hasMissingDocs = Object.values(finalFindings).some(
+      (data: any) => data?.missingDocuments && Array.isArray(data.missingDocuments) && data.missingDocuments.length > 0
+    );
+    const finalStatus = hasMissingDocs ? "Documents Required" : "Completed";
+
     const finalCheck = await this.storage.updateIntegrityCheck(tenantId, checkId, {
-      status: "Completed",
+      status: finalStatus,
       result: this.generateOverallAssessment(finalFindings, overallRiskScore),
       riskScore: Math.round(overallRiskScore),
       findings: finalFindings,
@@ -236,10 +246,7 @@ export class IntegrityOrchestrator {
       onProgress(progress);
     }
 
-    console.log(`Completed integrity check ${checkId} with risk score ${Math.round(overallRiskScore)}`);
-
-    // Create document requirements for any missing documents identified
-    await this.createDocumentRequirementsFromFindings(tenantId, checkId, candidateId, finalFindings);
+    console.log(`Completed integrity check ${checkId} with status ${finalStatus} and risk score ${Math.round(overallRiskScore)}`);
 
     return finalCheck!;
   }

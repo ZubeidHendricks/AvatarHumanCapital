@@ -57,6 +57,9 @@ export const jobs = pgTable("jobs", {
   // RAG Embeddings
   requirementsEmbedding: vector("requirements_embedding", { dimensions: 1536 }),
   
+  // Structured job spec metadata (customer, introduction, duties, attributes, qualifications, etc.)
+  metadata: jsonb("metadata"),
+
   // Archival (soft delete for historical data preservation)
   archivedAt: timestamp("archived_at"),
   archivedReason: text("archived_reason"),
@@ -112,6 +115,8 @@ export const integrityChecks = pgTable("integrity_checks", {
   lastReminderAt: timestamp("last_reminder_at"),
   nextReminderAt: timestamp("next_reminder_at"),
   reminderEnabled: integer("reminder_enabled").default(1),
+  uploadToken: varchar("upload_token").unique(),
+  uploadTokenExpiresAt: timestamp("upload_token_expires_at"),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -285,11 +290,14 @@ export const onboardingWorkflows = pgTable("onboarding_workflows", {
   provisioningData: jsonb("provisioning_data"),
   startDate: timestamp("start_date").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
+  uploadToken: varchar("upload_token").unique(),
+  uploadTokenExpiresAt: timestamp("upload_token_expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   tenantIdIdx: index("onboarding_workflows_tenant_id_idx").on(table.tenantId),
   candidateIdIdx: index("onboarding_workflows_candidate_id_idx").on(table.candidateId),
+  uploadTokenIdx: index("onboarding_workflows_upload_token_idx").on(table.uploadToken),
 }));
 
 export const tenantConfig = pgTable("tenant_config", {
@@ -1146,7 +1154,7 @@ export const interviewSessions = pgTable("interview_sessions", {
   candidatePhone: varchar("candidate_phone"), // Phone number for identification
   jobTitle: text("job_title"), // Position being interviewed for
   token: varchar("token").notNull().unique(), // Secure unique token for the link
-  interviewType: text("interview_type").notNull().default("voice"), // 'voice', 'video'
+  interviewType: text("interview_type").notNull().default("voice"), // 'voice', 'video', 'face_to_face', 'zoom', 'skype', 'teams', 'phone'
   status: text("status").notNull().default("pending"), // 'pending', 'sent', 'started', 'completed', 'expired'
   prompt: text("prompt"), // Custom interview prompt/questions
   transcripts: jsonb("transcripts"), // Array of { role: 'user'|'ai', text: string, emotion?: string }
@@ -1158,6 +1166,27 @@ export const interviewSessions = pgTable("interview_sessions", {
   startedAt: timestamp("started_at"), // When candidate started the interview
   completedAt: timestamp("completed_at"),
   expiresAt: timestamp("expires_at"), // Link expiration time
+  // Video stage fields
+  videoToken: varchar("video_token").unique(), // Separate invite token for video stage
+  voiceStatus: text("voice_status").default("pending"), // Voice stage status
+  videoStatus: text("video_status"), // Video stage status; null = not invited yet
+  videoPrompt: text("video_prompt"), // Custom prompt for video interview
+  videoStartedAt: timestamp("video_started_at"),
+  videoCompletedAt: timestamp("video_completed_at"),
+  videoDuration: integer("video_duration"),
+  videoScore: integer("video_score"), // AI score for video stage (0-100)
+  videoSentAt: timestamp("video_sent_at"),
+  videoExpiresAt: timestamp("video_expires_at"),
+  // Face-to-face stage fields
+  f2fStatus: text("f2f_status"), // null = not scheduled, 'scheduled', 'completed'
+  f2fScheduledDate: text("f2f_scheduled_date"),
+  f2fScheduledTime: text("f2f_scheduled_time"),
+  f2fLocation: text("f2f_location"),
+  f2fInterviewer: text("f2f_interviewer"),
+  f2fNotes: text("f2f_notes"),
+  f2fCompletedAt: timestamp("f2f_completed_at"),
+  // Offer stage fields
+  offerStatus: text("offer_status"), // null = not initiated, 'initiated'
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
@@ -1166,6 +1195,7 @@ export const interviewSessions = pgTable("interview_sessions", {
   conversationIdIdx: index("interview_sessions_conversation_id_idx").on(table.conversationId),
   tokenIdx: index("interview_sessions_token_idx").on(table.token),
   statusIdx: index("interview_sessions_status_idx").on(table.status),
+  videoTokenIdx: index("interview_sessions_video_token_idx").on(table.videoToken),
 }));
 
 export const insertInterviewSessionSchema = createInsertSchema(interviewSessions).omit({
@@ -1324,6 +1354,7 @@ export const interviewRecordings = pgTable("interview_recordings", {
   mimeType: text("mime_type"), // 'video/mp4', 'audio/webm', etc.
   transcriptionJobId: text("transcription_job_id"), // For async transcription
   transcriptionStatus: text("transcription_status").default("pending"), // 'pending', 'processing', 'completed', 'failed'
+  interviewStage: text("interview_stage").notNull().default("voice"), // 'voice' or 'video'
   metadata: jsonb("metadata"), // Additional recording metadata
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -1351,6 +1382,7 @@ export const interviewTranscripts = pgTable("interview_transcripts", {
   sentiment: text("sentiment"), // 'positive', 'negative', 'neutral'
   emotionScores: jsonb("emotion_scores"), // { joy: 0.8, sadness: 0.1, anger: 0.05, ... }
   keywords: text("keywords").array(), // Extracted key terms
+  interviewStage: text("interview_stage").notNull().default("voice"), // 'voice' or 'video'
   embedding: vector("embedding", { dimensions: 1536 }), // For semantic search
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
@@ -1386,6 +1418,7 @@ export const interviewFeedback = pgTable("interview_feedback", {
   isFinalized: integer("is_finalized").default(0), // 0 = draft, 1 = finalized
   finalizedAt: timestamp("finalized_at"),
   finalizedBy: varchar("finalized_by").references(() => users.id),
+  interviewStage: text("interview_stage").notNull().default("voice"), // 'voice' or 'video'
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
@@ -1502,6 +1535,240 @@ export type CandidateRecommendation = typeof candidateRecommendations.$inferSele
 
 export type InsertModelTrainingEvent = z.infer<typeof insertModelTrainingEventSchema>;
 export type ModelTrainingEvent = typeof modelTrainingEvents.$inferSelect;
+
+// ============================================================================
+// ViTT - VIDEO/INTERVIEW TIMESERIES TAG DATABASE
+// TimescaleDB-style hypertable for timeline tagging across all interview types
+// ============================================================================
+
+// Timeline Tags - ViTT-style timestamped markers on interview recordings
+// Designed as a timeseries-friendly table (time-partitioned by tagTime)
+export const interviewTimelineTags = pgTable("interview_timeline_tags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  sessionId: varchar("session_id").notNull().references(() => interviewSessions.id),
+  recordingId: varchar("recording_id").references(() => interviewRecordings.id),
+  transcriptId: varchar("transcript_id").references(() => interviewTranscripts.id),
+
+  // ViTT core fields
+  tagTime: timestamp("tag_time").notNull(), // Absolute wall-clock time of the tag
+  offsetMs: integer("offset_ms").notNull(), // Millisecond offset from recording start
+  endOffsetMs: integer("end_offset_ms"), // End of tagged range (null = point tag)
+  duration: integer("duration"), // Duration of tagged segment in ms
+
+  // Tag classification
+  tagType: text("tag_type").notNull(), // 'auto_emotion', 'auto_topic', 'auto_keyword', 'auto_sentiment', 'auto_silence', 'auto_crosstalk', 'manual', 'bookmark', 'flag', 'question', 'answer', 'highlight', 'concern'
+  tagSource: text("tag_source").notNull().default("auto"), // 'auto', 'manual', 'ai_reanalysis', 'assemblyai', 'deepgram', 'whisper', 'hume'
+  interviewStage: text("interview_stage"), // 'voice' | 'video' - which interview stage this tag belongs to
+  category: text("category"), // 'technical', 'behavioral', 'communication', 'emotion', 'topic_shift', 'red_flag', 'positive_signal'
+
+  // Tag content
+  label: text("label").notNull(), // Short display label
+  description: text("description"), // Detailed description
+  snippet: text("snippet"), // Transcript snippet at this timestamp
+  confidence: real("confidence"), // 0.0-1.0 confidence score
+
+  // Emotion data (from Hume or other providers)
+  emotionScores: jsonb("emotion_scores"), // { joy: 0.8, anger: 0.1, ... }
+  dominantEmotion: text("dominant_emotion"), // Top emotion at this point
+  sentimentScore: real("sentiment_score"), // -1.0 to 1.0
+
+  // Topic/keyword data
+  topics: text("topics").array(), // Detected topics at this point
+  keywords: text("keywords").array(), // Key terms
+
+  // Speaker info
+  speakerRole: text("speaker_role"), // 'candidate', 'interviewer', 'ai'
+  speakerName: text("speaker_name"),
+
+  // Importance & scoring
+  importance: integer("importance").default(5), // 1-10 importance ranking
+  aiScore: real("ai_score"), // AI-assigned relevance score 0-1
+
+  // Manual annotation
+  createdBy: varchar("created_by").references(() => users.id), // null = auto-generated
+  notes: text("notes"), // Human notes
+  isBookmarked: integer("is_bookmarked").default(0),
+  isFlagged: integer("is_flagged").default(0),
+
+  // Metadata
+  providerData: jsonb("provider_data"), // Raw data from the transcript provider
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("timeline_tags_tenant_id_idx").on(table.tenantId),
+  sessionIdIdx: index("timeline_tags_session_id_idx").on(table.sessionId),
+  recordingIdIdx: index("timeline_tags_recording_id_idx").on(table.recordingId),
+  tagTimeIdx: index("timeline_tags_tag_time_idx").on(table.tagTime),
+  offsetMsIdx: index("timeline_tags_offset_ms_idx").on(table.offsetMs),
+  tagTypeIdx: index("timeline_tags_tag_type_idx").on(table.tagType),
+  tagSourceIdx: index("timeline_tags_tag_source_idx").on(table.tagSource),
+  categoryIdx: index("timeline_tags_category_idx").on(table.category),
+  importanceIdx: index("timeline_tags_importance_idx").on(table.importance),
+}));
+
+// Transcript Jobs - Track multi-provider transcription runs
+export const transcriptJobs = pgTable("transcript_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  sessionId: varchar("session_id").notNull().references(() => interviewSessions.id),
+  recordingId: varchar("recording_id").references(() => interviewRecordings.id),
+
+  // Provider info
+  provider: text("provider").notNull(), // 'assemblyai', 'deepgram', 'whisper', 'hume'
+  providerJobId: text("provider_job_id"), // External job ID from the provider
+  providerModel: text("provider_model"), // e.g., 'nova-2', 'whisper-large-v3', 'best'
+
+  // Job state
+  status: text("status").notNull().default("pending"), // 'pending', 'uploading', 'processing', 'completed', 'failed', 'cancelled'
+  progress: integer("progress").default(0), // 0-100 percent
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+
+  // Configuration
+  language: text("language").default("en"),
+  enableSpeakerDiarization: integer("enable_speaker_diarization").default(1),
+  enableSentimentAnalysis: integer("enable_sentiment_analysis").default(1),
+  enableEntityDetection: integer("enable_entity_detection").default(0),
+  enableTopicDetection: integer("enable_topic_detection").default(1),
+  enableAutoHighlights: integer("enable_auto_highlights").default(1),
+  customVocabulary: text("custom_vocabulary").array(),
+
+  // Results summary
+  wordCount: integer("word_count"),
+  segmentCount: integer("segment_count"),
+  speakerCount: integer("speaker_count"),
+  totalDurationMs: integer("total_duration_ms"),
+  averageConfidence: real("average_confidence"),
+
+  // Cost tracking
+  costCents: integer("cost_cents"), // Cost in cents for billing
+  audioDurationSeconds: integer("audio_duration_seconds"),
+
+  // Timestamps
+  submittedAt: timestamp("submitted_at"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("transcript_jobs_tenant_id_idx").on(table.tenantId),
+  sessionIdIdx: index("transcript_jobs_session_id_idx").on(table.sessionId),
+  recordingIdIdx: index("transcript_jobs_recording_id_idx").on(table.recordingId),
+  providerIdx: index("transcript_jobs_provider_idx").on(table.provider),
+  statusIdx: index("transcript_jobs_status_idx").on(table.status),
+}));
+
+// Recording Sources - Track where recordings come from (browser, Zoom, Skype, upload)
+export const recordingSources = pgTable("recording_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  sessionId: varchar("session_id").notNull().references(() => interviewSessions.id),
+  recordingId: varchar("recording_id").references(() => interviewRecordings.id),
+
+  // Source info
+  sourceType: text("source_type").notNull(), // 'browser_mediarecorder', 'zoom', 'skype', 'teams', 'upload', 'hume', 'tavus', 'phone'
+  sourceId: text("source_id"), // External meeting ID (Zoom meeting ID, etc.)
+  sourceUrl: text("source_url"), // Download URL from the source
+
+  // Meeting platform details
+  meetingId: text("meeting_id"), // Zoom/Skype/Teams meeting ID
+  meetingPassword: text("meeting_password"), // Encrypted
+  meetingUrl: text("meeting_url"), // Join URL
+  hostEmail: text("host_email"),
+
+  // Capture settings
+  captureConfig: jsonb("capture_config"), // { audioCodec, videCodec, resolution, bitrate, sampleRate }
+  isAudioOnly: integer("is_audio_only").default(0),
+  hasVideo: integer("has_video").default(1),
+  hasScreenShare: integer("has_screen_share").default(0),
+
+  // Status
+  status: text("status").notNull().default("pending"), // 'pending', 'recording', 'uploading', 'completed', 'failed'
+  errorMessage: text("error_message"),
+
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("recording_sources_tenant_id_idx").on(table.tenantId),
+  sessionIdIdx: index("recording_sources_session_id_idx").on(table.sessionId),
+  recordingIdIdx: index("recording_sources_recording_id_idx").on(table.recordingId),
+  sourceTypeIdx: index("recording_sources_source_type_idx").on(table.sourceType),
+}));
+
+// LeMUR Analysis Results - Stored Q&A results from transcript analysis
+export const lemurAnalysisResults = pgTable("lemur_analysis_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  sessionId: varchar("session_id").notNull().references(() => interviewSessions.id),
+
+  // Analysis type
+  analysisType: text("analysis_type").notNull(), // 'qa', 'summary', 'action_items', 'sentiment_timeline', 'topic_extraction', 'custom'
+  question: text("question"), // The question asked (for Q&A type)
+  prompt: text("prompt"), // Full prompt used
+
+  // Results
+  answer: text("answer"), // AI response
+  structuredResult: jsonb("structured_result"), // Parsed structured data
+  confidence: real("confidence"), // 0-1
+
+  // Source tracking
+  provider: text("provider").notNull().default("groq"), // 'groq', 'openai', 'assemblyai_lemur'
+  model: text("model"), // Model used for analysis
+  tokenCount: integer("token_count"),
+
+  // User info
+  requestedBy: varchar("requested_by").references(() => users.id),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index("lemur_analysis_tenant_id_idx").on(table.tenantId),
+  sessionIdIdx: index("lemur_analysis_session_id_idx").on(table.sessionId),
+  analysisTypeIdx: index("lemur_analysis_type_idx").on(table.analysisType),
+}));
+
+// Insert schemas for ViTT system
+export const insertInterviewTimelineTagSchema = createInsertSchema(interviewTimelineTags).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTranscriptJobSchema = createInsertSchema(transcriptJobs).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRecordingSourceSchema = createInsertSchema(recordingSources).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLemurAnalysisResultSchema = createInsertSchema(lemurAnalysisResults).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+});
+
+export type InsertInterviewTimelineTag = z.infer<typeof insertInterviewTimelineTagSchema>;
+export type InterviewTimelineTag = typeof interviewTimelineTags.$inferSelect;
+
+export type InsertTranscriptJob = z.infer<typeof insertTranscriptJobSchema>;
+export type TranscriptJob = typeof transcriptJobs.$inferSelect;
+
+export type InsertRecordingSource = z.infer<typeof insertRecordingSourceSchema>;
+export type RecordingSource = typeof recordingSources.$inferSelect;
+
+export type InsertLemurAnalysisResult = z.infer<typeof insertLemurAnalysisResultSchema>;
+export type LemurAnalysisResult = typeof lemurAnalysisResults.$inferSelect;
 
 // ============================================================================
 // DATA SOURCES - External systems for KPI data collection
@@ -2365,7 +2632,7 @@ export const pipelineStages = [
   "shortlisted",     // Passed screening, ready for interview
   "interviewing",    // In interview process
   "offer_pending",   // Offer extended, awaiting response
-  "offer_accepted",  // Offer accepted, triggers integrity checks
+  "offer_declined",  // Candidate declined the offer
   "integrity_checks", // Background verification in progress
   "integrity_passed", // All checks cleared
   "integrity_failed", // Check(s) failed
@@ -2654,3 +2921,86 @@ export const weighbridgeSlips = pgTable("weighbridge_slips", {
 export const insertWeighbridgeSlipSchema = createInsertSchema(weighbridgeSlips);
 export type WeighbridgeSlip = typeof weighbridgeSlips.$inferSelect;
 export type InsertWeighbridgeSlip = typeof weighbridgeSlips.$inferInsert;
+
+// ============================================
+// OFFERS MANAGEMENT
+// ============================================
+
+export const offers = pgTable("offers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  salary: text("salary").notNull(),
+  currency: text("currency").notNull().default("ZAR"),
+  startDate: timestamp("start_date"),
+  benefits: jsonb("benefits"),
+  status: text("status").notNull().default("draft"),
+  sentAt: timestamp("sent_at"),
+  respondedAt: timestamp("responded_at"),
+  expiresAt: timestamp("expires_at"),
+  contractType: text("contract_type"),
+  documentPath: text("document_path"),
+  notes: text("notes"),
+  responseToken: varchar("response_token").unique(),
+  responseTokenExpiresAt: timestamp("response_token_expires_at"),
+  declineReason: text("decline_reason"),
+  signedDocumentPath: text("signed_document_path"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertOfferSchema = createInsertSchema(offers, {
+  startDate: z.coerce.date().optional().nullable(),
+  sentAt: z.coerce.date().optional().nullable(),
+  respondedAt: z.coerce.date().optional().nullable(),
+  expiresAt: z.coerce.date().optional().nullable(),
+  responseTokenExpiresAt: z.coerce.date().optional().nullable(),
+}).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOffer = z.infer<typeof insertOfferSchema>;
+export type Offer = typeof offers.$inferSelect;
+
+// ============================================
+// CANDIDATE INTEREST CHECKS
+// ============================================
+
+export const candidateInterestChecks = pgTable("candidate_interest_checks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  jobId: varchar("job_id").references(() => jobs.id),
+  interestToken: varchar("interest_token").unique(),
+  status: text("status").notNull().default("pending"),
+  sentVia: text("sent_via"),
+  sentAt: timestamp("sent_at"),
+  respondedAt: timestamp("responded_at"),
+  expiresAt: timestamp("expires_at"),
+  cvFilePath: text("cv_file_path"),
+  consentGiven: boolean("consent_given").default(false),
+  consentText: text("consent_text"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertInterestCheckSchema = createInsertSchema(candidateInterestChecks, {
+  sentAt: z.coerce.date().optional().nullable(),
+  respondedAt: z.coerce.date().optional().nullable(),
+  expiresAt: z.coerce.date().optional().nullable(),
+}).omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInterestCheck = z.infer<typeof insertInterestCheckSchema>;
+export type InterestCheck = typeof candidateInterestChecks.$inferSelect;

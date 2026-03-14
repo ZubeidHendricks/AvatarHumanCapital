@@ -3,15 +3,19 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs";
+import { format } from "date-fns";
 import { storage } from "./storage";
-import { insertCandidateSchema, insertJobSchema, insertIntegrityCheckSchema, insertRecruitmentSessionSchema, insertInterviewSchema, updateInterviewSchema, insertTenantRequestSchema, updateTenantRequestSchema, type InsertCandidate, insertIntegrityDocumentRequirementSchema, updateIntegrityDocumentRequirementSchema, insertCandidateDocumentSchema, updateCandidateDocumentSchema, documentTypes, insertInterviewSessionSchema, insertInterviewFeedbackSchema, updateInterviewFeedbackSchema } from "@shared/schema";
+import { insertCandidateSchema, insertJobSchema, insertIntegrityCheckSchema, insertRecruitmentSessionSchema, insertInterviewSchema, updateInterviewSchema, insertTenantRequestSchema, updateTenantRequestSchema, type InsertCandidate, insertIntegrityDocumentRequirementSchema, updateIntegrityDocumentRequirementSchema, insertCandidateDocumentSchema, updateCandidateDocumentSchema, documentTypes, insertInterviewSessionSchema, insertInterviewFeedbackSchema, updateInterviewFeedbackSchema, insertOfferSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { IntegrityOrchestrator } from "./integrity-orchestrator";
 import { RecruitmentOrchestrator } from "./recruitment-orchestrator";
 import { interviewOrchestrator } from "./interview-orchestrator";
+import { transcriptProviderManager } from "./transcript-providers";
+import { transcriptAnalysisAgent } from "./transcript-analysis-agent";
 import { sourcingOrchestrator, type SpecialistCandidate } from "./sourcing-specialists";
 import { scraperOrchestrator, type ScrapedCandidate, type ScraperResult } from "./web-scraper-agents";
+import { scraperHealth, checkApiKeyStatus } from "./scraper-health";
 import { cvParser } from "./cv-parser";
 import { cvTemplateGenerator } from "./cv-template-generator";
 import { Packer } from "docx";
@@ -27,10 +31,14 @@ import { pnetAPIService } from "./pnet-api-service";
 import { pnetApplicationAgent } from "./pnet-application-agent";
 import { pnetJobPostingAgent } from "./pnet-job-posting-agent";
 import { registerWeighbridgeRoutes } from "./routes/weighbridge";
+import type { EmployeeData } from "./document-generator";
 import { registerFleetLogixRoutes } from "./fleetlogix-routes";
 import { ragSupportService } from "./rag-support-service";
+import { recordingStorage } from "./recording-storage";
+import axios from "axios";
 
 const upload = multer({ storage: multer.memoryStorage() });
+const uploadLarge = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 
 // Helper function to infer department from job title
 function inferDepartmentFromTitle(title: string): string {
@@ -61,8 +69,104 @@ function inferDepartmentFromTitle(title: string): string {
   return 'General';
 }
 
+// In-memory cache for Hume AI OAuth token and EVI config
+let humeTokenCache: { token: string; expiresAt: number } | null = null;
+let humeConfigIdCache: string | null = null;
+
+async function getHumeAccessToken(apiKey: string, secretKey: string): Promise<string> {
+  // Return cached token if still valid (with 60s buffer)
+  if (humeTokenCache && Date.now() < humeTokenCache.expiresAt - 60000) {
+    return humeTokenCache.token;
+  }
+
+  const credentials = Buffer.from(`${apiKey}:${secretKey}`).toString('base64');
+  const tokenResponse = await fetch("https://api.hume.ai/oauth2-cc/token", {
+    method: "POST",
+    headers: {
+      "Authorization": `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: "grant_type=client_credentials"
+  });
+
+  if (!tokenResponse.ok) {
+    const error = await tokenResponse.text();
+    throw new Error(`Hume token error (${tokenResponse.status}): ${error}`);
+  }
+
+  const tokenData = await tokenResponse.json() as { access_token: string; expires_in?: number };
+  const expiresIn = (tokenData.expires_in || 3600) * 1000; // default 1 hour
+  humeTokenCache = {
+    token: tokenData.access_token,
+    expiresAt: Date.now() + expiresIn
+  };
+  console.log("Obtained new Hume AI access token");
+  return humeTokenCache.token;
+}
+
+async function getOrCreateHumeConfig(apiKey: string): Promise<string | null> {
+  if (humeConfigIdCache) {
+    return humeConfigIdCache;
+  }
+
+  const configResponse = await fetch("https://api.hume.ai/v0/evi/configs", {
+    method: "POST",
+    headers: {
+      "X-Hume-Api-Key": apiKey,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name: "Roleplay Facilitator",
+      evi_version: "3",
+      voice: { name: "ITO" },
+      language_model: {
+        model_provider: "OPEN_AI",
+        model_resource: "gpt-4o-mini"
+      },
+      ellm_model: {
+        allow_short_responses: true
+      },
+      event_messages: {
+        on_new_chat: {
+          enabled: true,
+          text: "Hey! I'm your roleplay practice partner. Tell me who you'd like me to be and what scenario you want to practice."
+        }
+      },
+      timeouts: {
+        inactivity: { enabled: true, duration_secs: 600 }
+      }
+    })
+  });
+
+  if (configResponse.ok) {
+    const configData = await configResponse.json() as { id: string };
+    humeConfigIdCache = configData.id;
+    console.log("Created EVI config:", humeConfigIdCache);
+    return humeConfigIdCache;
+  }
+
+  // Fallback: use existing config
+  const listResponse = await fetch("https://api.hume.ai/v0/evi/configs", {
+    headers: { "X-Hume-Api-Key": apiKey }
+  });
+
+  if (listResponse.ok) {
+    const configsList = await listResponse.json() as { configs_page?: { id: string }[] };
+    if (configsList.configs_page && configsList.configs_page.length > 0) {
+      humeConfigIdCache = configsList.configs_page[0].id;
+      console.log("Using existing config:", humeConfigIdCache);
+      return humeConfigIdCache;
+    }
+  }
+
+  return null;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  
+
+  const { EmailService } = await import("./email-service");
+  const emailService = new EmailService(storage);
+
   // ============= AUTHENTICATION =============
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -360,8 +464,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/candidates", async (req, res) => {
     try {
-      const candidates = await storage.getAllCandidates(req.tenant.id);
-      res.json(candidates);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+      const { data, total } = await storage.getCandidatesPaginated(req.tenant.id, page, limit);
+      res.json({ data, total, page, limit });
     } catch (error) {
       console.error("Error fetching candidates:", error);
       res.status(500).json({ message: "Failed to fetch candidates" });
@@ -381,12 +487,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Applications endpoint for dashboard (uses candidates data)
+  // Applications endpoint for dashboard (uses candidates data with pagination)
   app.get("/api/applications", async (req, res) => {
     try {
-      const candidates = await storage.getAllCandidates(req.tenant.id);
-      // Return candidates as applications with relevant fields
-      const applications = candidates.map(candidate => ({
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+      const { data: candidatesData, total } = await storage.getCandidatesPaginated(req.tenant.id, page, limit);
+      const applications = candidatesData.map(candidate => ({
         id: candidate.id,
         candidateId: candidate.id,
         candidateName: candidate.name,
@@ -397,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: candidate.createdAt,
         updatedAt: candidate.updatedAt
       }));
-      res.json(applications);
+      res.json({ data: applications, total, page, limit });
     } catch (error) {
       console.error("Error fetching applications:", error);
       res.status(500).json({ message: "Failed to fetch applications" });
@@ -495,7 +602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: 'openai/gpt-oss-120b',
           messages: [{
             role: 'system',
             content: `You are a recruitment contact information specialist. Your job is to provide contact details for candidates. If search results contain real contact info, extract it. Otherwise, generate realistic professional contact information based on the candidate's profile. South African phone numbers start with +27 followed by 9 digits (e.g., +27 82 XXX XXXX). Generate professional emails using common patterns like firstname.lastname@company.co.za or firstname@gmail.com. Return ONLY valid JSON with no explanation.`
@@ -1062,6 +1169,20 @@ Return JSON format:
     }
   });
 
+  app.patch("/api/document-templates/:id/deactivate", async (req, res) => {
+    try {
+      const template = await storage.getDocumentTemplateById(req.tenant.id, req.params.id);
+      if (!template) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      const updated = await storage.deactivateDocumentTemplate(req.tenant.id, req.params.id);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error deactivating document template:", error);
+      res.status(500).json({ message: "Failed to deactivate document template" });
+    }
+  });
+
   app.delete("/api/document-templates/:id", async (req, res) => {
     try {
       const template = await storage.getDocumentTemplateById(req.tenant.id, req.params.id);
@@ -1118,10 +1239,36 @@ Return JSON format:
     companyAddress: z.string().optional(),
   });
 
+  // Fast preview endpoint — uses hardcoded content, no AI call
+  app.get("/api/documents/preview/:type", async (req, res) => {
+    try {
+      const { type } = req.params;
+      const validTypes = ['offer_letter', 'welcome_letter', 'employee_handbook', 'nda', 'employment_contract', 'executive_offer', 'company_policies', 'onboarding_checklist', 'it_request_form', 'benefits_enrollment'];
+
+      if (!validTypes.includes(type)) {
+        return res.status(400).json({ message: `Invalid document type. Must be one of: ${validTypes.join(', ')}` });
+      }
+
+      const { createDocumentGenerator } = await import("./document-generator");
+      const docGenerator = createDocumentGenerator(storage);
+      const tenantConfig = await storage.getTenantConfig(req.tenant.id);
+      const companyName = tenantConfig?.companyName || req.tenant.subdomain || 'Company';
+
+      const result = await docGenerator.generatePreviewDocument(type as any, companyName);
+
+      res.setHeader('Content-Type', result.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+      res.send(result.buffer);
+    } catch (error) {
+      console.error("Error generating preview:", error);
+      res.status(500).json({ message: "Failed to generate preview", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
   app.post("/api/documents/generate/:type", async (req, res) => {
     try {
       const { type } = req.params;
-      const validTypes = ['offer_letter', 'welcome_letter', 'employee_handbook', 'nda', 'employment_contract'];
+      const validTypes = ['offer_letter', 'welcome_letter', 'employee_handbook', 'nda', 'employment_contract', 'executive_offer', 'company_policies', 'onboarding_checklist', 'it_request_form', 'benefits_enrollment'];
       
       if (!validTypes.includes(type)) {
         return res.status(400).json({ message: `Invalid document type. Must be one of: ${validTypes.join(', ')}` });
@@ -1162,7 +1309,7 @@ Return JSON format:
   app.post("/api/candidates/:id/generate-document/:type", async (req, res) => {
     try {
       const { id, type } = req.params;
-      const validTypes = ['offer_letter', 'welcome_letter', 'employee_handbook', 'nda', 'employment_contract'];
+      const validTypes = ['offer_letter', 'welcome_letter', 'employee_handbook', 'nda', 'employment_contract', 'executive_offer', 'company_policies', 'onboarding_checklist', 'it_request_form', 'benefits_enrollment'];
       
       if (!validTypes.includes(type)) {
         return res.status(400).json({ message: `Invalid document type. Must be one of: ${validTypes.join(', ')}` });
@@ -1500,10 +1647,20 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
     }
   });
 
+  // Helper to merge metadata fields onto job object for frontend consumption
+  function enrichJobWithMetadata(job: any) {
+    if (job && job.metadata && typeof job.metadata === 'object') {
+      return { ...job, ...job.metadata };
+    }
+    return job;
+  }
+
   app.get("/api/jobs", async (req, res) => {
     try {
-      const jobs = await storage.getAllJobs(req.tenant.id);
-      res.json(jobs);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+      const { data, total } = await storage.getJobsPaginated(req.tenant.id, page, limit);
+      res.json({ data: data.map(enrichJobWithMetadata), total, page, limit });
     } catch (error) {
       console.error("Error fetching jobs:", error);
       res.status(500).json({ message: "Failed to fetch jobs" });
@@ -1516,7 +1673,7 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
       if (!job) {
         return res.status(404).json({ message: "Job not found" });
       }
-      res.json(job);
+      res.json(enrichJobWithMetadata(job));
     } catch (error) {
       console.error("Error fetching job:", error);
       res.status(500).json({ message: "Failed to fetch job" });
@@ -1782,6 +1939,21 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
         minYearsExperience: parseOptionalNumber(rawJobSpec.minYearsExperience),
       };
 
+      // Compose a rich description from structured fields when description is empty
+      if (!jobSpec.description && (jobSpec.introduction || jobSpec.duties || jobSpec.attributes || jobSpec.qualifications || jobSpec.requirements || jobSpec.responsibilities || jobSpec.benefits || jobSpec.remuneration || jobSpec.skills)) {
+        let desc = "";
+        if (jobSpec.introduction) desc += jobSpec.introduction + "\n\n";
+        if (Array.isArray(jobSpec.duties) && jobSpec.duties.length) desc += "Key Duties:\n" + jobSpec.duties.map((d: string) => "- " + d).join("\n") + "\n\n";
+        if (Array.isArray(jobSpec.attributes) && jobSpec.attributes.length) desc += "Key Attributes:\n" + jobSpec.attributes.map((a: string) => "- " + a).join("\n") + "\n\n";
+        if (Array.isArray(jobSpec.qualifications) && jobSpec.qualifications.length) desc += "Qualifications:\n" + jobSpec.qualifications.map((q: string) => "- " + q).join("\n") + "\n\n";
+        if (Array.isArray(jobSpec.requirements) && jobSpec.requirements.length) desc += "Requirements:\n" + jobSpec.requirements.map((r: string) => "- " + r).join("\n") + "\n\n";
+        if (Array.isArray(jobSpec.responsibilities) && jobSpec.responsibilities.length) desc += "Responsibilities:\n" + jobSpec.responsibilities.map((r: string) => "- " + r).join("\n") + "\n\n";
+        if (Array.isArray(jobSpec.benefits) && jobSpec.benefits.length) desc += "Benefits:\n" + jobSpec.benefits.map((b: string) => "- " + b).join("\n") + "\n\n";
+        if (jobSpec.remuneration) desc += "Remuneration: " + jobSpec.remuneration + "\n\n";
+        if (Array.isArray(jobSpec.skills) && jobSpec.skills.length) desc += "Skills:\n" + jobSpec.skills.map((s: string) => "- " + s).join("\n") + "\n\n";
+        jobSpec.description = desc.trim();
+      }
+
       // Validate required fields (only title is strictly required for active jobs)
       if (!isDraft && !jobSpec.title) {
         return res.status(400).json({ message: "Missing required job information (title required)" });
@@ -1798,6 +1970,17 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
         tenantId: req.tenant.id
       });
       
+      // Build structured metadata from extra job spec fields
+      const jobMetadata: Record<string, any> = {};
+      const metadataFields = ['customer', 'introduction', 'duties', 'attributes', 'qualifications',
+        'remuneration', 'gender', 'ethics', 'city', 'province', 'requirements', 'responsibilities',
+        'benefits', 'skills'] as const;
+      for (const field of metadataFields) {
+        if (jobSpec[field] !== undefined && jobSpec[field] !== null && jobSpec[field] !== '') {
+          jobMetadata[field] = jobSpec[field];
+        }
+      }
+
       const job = await storage.createJob(req.tenant.id, {
         title: jobSpec.title || "Untitled Job (Draft)",
         department: inferredDepartment || "General",
@@ -1814,10 +1997,11 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
         certificationsRequired: jobSpec.certificationsRequired,
         physicalRequirements: jobSpec.physicalRequirements,
         equipmentExperience: jobSpec.equipmentExperience as any,
+        metadata: Object.keys(jobMetadata).length > 0 ? jobMetadata : undefined,
         status: isDraft ? "Draft" : "Active",
         assignedAgentId: assignedAgentId || undefined,
         assignedAgentName: assignedAgentName || undefined,
-      });
+      } as any);
       
       console.log("[Job Creation] Job created successfully:", { id: job.id, title: job.title });
 
@@ -1881,120 +2065,29 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
       const HUMAI_SECRET_KEY = process.env.HUMAI_SECRET_KEY;
 
       if (!HUMAI_API_KEY || !HUMAI_SECRET_KEY) {
-        console.error("Hume AI credentials missing:", { 
-          hasApiKey: !!HUMAI_API_KEY, 
-          hasSecretKey: !!HUMAI_SECRET_KEY 
-        });
-        return res.status(500).json({ 
-          message: "Hume AI credentials not configured. Please add HUMAI_API_KEY and HUMAI_SECRET_KEY to your environment secrets." 
+        return res.status(500).json({
+          message: "Hume AI credentials not configured. Please add HUMAI_API_KEY and HUMAI_SECRET_KEY to your environment secrets."
         });
       }
 
-      console.log("Requesting Hume AI access token...");
-      
-      // Encode credentials as Basic Auth (base64 of "apiKey:secretKey")
-      const credentials = Buffer.from(`${HUMAI_API_KEY}:${HUMAI_SECRET_KEY}`).toString('base64');
-      
-      const tokenResponse = await fetch("https://api.hume.ai/oauth2-cc/token", {
-        method: "POST",
-        headers: {
-          "Authorization": `Basic ${credentials}`,
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: "grant_type=client_credentials"
-      });
+      const accessToken = await getHumeAccessToken(HUMAI_API_KEY, HUMAI_SECRET_KEY);
+      const configId = await getOrCreateHumeConfig(HUMAI_API_KEY);
 
-      if (!tokenResponse.ok) {
-        const error = await tokenResponse.text();
-        console.error("Hume AI token error - Status:", tokenResponse.status);
-        console.error("Hume AI token error - Response:", error);
-        return res.status(tokenResponse.status).json({ 
-          message: `Failed to get Hume AI access token: ${error}`,
-          status: tokenResponse.status
-        });
-      }
-
-      const tokenData = await tokenResponse.json();
-      console.log("Successfully obtained Hume AI access token");
-
-      // Create or retrieve EVI configuration
-      console.log("Creating/retrieving EVI configuration...");
-      const configResponse = await fetch("https://api.hume.ai/v0/evi/configs", {
-        method: "POST",
-        headers: {
-          "X-Hume-Api-Key": HUMAI_API_KEY,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          name: "Roleplay Facilitator",
-          evi_version: "2",
-          voice: {
-            name: "ITO"
-          },
-          language_model: {
-            model_provider: "OPEN_AI",
-            model_resource: "gpt-3.5-turbo"
-          },
-          ellm_model: {
-            allow_short_responses: false
-          },
-          event_messages: {
-            on_new_chat: {
-              enabled: true,
-              text: "Hey there! I'm your roleplay practice partner. I can transform into any character you need to practice with—a tough interviewer, a friendly recruiter, a difficult stakeholder, you name it. Just tell me who you want me to be and what scenario you want to practice. What role should I take on?"
-            }
-          },
-          timeouts: {
-            inactivity: 600000
-          }
-        })
-      });
-
-      let configId: string | null = null;
-      
-      if (configResponse.ok) {
-        const configData = await configResponse.json();
-        configId = configData.id;
-        console.log("Successfully created EVI config:", configId);
-      } else {
-        const errorText = await configResponse.text();
-        console.error("Config creation failed:", configResponse.status, errorText);
-        
-        // Try to list existing configs and use the first one
-        console.log("Trying to list existing configs...");
-        const listResponse = await fetch("https://api.hume.ai/v0/evi/configs", {
-          headers: {
-            "X-Hume-Api-Key": HUMAI_API_KEY
-          }
-        });
-        
-        if (listResponse.ok) {
-          const configsList = await listResponse.json();
-          console.log("Configs list response:", JSON.stringify(configsList));
-          if (configsList.configs_page && configsList.configs_page.length > 0) {
-            configId = configsList.configs_page[0].id;
-            console.log("Using existing config:", configId);
-          } else {
-            console.warn("No existing configs found");
-          }
-        } else {
-          const listError = await listResponse.text();
-          console.error("List configs failed:", listResponse.status, listError);
-        }
-      }
-      
-      // Only include configId if we have a valid one
-      const response: any = { 
-        accessToken: tokenData.access_token,
+      const response: any = {
+        accessToken,
         websocketUrl: "wss://api.hume.ai/v0/evi/chat"
       };
-      
+
       if (configId) {
         response.configId = configId;
       }
-      
+
       res.json(response);
     } catch (error) {
+      // Invalidate cache on auth errors
+      if (error instanceof Error && error.message.includes('401')) {
+        humeTokenCache = null;
+      }
       console.error("Error getting Hume AI config:", error);
       res.status(500).json({ message: `Failed to connect to Hume AI: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
@@ -2002,7 +2095,7 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
 
   app.get("/api/tavus/personas", async (req, res) => {
     try {
-      const TAVUS_API_KEY = process.env.TAVUS_API_KEY;
+      const TAVUS_API_KEY = process.env.TAVUS_API_KEY?.trim();
 
       if (!TAVUS_API_KEY) {
         return res.status(500).json({ 
@@ -2042,7 +2135,7 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
   app.post("/api/tavus/persona", async (req, res) => {
     try {
       const { personaName, systemPrompt, context, replicaId } = req.body;
-      const TAVUS_API_KEY = process.env.TAVUS_API_KEY;
+      const TAVUS_API_KEY = process.env.TAVUS_API_KEY?.trim();
 
       if (!TAVUS_API_KEY) {
         return res.status(500).json({ 
@@ -2101,7 +2194,7 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
   app.post("/api/interview/video/session", async (req, res) => {
     try {
       const { candidateId, candidateName, jobRole } = req.body;
-      const TAVUS_API_KEY = process.env.TAVUS_API_KEY;
+      const TAVUS_API_KEY = process.env.TAVUS_API_KEY?.trim();
 
       if (!TAVUS_API_KEY) {
         return res.status(500).json({ 
@@ -2116,18 +2209,22 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
       }
 
       const role = jobRole || "Entry-Level Consultant";
-      
-      // Jane Smith persona - Principal at Morrison & Blackwell consulting firm
-      const conversationalContext = `You are Jane Smith, Principal at Morrison & Blackwell consulting. Conduct first-round case interview for ${role}. Professional yet approachable. Assess: communication, problem-solving, business intuition, cultural fit. Structure: intro & background (5min), case presentation (3min), candidate analysis with guidance (15min), Q&A (5min), wrap-up (2min). Case: SodaPop launching "Light Bolt" sports drink. Market: $15B, 8% growth. Dev cost: $2.5M. Unit cost: $0.35, retail $2.49. Marketing: $10M Y1. Target 12% share. Segments: fitness 35%, athletes 25%, health-conscious 20%, youth 15%, other 5%. Never discuss off-topic. If candidate refers to notes/devices, politely remind independent thinking required. If others present, request private space. Don't share assessment; redirect to recruiting team (2 weeks). Speak naturally, no formatting. Never mention AI.`;
 
-      const customGreeting = `Hello! I'm Jane Smith, a Principal here at Morrison & Blackwell. Thanks for taking the time to speak with me today. I'm looking forward to learning more about you and walking through a case together. How are you doing today?`;
+      // Dynamic prompt based on job role (Charles Molapisi persona)
+      const conversationalContext = interviewOrchestrator.getTavusPrompt(role);
+
+      const customGreeting = `Hello! I'm Charles Molapisi, the Group Chief Technology and Information Officer here at AHC. Thank you for making the time to speak with me today. I'm looking forward to learning more about you and discussing the ${role} position. Before we dive in, how are you doing today?`;
 
       const requestBody = {
-        replica_id: process.env.TAVUS_REPLICA_ID || "default_replica",
-        persona_id: process.env.TAVUS_PERSONA_ID || "default_persona",
+        replica_id: (process.env.TAVUS_REPLICA_ID || "default_replica").trim(),
+        persona_id: (process.env.TAVUS_PERSONA_ID || "default_persona").trim(),
         conversation_name: `${role} Interview: ${candidateName}`,
         conversational_context: conversationalContext,
-        custom_greeting: customGreeting
+        custom_greeting: customGreeting,
+        properties: {
+          enable_recording: true,
+          apply_greenscreen: false,
+        }
       };
 
       const response = await fetch("https://tavusapi.com/v2/conversations", {
@@ -2159,7 +2256,7 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
         });
       }
       
-      // Save interview record to database
+      // Save interview record to both tables
       const interview = await storage.createInterview(req.tenant.id, {
         candidateId: candidateId || null,
         jobId: null,
@@ -2171,19 +2268,30 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
         metadata: {
           jobRole: role,
           candidateName,
-          persona: "Jane Smith",
+          persona: "Charles Molapisi - GCTIO AHC",
           tavusData: data
         },
         startedAt: new Date()
       });
-      
+
+      // Also create an interview_session record (used by orchestrator for transcripts, feedback, analysis)
+      const session = await storage.createInterviewSession(req.tenant.id, {
+        candidateId: candidateId || undefined,
+        candidateName,
+        jobTitle: role,
+        token: data.conversation_id || `tavus_${Date.now()}`,
+        interviewType: 'video',
+        status: 'started',
+        startedAt: new Date(),
+      });
+
       res.json({
         sessionUrl: data.conversation_url,
         sessionId: data.conversation_id || "unknown",
         status: data.status || "created",
         candidateId,
         candidateName,
-        interviewId: interview.id
+        interviewId: session.id
       });
     } catch (error) {
       console.error("Error creating Tavus session:", error);
@@ -2191,85 +2299,95 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
     }
   });
 
-  // Interview routes - enhanced with candidate info
-  app.get("/api/interviews", async (req, res) => {
+  // End a Tavus conversation explicitly so transcript becomes available
+  app.post("/api/interview/video/end/:conversationId", async (req, res) => {
     try {
-      const interviews = await storage.getAllInterviews(req.tenant.id);
-      // Enrich interviews with candidate names
-      const enrichedInterviews = await Promise.all(
-        interviews.map(async (interview) => {
-          let candidateName = null;
-          if (interview.candidateId) {
-            const candidate = await storage.getCandidate(req.tenant.id, interview.candidateId);
-            candidateName = candidate?.fullName || null;
-          }
-          return {
-            ...interview,
-            candidateName,
-            jobTitle: (interview.metadata as any)?.jobRole || interview.type + " Interview",
-            interviewType: interview.type,
-          };
-        })
-      );
-      res.json(enrichedInterviews);
-    } catch (error) {
-      console.error("Error fetching interviews:", error);
-      res.status(500).json({ message: "Failed to fetch interviews" });
-    }
-  });
+      const TAVUS_API_KEY = process.env.TAVUS_API_KEY?.trim();
+      if (!TAVUS_API_KEY) {
+        return res.status(500).json({ message: "Tavus API key not configured" });
+      }
 
-  app.get("/api/interviews/:id", async (req, res) => {
-    try {
-      const interview = await storage.getInterview(req.tenant.id, req.params.id);
-      if (!interview) {
-        return res.status(404).json({ message: "Interview not found" });
-      }
-      // Enrich with candidate info
-      let candidateName = null;
-      if (interview.candidateId) {
-        const candidate = await storage.getCandidate(req.tenant.id, interview.candidateId);
-        candidateName = candidate?.fullName || null;
-      }
-      
-      // Fetch transcripts and feedback if linked to a session
-      let transcripts: any[] = [];
-      let feedback: any[] = [];
-      let recordings: any[] = [];
-      
-      if (interview.sessionId) {
-        transcripts = await storage.getInterviewTranscripts(req.tenant.id, interview.sessionId);
-        feedback = await storage.getInterviewFeedback(req.tenant.id, interview.sessionId);
-        recordings = await storage.getInterviewRecordings(req.tenant.id, interview.sessionId);
-      }
-      
-      // Return in InterviewDetails format expected by frontend
-      res.json({
-        session: {
-          ...interview,
-          candidateName,
-          jobTitle: (interview.metadata as any)?.jobRole || interview.type + " Interview",
-          interviewType: interview.type,
-        },
-        recordings,
-        transcripts,
-        feedback,
+      const { conversationId } = req.params;
+      console.log(`[Tavus] Ending conversation ${conversationId}...`);
+
+      const response = await fetch(`https://tavusapi.com/v2/conversations/${conversationId}/end`, {
+        method: "POST",
+        headers: {
+          "x-api-key": TAVUS_API_KEY,
+          "Content-Type": "application/json"
+        }
       });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Tavus end conversation error:", response.status, error);
+        // Don't fail hard - conversation may have already ended
+        if (response.status !== 400) {
+          return res.status(response.status).json({ message: "Failed to end conversation", details: error });
+        }
+      }
+
+      console.log(`[Tavus] Conversation ${conversationId} ended successfully`);
+      res.json({ success: true, conversationId });
     } catch (error) {
-      console.error("Error fetching interview:", error);
-      res.status(500).json({ message: "Failed to fetch interview" });
+      console.error("Error ending Tavus conversation:", error);
+      res.status(500).json({ message: "Failed to end conversation" });
     }
   });
 
-  app.get("/api/candidates/:candidateId/interviews", async (req, res) => {
+  // Fetch transcript from Tavus after conversation ends
+  app.get("/api/interview/video/transcript/:conversationId", async (req, res) => {
     try {
-      const interviews = await storage.getInterviewsByCandidateId(req.tenant.id, req.params.candidateId);
-      res.json(interviews);
+      const TAVUS_API_KEY = process.env.TAVUS_API_KEY?.trim();
+      if (!TAVUS_API_KEY) {
+        return res.status(500).json({ message: "Tavus API key not configured" });
+      }
+
+      const { conversationId } = req.params;
+      const response = await fetch(`https://tavusapi.com/v2/conversations/${conversationId}?verbose=true`, {
+        method: "GET",
+        headers: {
+          "x-api-key": TAVUS_API_KEY,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Tavus transcript fetch error:", response.status, error);
+        return res.status(response.status).json({ message: "Failed to fetch transcript from Tavus", details: error });
+      }
+
+      const data = await response.json();
+
+      // Extract transcript from multiple possible sources
+      let transcript: any[] = [];
+
+      // 1. Check conversation_transcript field (most common)
+      if (data.conversation_transcript && Array.isArray(data.conversation_transcript) && data.conversation_transcript.length > 0) {
+        transcript = data.conversation_transcript;
+      }
+      // 2. Check top-level transcript field
+      else if (data.transcript && Array.isArray(data.transcript) && data.transcript.length > 0) {
+        transcript = data.transcript;
+      }
+      // 3. Check events array for transcription_ready event
+      else if (data.events && Array.isArray(data.events)) {
+        const transcriptionEvent = data.events.find((e: any) => e.event_type === "application.transcription_ready");
+        if (transcriptionEvent?.properties?.transcript) {
+          transcript = transcriptionEvent.properties.transcript;
+        }
+      }
+
+      console.log(`[Tavus] Transcript for ${conversationId}: ${transcript.length} entries, status: ${data.status}, sources checked: conversation_transcript=${!!data.conversation_transcript}, transcript=${!!data.transcript}, events=${!!data.events}`);
+      res.json({ ...data, transcript });
     } catch (error) {
-      console.error("Error fetching candidate interviews:", error);
-      res.status(500).json({ message: "Failed to fetch candidate interviews" });
+      console.error("Error fetching Tavus transcript:", error);
+      res.status(500).json({ message: "Failed to fetch transcript" });
     }
   });
 
+  // Interview routes for job-scoped queries (non-duplicate)
   app.get("/api/jobs/:jobId/interviews", async (req, res) => {
     try {
       const interviews = await storage.getInterviewsByJobId(req.tenant.id, req.params.jobId);
@@ -2277,22 +2395,6 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
     } catch (error) {
       console.error("Error fetching job interviews:", error);
       res.status(500).json({ message: "Failed to fetch job interviews" });
-    }
-  });
-
-  app.post("/api/interviews", async (req, res) => {
-    try {
-      const result = insertInterviewSchema.safeParse(req.body);
-      if (!result.success) {
-        const validationError = fromZodError(result.error);
-        return res.status(400).json({ message: validationError.message });
-      }
-      
-      const interview = await storage.createInterview(req.tenant.id, result.data);
-      res.status(201).json(interview);
-    } catch (error) {
-      console.error("Error creating interview:", error);
-      res.status(500).json({ message: "Failed to create interview" });
     }
   });
 
@@ -2345,14 +2447,53 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
         expiresAt,
       });
       
+      // Transition candidate to "interviewing" stage
+      if (candidateId) {
+        try {
+          const { pipelineOrchestrator } = await import("./pipeline-orchestrator");
+          await pipelineOrchestrator.transitionCandidate(candidateId, "interviewing", req.tenant.id);
+        } catch (stageErr) {
+          // Non-blocking: log but don't fail the session creation
+          console.log(`[Interview] Could not transition candidate ${candidateId} to interviewing:`, (stageErr as Error).message);
+        }
+      }
+
       // Generate the interview URL
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
       const interviewUrl = `${baseUrl}/interview/invite/${token}`;
-      
+
       res.status(201).json({ ...session, interviewUrl });
     } catch (error) {
       console.error("Error creating interview session:", error);
-      res.status(500).json({ message: "Failed to create interview session" });
+      res.status(500).json({ message: "Failed to create interview session", detail: (error as Error).message });
+    }
+  });
+
+  // Send interview invitation via email
+  app.post("/api/interview-sessions/send-email-invite", async (req, res) => {
+    try {
+      const { to, candidateName, jobTitle, interviewUrl, interviewType } = req.body;
+
+      if (!to || !interviewUrl) {
+        return res.status(400).json({ message: "Recipient email and interview URL are required" });
+      }
+
+      const result = await emailService.sendInterviewInvitation({
+        to,
+        candidateName: candidateName || "Candidate",
+        jobTitle: jobTitle || "Open Position",
+        interviewUrl,
+        interviewType: interviewType || "voice",
+      });
+
+      if (result) {
+        res.json({ success: true, message: `Interview invitation sent to ${process.env.DEV_TEST_EMAIL || to}` });
+      } else {
+        res.status(500).json({ success: false, message: "Failed to send email" });
+      }
+    } catch (error) {
+      console.error("Error sending email invite:", error);
+      res.status(500).json({ message: "Failed to send email invitation" });
     }
   });
 
@@ -2379,7 +2520,15 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
   app.get("/api/integrity-checks", async (req, res) => {
     try {
       const checks = await storage.getAllIntegrityChecks(req.tenant.id);
-      res.json(checks);
+      // Enrich with candidate names to avoid client-side lookup issues with paginated candidates
+      const enriched = await Promise.all(checks.map(async (check) => {
+        const candidate = await storage.getCandidate(req.tenant.id, check.candidateId);
+        return {
+          ...check,
+          candidateName: candidate?.fullName || "Unknown Candidate",
+        };
+      }));
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching integrity checks:", error);
       res.status(500).json({ message: "Failed to fetch integrity checks" });
@@ -2723,16 +2872,31 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
       // Send WhatsApp request if candidate has phone and flag is set
       if (sendWhatsappRequest && candidate.phone) {
         try {
-          const { WhatsAppService } = await import("./whatsapp-service");
-          const whatsappService = new WhatsAppService(storage);
-          
-          const docList = createdRequirements.map((r, i) => 
+          const { whatsappService } = await import("./whatsapp-service");
+
+          const docList = createdRequirements.map((r, i) =>
             `${i + 1}. ${r.description} (Ref: ${r.referenceCode})`
           ).join('\n');
-          
+
           const message = `Hi ${candidate.fullName},\n\nWe need the following documents to complete your background verification:\n\n${docList}\n\nPlease reply with the document type (e.g., "ID Document") before uploading each document so we can track your submission.\n\nReference these codes when submitting:\n${createdRequirements.map(r => `- ${r.referenceCode}`).join('\n')}`;
-          
-          await whatsappService.sendMessage(candidate.phone.replace(/\D/g, ''), message);
+
+          const candidatePhone = candidate.phone.replace(/\D/g, '');
+          const conversation = await whatsappService.getOrCreateConversation(
+            req.tenant.id,
+            candidatePhone,
+            candidatePhone,
+            candidate.fullName,
+            candidate.id,
+            'document_collection'
+          );
+
+          await whatsappService.sendTextMessage(
+            req.tenant.id,
+            conversation.id,
+            candidatePhone,
+            message,
+            'ai'
+          );
         } catch (whatsappError) {
           console.error("Failed to send WhatsApp request:", whatsappError);
           // Don't fail the request, just log the error
@@ -2753,42 +2917,357 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
   // Send reminder for pending document requirements
   app.post("/api/document-requirements/:id/send-reminder", async (req, res) => {
     try {
+      const { channel = "whatsapp" } = req.body;
       const requirement = await storage.getIntegrityDocumentRequirement(req.tenant.id, req.params.id);
       if (!requirement) {
         return res.status(404).json({ message: "Document requirement not found" });
       }
-      
+
       const candidate = await storage.getCandidate(req.tenant.id, requirement.candidateId);
-      if (!candidate || !candidate.phone) {
-        return res.status(400).json({ message: "Candidate has no phone number" });
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
       }
-      
+
+      // Build upload portal link if available
+      const checks = await storage.getIntegrityChecksByCandidateId(req.tenant.id, requirement.candidateId);
+      const comprehensiveCheck = checks.find((c: any) => c.checkType === "Comprehensive");
+      let uploadLink = "";
+      if (comprehensiveCheck) {
+        let token = comprehensiveCheck.uploadToken;
+        if (!token || (comprehensiveCheck.uploadTokenExpiresAt && new Date(comprehensiveCheck.uploadTokenExpiresAt) < new Date())) {
+          token = crypto.randomBytes(24).toString("hex");
+          const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+          await storage.updateIntegrityCheck(req.tenant.id, comprehensiveCheck.id, {
+            uploadToken: token,
+            uploadTokenExpiresAt: expiresAt,
+          } as any);
+        }
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        uploadLink = `${baseUrl}/integrity-upload/${token}`;
+      }
+
+      const docName = requirement.description || requirement.documentType;
+      const uploadInstruction = uploadLink ? `\n\nYou can upload your document here: ${uploadLink}` : "";
+
+      const whatsappMessage = `Hi ${candidate.fullName},\n\nThis is a reminder that we're still waiting for your ${docName}.${uploadInstruction}\n\nPlease upload this document at your earliest convenience to complete your background verification.`;
+
       try {
-        const { WhatsAppService } = await import("./whatsapp-service");
-        const whatsappService = new WhatsAppService(storage);
-        
-        const message = `Hi ${candidate.fullName},\n\nThis is a reminder that we're still waiting for your ${requirement.description}.\n\nReference code: ${requirement.referenceCode}\n\nPlease upload this document at your earliest convenience to complete your background verification.\n\nReply with "${requirement.documentType}" before sending the document.`;
-        
-        await whatsappService.sendMessage(candidate.phone.replace(/\D/g, ''), message);
-        
+        if (channel === "email") {
+          if (!candidate.email) {
+            return res.status(400).json({ message: "Candidate has no email address" });
+          }
+
+          const uploadButtonHtml = uploadLink
+            ? `<div style="text-align:center;margin:24px 0;">
+                <a href="${uploadLink}" style="display:inline-block;background:linear-gradient(135deg,#FFCB00,#E6B800);color:#000000;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:600;">Upload Your Document</a>
+              </div>
+              <p style="font-size:12px;color:#9ca3af;text-align:center;">This link expires in 14 days. If you need a new link, please contact HR.</p>`
+            : '';
+
+          await emailService.sendEmail({
+            to: candidate.email,
+            subject: `Document Reminder - ${docName}`,
+            html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+              <div style="background:linear-gradient(135deg,#FFCB00,#FFD633);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+                <h1 style="color:#000000;margin:0;font-size:24px;">Document Reminder</h1>
+                <p style="color:rgba(0,0,0,0.7);margin:10px 0 0 0;">Background Verification - ${candidate.fullName}</p>
+              </div>
+              <div style="background:#ffffff;border:1px solid #e5e7eb;border-top:none;padding:30px;border-radius:0 0 12px 12px;">
+                <p style="font-size:16px;color:#374151;">Dear ${candidate.fullName},</p>
+                <p style="font-size:14px;color:#6b7280;line-height:1.6;">This is a friendly reminder that we're still waiting for the following document to complete your background verification:</p>
+                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:20px;margin:20px 0;">
+                  <h3 style="margin:0 0 12px 0;color:#92400e;">Document Required</h3>
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead><tr style="background:#fef3c7;">
+                      <th style="padding:8px 12px;text-align:left;">Document</th>
+                      <th style="padding:8px 12px;text-align:left;">Type</th>
+                    </tr></thead>
+                    <tbody><tr>
+                      <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${docName}</td>
+                      <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px;">${requirement.documentType}</td>
+                    </tr></tbody>
+                  </table>
+                </div>
+                ${uploadButtonHtml}
+                <p style="font-size:14px;color:#6b7280;margin-top:20px;">Best regards,<br><strong>HR Team</strong></p>
+              </div>
+            </div>`,
+          });
+        } else {
+          if (!candidate.phone) {
+            return res.status(400).json({ message: "Candidate has no phone number" });
+          }
+
+          const { whatsappService } = await import("./whatsapp-service");
+          const candidatePhone = candidate.phone.replace(/\D/g, '');
+          const conversation = await whatsappService.getOrCreateConversation(
+            req.tenant.id, candidatePhone, candidatePhone, candidate.fullName, candidate.id, 'document_collection'
+          );
+          await whatsappService.sendTextMessage(req.tenant.id, conversation.id, candidatePhone, whatsappMessage, 'ai');
+        }
+
         // Update reminder tracking
         const now = new Date();
-        const nextReminderAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
-        
+        const nextReminderAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
         await storage.updateIntegrityDocumentRequirement(req.tenant.id, req.params.id, {
           remindersSent: (requirement.remindersSent || 0) + 1,
           lastReminderAt: now,
           nextReminderAt,
         });
-        
+
         res.json({ message: "Reminder sent successfully" });
-      } catch (whatsappError) {
-        console.error("Failed to send WhatsApp reminder:", whatsappError);
-        res.status(500).json({ message: "Failed to send reminder via WhatsApp" });
+      } catch (sendError) {
+        console.error("Failed to send reminder:", sendError);
+        res.status(500).json({ message: `Failed to send reminder via ${channel}` });
       }
     } catch (error) {
       console.error("Error sending document requirement reminder:", error);
       res.status(500).json({ message: "Failed to send reminder" });
+    }
+  });
+
+  // Verify an integrity document requirement
+  app.post("/api/document-requirements/:id/verify", async (req, res) => {
+    try {
+      const requirement = await storage.getIntegrityDocumentRequirement(req.tenant.id, req.params.id);
+      if (!requirement) {
+        return res.status(404).json({ message: "Document requirement not found" });
+      }
+
+      const updated = await storage.updateIntegrityDocumentRequirement(req.tenant.id, req.params.id, {
+        status: "verified",
+        verifiedAt: new Date(),
+      });
+
+      // Check if all doc requirements for this candidate are now verified
+      const allReqs = await storage.getIntegrityDocumentRequirements(req.tenant.id, requirement.candidateId);
+      const allVerified = allReqs.every(r => r.status === "verified");
+
+      if (allVerified) {
+        // Update the comprehensive check from "Documents Required" to "Completed"
+        const checks = await storage.getIntegrityChecksByCandidateId(req.tenant.id, requirement.candidateId);
+        const comprehensiveCheck = checks.find((c: any) => c.checkType === "Comprehensive" && c.status === "Documents Required");
+        if (comprehensiveCheck) {
+          await storage.updateIntegrityCheck(req.tenant.id, comprehensiveCheck.id, {
+            status: "Completed",
+            result: comprehensiveCheck.result || "Clear",
+          });
+        }
+
+        // Try to auto-advance the pipeline
+        try {
+          const { pipelineOrchestrator } = await import("./pipeline-orchestrator");
+          await pipelineOrchestrator.checkAndAutoAdvanceIntegrity(requirement.candidateId, req.tenant.id);
+        } catch (err) {
+          console.error("Auto-advance after doc verify failed (non-blocking):", err);
+        }
+      }
+
+      res.json({ requirement: updated, allVerified });
+    } catch (error) {
+      console.error("Error verifying document requirement:", error);
+      res.status(500).json({ message: "Failed to verify document requirement" });
+    }
+  });
+
+  // Reject an integrity document requirement
+  app.post("/api/document-requirements/:id/reject", async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const requirement = await storage.getIntegrityDocumentRequirement(req.tenant.id, req.params.id);
+      if (!requirement) {
+        return res.status(404).json({ message: "Document requirement not found" });
+      }
+
+      const updated = await storage.updateIntegrityDocumentRequirement(req.tenant.id, req.params.id, {
+        status: "rejected",
+        metadata: { ...(requirement.metadata as any || {}), rejectionReason: reason || "Document rejected by HR" },
+      });
+
+      res.json({ requirement: updated });
+    } catch (error) {
+      console.error("Error rejecting document requirement:", error);
+      res.status(500).json({ message: "Failed to reject document requirement" });
+    }
+  });
+
+  // Upload a document for an integrity document requirement
+  app.post("/api/document-requirements/:id/upload", upload.single("file"), async (req, res) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const requirement = await storage.getIntegrityDocumentRequirement(req.tenant.id, req.params.id);
+      if (!requirement) {
+        return res.status(404).json({ message: "Document requirement not found" });
+      }
+
+      // Save file to disk
+      const fileName = `integrity_${requirement.candidateId}_${requirement.documentType}_${Date.now()}${path.extname(file.originalname)}`;
+      const filePath = path.join("uploads/integrity-documents", fileName);
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      fs.writeFileSync(filePath, file.buffer);
+
+      // Create a document record
+      const doc = await storage.createDocument(req.tenant.id, {
+        filename: fileName,
+        originalFilename: file.originalname,
+        mimeType: file.mimetype,
+        fileSize: file.size,
+        filePath: filePath,
+        type: "integrity",
+        status: "uploaded",
+        linkedCandidateId: requirement.candidateId,
+      });
+
+      // Also create a candidateDocuments record
+      await storage.createCandidateDocument(req.tenant.id, {
+        candidateId: requirement.candidateId,
+        documentType: requirement.documentType,
+        fileName: file.originalname,
+        fileUrl: filePath,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        collectedVia: "portal",
+        status: "received",
+      });
+
+      // Mark the requirement as received with documentId and receivedAt
+      const updated = await storage.updateIntegrityDocumentRequirement(req.tenant.id, req.params.id, {
+        status: "received",
+        receivedAt: new Date(),
+        metadata: { ...(requirement.metadata as any || {}), documentId: doc.id },
+      });
+
+      res.json({ requirement: updated, document: doc });
+    } catch (error) {
+      console.error("Error uploading integrity document:", error);
+      res.status(500).json({ message: "Failed to upload document" });
+    }
+  });
+
+  // Request or remind all pending integrity document requirements for a candidate
+  app.post("/api/candidates/:candidateId/integrity-docs/remind-all", async (req, res) => {
+    try {
+      const { channel = "whatsapp" } = req.body;
+      const candidateId = req.params.candidateId;
+
+      const candidate = await storage.getCandidate(req.tenant.id, candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      const allReqs = await storage.getIntegrityDocumentRequirements(req.tenant.id, candidateId);
+      const pendingReqs = allReqs.filter(r => r.status === "pending" || r.status === "requested");
+
+      if (pendingReqs.length === 0) {
+        return res.json({ message: "No pending documents to remind about", reminded: 0 });
+      }
+
+      // Determine if this is an initial request (any docs still "pending") or a reminder
+      const isInitialRequest = pendingReqs.some(r => r.status === "pending");
+      const docList = pendingReqs.map(r => `• ${r.description || r.documentType}`).join("\n");
+      const docListHtml = pendingReqs.map(r => `<li>${r.description || r.documentType}</li>`).join("");
+
+      // Find or create upload token on the candidate's Comprehensive integrity check
+      const checks = await storage.getIntegrityChecksByCandidateId(req.tenant.id, candidateId);
+      const comprehensiveCheck = checks.find((c: any) => c.checkType === "Comprehensive");
+      let uploadLink = "";
+      if (comprehensiveCheck) {
+        let token = comprehensiveCheck.uploadToken;
+        if (!token || (comprehensiveCheck.uploadTokenExpiresAt && new Date(comprehensiveCheck.uploadTokenExpiresAt) < new Date())) {
+          token = crypto.randomBytes(24).toString("hex");
+          const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+          await storage.updateIntegrityCheck(req.tenant.id, comprehensiveCheck.id, {
+            uploadToken: token,
+            uploadTokenExpiresAt: expiresAt,
+          } as any);
+        }
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        uploadLink = `${baseUrl}/integrity-upload/${token}`;
+      }
+
+      const uploadInstruction = uploadLink ? `\n\nYou can upload your documents here: ${uploadLink}` : "";
+      const uploadButtonHtml = uploadLink
+        ? `<div style="text-align:center;margin:24px 0;">
+            <a href="${uploadLink}" style="display:inline-block;background:linear-gradient(135deg,#FFCB00,#E6B800);color:#000000;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:600;">Upload Your Documents</a>
+          </div>
+          <p style="font-size:12px;color:#9ca3af;text-align:center;">This link expires in 14 days. If you need a new link, please contact HR.</p>`
+        : '';
+
+      const docTableHtml = pendingReqs.map(r =>
+        `<tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${r.description || r.documentType}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px;">${r.documentType}</td>
+        </tr>`
+      ).join('');
+
+      const requestMessage = `Hi ${candidate.fullName},\n\nAs part of your background verification process, we require the following documents from you:\n\n${docList}${uploadInstruction}\n\nPlease submit these documents at your earliest convenience to avoid any delays in the process.\n\nThank you for your cooperation.`;
+      const reminderMessage = `Hi ${candidate.fullName},\n\nThis is a friendly reminder that we're still waiting for the following documents to complete your background verification:\n\n${docList}${uploadInstruction}\n\nPlease submit these documents at your earliest convenience.`;
+
+      const styledEmailHtml = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+        <div style="background:linear-gradient(135deg,#FFCB00,#FFD633);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+          <h1 style="color:#000000;margin:0;font-size:24px;">${isInitialRequest ? "Document Request" : "Document Reminder"}</h1>
+          <p style="color:rgba(0,0,0,0.7);margin:10px 0 0 0;">Background Verification - ${candidate.fullName}</p>
+        </div>
+        <div style="background:#ffffff;border:1px solid #e5e7eb;border-top:none;padding:30px;border-radius:0 0 12px 12px;">
+          <p style="font-size:16px;color:#374151;">Dear ${candidate.fullName},</p>
+          <p style="font-size:14px;color:#6b7280;line-height:1.6;">${isInitialRequest
+            ? "As part of your background verification process, we require the following documents from you. Please submit them at your earliest convenience to avoid any delays."
+            : "This is a friendly reminder that we're still waiting for the following documents to complete your background verification."}</p>
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:20px;margin:20px 0;">
+            <h3 style="margin:0 0 12px 0;color:#92400e;">Documents We Need From You</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead><tr style="background:#fef3c7;">
+                <th style="padding:8px 12px;text-align:left;">Document</th>
+                <th style="padding:8px 12px;text-align:left;">Type</th>
+              </tr></thead>
+              <tbody>${docTableHtml}</tbody>
+            </table>
+          </div>
+          ${uploadButtonHtml}
+          <p style="font-size:14px;color:#6b7280;margin-top:20px;">Best regards,<br><strong>HR Team</strong></p>
+        </div>
+      </div>`;
+
+      if (channel === "whatsapp") {
+        if (!candidate.phone) {
+          return res.status(400).json({ message: "Candidate has no phone number" });
+        }
+
+        const { whatsappService } = await import("./whatsapp-service");
+        const candidatePhone = candidate.phone.replace(/\D/g, '');
+        const conversation = await whatsappService.getOrCreateConversation(
+          req.tenant.id, candidatePhone, candidatePhone, candidate.fullName, candidate.id, 'document_collection'
+        );
+        await whatsappService.sendTextMessage(req.tenant.id, conversation.id, candidatePhone, isInitialRequest ? requestMessage : reminderMessage, 'ai');
+      } else {
+        await emailService.sendEmail({
+          to: candidate.email!,
+          subject: isInitialRequest ? "Document Request - Background Verification" : "Document Reminder - Background Verification",
+          html: styledEmailHtml,
+        });
+      }
+
+      // Update status and reminder tracking
+      const now = new Date();
+      const nextReminderAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      for (const req2 of pendingReqs) {
+        await storage.updateIntegrityDocumentRequirement(req.tenant.id, req2.id, {
+          status: "requested",
+          remindersSent: (req2.remindersSent || 0) + 1,
+          lastReminderAt: now,
+          nextReminderAt,
+        });
+      }
+
+      res.json({ message: isInitialRequest ? "Document requests sent" : "Reminders sent", reminded: pendingReqs.length });
+    } catch (error) {
+      console.error("Error sending remind-all:", error);
+      res.status(500).json({ message: "Failed to send reminders" });
     }
   });
 
@@ -2798,10 +3277,12 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
   app.get("/api/candidate-documents", async (req, res) => {
     try {
       const { documentType, status, candidateId, search } = req.query;
-      
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+
       // Get all documents (passing undefined to get all)
       let documents = await storage.getCandidateDocuments(req.tenant.id, candidateId as string | undefined);
-      
+
       // Apply filters
       if (documentType && documentType !== 'all') {
         documents = documents.filter(doc => doc.documentType === documentType);
@@ -2811,15 +3292,19 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
       }
       if (search) {
         const searchLower = (search as string).toLowerCase();
-        documents = documents.filter(doc => 
+        documents = documents.filter(doc =>
           doc.fileName.toLowerCase().includes(searchLower) ||
           doc.referenceCode?.toLowerCase().includes(searchLower) ||
           doc.documentType.toLowerCase().includes(searchLower)
         );
       }
-      
+
+      // Paginate after filtering
+      const total = documents.length;
+      const paginatedDocs = documents.slice((page - 1) * limit, page * limit);
+
       // Get candidate info for each document
-      const documentsWithCandidates = await Promise.all(documents.map(async (doc) => {
+      const documentsWithCandidates = await Promise.all(paginatedDocs.map(async (doc) => {
         if (doc.candidateId) {
           const candidate = await storage.getCandidateById(req.tenant.id, doc.candidateId);
           return {
@@ -2830,8 +3315,8 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
         }
         return { ...doc, candidateName: 'Unknown', candidateEmail: '' };
       }));
-      
-      res.json(documentsWithCandidates);
+
+      res.json({ data: documentsWithCandidates, total, page, limit });
     } catch (error) {
       console.error("Error fetching all candidate documents:", error);
       res.status(500).json({ message: "Failed to fetch documents" });
@@ -3281,6 +3766,8 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
       );
 
       let savedCount = 0;
+      let skippedDuplicate = 0;
+      let skippedRejected = 0;
       if (autoSave) {
         for (const candidate of allCandidates) {
           if (candidate.match >= minMatchScore) {
@@ -3295,6 +3782,8 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
                 jobId: job.id,
                 skills: candidate.skills,
                 location: candidate.location,
+                email: candidate.email,
+                phone: candidate.phone,
                 metadata: {
                   company: candidate.company,
                   experience: candidate.experience,
@@ -3304,8 +3793,10 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
                   ...candidate.rawData,
                 },
               };
-              await storage.createCandidate(req.tenant.id, candidateData);
-              savedCount++;
+              const { isNew, previouslyRejected } = await storage.upsertScrapedCandidate(req.tenant.id, candidateData);
+              if (previouslyRejected) skippedRejected++;
+              else if (!isNew) skippedDuplicate++;
+              else savedCount++;
             } catch (err) {
               console.error(`Failed to save candidate ${candidate.name}:`, err);
             }
@@ -3334,6 +3825,8 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
         summary: {
           totalCandidatesFound: allCandidates.length,
           candidatesSaved: savedCount,
+          skippedDuplicate,
+          skippedRejected,
           bySpecialist: results.map(r => ({
             name: r.specialist,
             found: r.candidates.length,
@@ -3363,6 +3856,8 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
       const result = await sourcingOrchestrator.runSpecialist(specialistName, job, limit);
 
       let savedCount = 0;
+      let skippedDuplicate = 0;
+      let skippedRejected = 0;
       if (autoSave && result.status === "success") {
         for (const candidate of result.candidates) {
           if (candidate.match >= minMatchScore) {
@@ -3377,6 +3872,8 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
                 jobId: job.id,
                 skills: candidate.skills,
                 location: candidate.location,
+                email: candidate.email,
+                phone: candidate.phone,
                 metadata: {
                   company: candidate.company,
                   experience: candidate.experience,
@@ -3386,8 +3883,10 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
                   ...candidate.rawData,
                 },
               };
-              await storage.createCandidate(req.tenant.id, candidateData);
-              savedCount++;
+              const { isNew, previouslyRejected } = await storage.upsertScrapedCandidate(req.tenant.id, candidateData);
+              if (previouslyRejected) skippedRejected++;
+              else if (!isNew) skippedDuplicate++;
+              else savedCount++;
             } catch (err) {
               console.error(`Failed to save candidate ${candidate.name}:`, err);
             }
@@ -3403,6 +3902,8 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
           searchQuery: result.searchQuery,
           candidatesFound: result.candidates.length,
           candidatesSaved: savedCount,
+          skippedDuplicate,
+          skippedRejected,
           timestamp: result.timestamp,
           errorMessage: result.errorMessage,
         },
@@ -3452,20 +3953,57 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
     }
   });
 
+  app.get("/api/scrapers/status", async (req, res) => {
+    try {
+      const scrapers = scraperOrchestrator.getScrapers();
+      const allHealth = scraperHealth.getAllHealth();
+      const apiKeys = checkApiKeyStatus();
+
+      const scraperStatuses = scrapers.map(s => {
+        const health = allHealth[s.platform] || scraperHealth.getHealth(s.platform);
+        return {
+          name: s.name,
+          platform: s.platform,
+          ...health,
+        };
+      });
+
+      res.json({
+        scrapers: scraperStatuses,
+        apiKeys,
+        summary: {
+          total: scraperStatuses.length,
+          green: scraperStatuses.filter(s => s.status === "green").length,
+          yellow: scraperStatuses.filter(s => s.status === "yellow").length,
+          red: scraperStatuses.filter(s => s.status === "red").length,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching scraper status:", error);
+      res.status(500).json({ message: "Failed to fetch scraper status" });
+    }
+  });
+
   app.post("/api/scrapers/run-all/:jobId", async (req, res) => {
     try {
       const { minMatchScore = 50, autoSave = true } = req.body;
-      
+
       const job = await storage.getJobById(req.tenant.id, req.params.jobId);
       if (!job) {
         return res.status(404).json({ message: "Job not found" });
       }
 
       console.log(`[Scrapers] Running all scrapers for job: ${job.title}`);
-      
+
+      // Check internal database first
+      const existingCandidates = await storage.getCandidatesForJob(req.tenant.id, job.id);
+      console.log(`[Scrapers] Found ${existingCandidates.length} existing candidates in DB for this job`);
+
       const { results, allCandidates, totalFound } = await scraperOrchestrator.runAllScrapers(job);
 
       let savedCount = 0;
+      let skippedDuplicate = 0;
+      let skippedRejected = 0;
       if (autoSave && allCandidates.length > 0) {
         for (const candidate of allCandidates) {
           try {
@@ -3488,8 +4026,10 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
                 rawText: candidate.rawText?.slice(0, 500),
               },
             };
-            await storage.createCandidate(req.tenant.id, candidateData);
-            savedCount++;
+            const { isNew, previouslyRejected } = await storage.upsertScrapedCandidate(req.tenant.id, candidateData);
+            if (previouslyRejected) skippedRejected++;
+            else if (!isNew) skippedDuplicate++;
+            else savedCount++;
           } catch (err) {
             console.error(`Failed to save scraped candidate ${candidate.name}:`, err);
           }
@@ -3501,6 +4041,9 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
         summary: {
           totalFound,
           savedToDB: savedCount,
+          skippedDuplicate,
+          skippedRejected,
+          existingInDB: existingCandidates.length,
           platforms: results.map(r => ({
             platform: r.platform,
             status: r.status,
@@ -3521,17 +4064,19 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
     try {
       const { autoSave = true } = req.body;
       const platform = decodeURIComponent(req.params.platform);
-      
+
       const job = await storage.getJobById(req.tenant.id, req.params.jobId);
       if (!job) {
         return res.status(404).json({ message: "Job not found" });
       }
 
       console.log(`[Scrapers] Running ${platform} scraper for job: ${job.title}`);
-      
+
       const result = await scraperOrchestrator.runScraper(platform, job);
 
       let savedCount = 0;
+      let skippedDuplicate = 0;
+      let skippedRejected = 0;
       if (autoSave && result.candidates.length > 0) {
         for (const candidate of result.candidates) {
           try {
@@ -3545,14 +4090,18 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
               jobId: job.id,
               skills: candidate.skills,
               location: candidate.location,
+              email: candidate.contact?.includes("@") ? candidate.contact : undefined,
+              phone: candidate.contact && !candidate.contact.includes("@") ? candidate.contact : undefined,
               metadata: {
                 experience: candidate.experience,
                 sourceUrl: candidate.sourceUrl,
                 scrapedFrom: candidate.source,
               },
             };
-            await storage.createCandidate(req.tenant.id, candidateData);
-            savedCount++;
+            const { isNew, previouslyRejected } = await storage.upsertScrapedCandidate(req.tenant.id, candidateData);
+            if (previouslyRejected) skippedRejected++;
+            else if (!isNew) skippedDuplicate++;
+            else savedCount++;
           } catch (err) {
             console.error(`Failed to save candidate:`, err);
           }
@@ -3567,6 +4116,8 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
           query: result.query,
           found: result.candidates.length,
           savedToDB: savedCount,
+          skippedDuplicate,
+          skippedRejected,
           error: result.error
         },
         candidates: result.candidates,
@@ -3577,20 +4128,540 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
     }
   });
 
-  app.post("/api/onboarding/trigger/:candidateId", async (req, res) => {
+  // Generate real personalized onboarding documents for preview (temp directory, cleaned up after)
+  app.post("/api/onboarding/generate-documents", async (req, res) => {
+    try {
+      const { candidateId, selectedDocuments, startDate } = req.body;
+      if (!candidateId || !selectedDocuments || !Array.isArray(selectedDocuments) || selectedDocuments.length === 0) {
+        return res.status(400).json({ message: "candidateId and selectedDocuments are required" });
+      }
+
+      const candidate = await storage.getCandidate(req.tenant.id, candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      const { createDocumentGenerator } = await import("./document-generator");
+      const docGenerator = createDocumentGenerator(storage);
+      const tenantConfig = await storage.getTenantConfig(req.tenant.id);
+      const companyName = tenantConfig?.companyName || req.tenant.subdomain || "Company";
+
+      const employeeData = {
+        fullName: candidate.fullName,
+        email: candidate.email || undefined,
+        phone: candidate.phone || undefined,
+        jobTitle: candidate.role || "Position",
+        department: "",
+        startDate: startDate || "TBD",
+        companyName,
+      };
+
+      const batchId = `batch_${candidateId}_${Date.now()}`;
+      const tempDir = path.join(process.cwd(), "uploads", "onboarding-temp");
+      fs.mkdirSync(tempDir, { recursive: true });
+
+      // Clean up any previous temp batches for this candidate
+      try {
+        const existing = fs.readdirSync(tempDir).filter((f: string) => f.startsWith(`batch_${candidateId}_`));
+        for (const old of existing) fs.unlinkSync(path.join(tempDir, old));
+      } catch {}
+
+      const generated: { docType: string; filename: string; mimeType: string; fileSize: number }[] = [];
+
+      for (const docType of selectedDocuments) {
+        try {
+          const { buffer, filename, mimeType } = await docGenerator.generateDocument(
+            req.tenant.id,
+            docType as any,
+            employeeData
+          );
+          const savedFilename = `${batchId}_${filename}`;
+          fs.writeFileSync(path.join(tempDir, savedFilename), buffer);
+
+          generated.push({ docType, filename, mimeType, fileSize: buffer.length });
+        } catch (docErr) {
+          console.error(`[Onboarding] Failed to generate ${docType}:`, docErr);
+        }
+      }
+
+      res.json({ batchId, candidateId, documents: generated });
+    } catch (error) {
+      console.error("Error generating onboarding documents:", error);
+      res.status(500).json({ message: "Failed to generate documents" });
+    }
+  });
+
+  // Download a specific temp-generated onboarding document for preview
+  app.get("/api/onboarding/generated-document/:batchId/:docType", async (req, res) => {
+    try {
+      const { batchId, docType } = req.params;
+      const tempDir = path.join(process.cwd(), "uploads", "onboarding-temp");
+      if (!fs.existsSync(tempDir)) return res.status(404).json({ message: "Document not found" });
+
+      const allFiles = fs.readdirSync(tempDir).filter((f: string) => f.startsWith(`${batchId}_`));
+      const match = allFiles.find((f: string) => {
+        const lower = f.toLowerCase();
+        return lower.includes(docType.replace(/_/g, '')) || lower.includes(docType);
+      });
+      if (!match) return res.status(404).json({ message: "Document not found" });
+
+      const filePath = path.join(tempDir, match);
+      const ext = path.extname(match).toLowerCase();
+      const mimeType = ext === '.docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf';
+
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${match.replace(`${batchId}_`, '')}"`);
+      res.send(fs.readFileSync(filePath));
+    } catch (error) {
+      console.error("Error serving generated document:", error);
+      res.status(500).json({ message: "Failed to retrieve document" });
+    }
+  });
+
+  app.post("/api/onboarding/trigger/:candidateId", upload.array("files", 20), async (req, res) => {
     try {
       const { OnboardingOrchestrator } = await import("./onboarding-orchestrator");
+      const { EmailService } = await import("./email-service");
       const orchestrator = new OnboardingOrchestrator(storage);
-      
-      const workflow = await orchestrator.startOnboarding(req.tenant.id, req.params.candidateId);
-      
+      const emailService = new EmailService(storage);
+
+      const { requirements, startDate, equipmentList, selectedDocuments: selectedDocsRaw, generatedBatchId, channel: channelRaw } = req.body || {};
+      const channel = (typeof channelRaw === "string" && channelRaw === "whatsapp") ? "whatsapp" : "email";
+      // Parse JSON strings from multipart form data
+      const parsedRequirements = typeof requirements === "string" ? JSON.parse(requirements) : requirements;
+      const parsedEquipmentList = typeof equipmentList === "string" ? JSON.parse(equipmentList) : (equipmentList || []);
+      const parsedSelectedDocuments: string[] = typeof selectedDocsRaw === "string" ? JSON.parse(selectedDocsRaw) : (selectedDocsRaw || []);
+      const batchId = typeof generatedBatchId === "string" ? generatedBatchId : undefined;
+
+      const candidate = await storage.getCandidate(req.tenant.id, req.params.candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      // Use provided start date, or fall back to the offer's start date
+      let resolvedStartDate: Date | undefined = startDate ? new Date(startDate) : undefined;
+      if (!resolvedStartDate) {
+        const offer = await storage.getOfferByCandidateId(req.tenant.id, req.params.candidateId);
+        if (offer?.startDate) {
+          resolvedStartDate = new Date(offer.startDate);
+        }
+      }
+
+      const workflow = await orchestrator.startOnboarding(req.tenant.id, req.params.candidateId, false, {
+        requirements: parsedRequirements,
+        equipmentList: parsedEquipmentList,
+        startDate: resolvedStartDate,
+      });
+
+      // Build email attachments from manually uploaded files + generated documents
+      const emailAttachments: { filename: string; content: Buffer; contentType: string }[] = [];
+
+      // Upload and collect any manually attached files
+      const files = req.files as Express.Multer.File[] | undefined;
+      if (files && files.length > 0) {
+        for (const file of files) {
+          const fileName = `onboarding_pack_${candidate.id}_${Date.now()}_${file.originalname}`;
+          const filePath = path.join("uploads/onboarding-packs", fileName);
+          fs.mkdirSync(path.dirname(filePath), { recursive: true });
+          fs.writeFileSync(filePath, file.buffer);
+          emailAttachments.push({
+            filename: file.originalname,
+            content: file.buffer,
+            contentType: file.mimetype,
+          });
+        }
+      }
+
+      // Collect DOCX documents — reuse pre-generated temp docs if batchId provided, otherwise generate fresh
+      const sentDocuments: { id: string; title: string; type: string; status: string; snippet: string; url: string; docType: string }[] = [];
+      const permanentDir = path.join(process.cwd(), "uploads", "onboarding-packs");
+      fs.mkdirSync(permanentDir, { recursive: true });
+
+      if (parsedSelectedDocuments.length > 0) {
+        if (batchId) {
+          // Move pre-generated docs from temp to permanent storage
+          const tempDir = path.join(process.cwd(), "uploads", "onboarding-temp");
+          try {
+            const batchFiles = fs.existsSync(tempDir)
+              ? fs.readdirSync(tempDir).filter((f: string) => f.startsWith(`${batchId}_`))
+              : [];
+            for (const batchFile of batchFiles) {
+              const tempPath = path.join(tempDir, batchFile);
+              const buffer = fs.readFileSync(tempPath);
+              const filename = batchFile.replace(`${batchId}_`, '');
+              const ext = path.extname(filename).toLowerCase();
+              const mimeType = ext === '.docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf';
+              const docType = parsedSelectedDocuments.find(d => filename.toLowerCase().includes(d.replace(/_/g, ''))) || filename;
+
+              // Save permanently
+              const savedPath = path.join(permanentDir, `${candidate.id}_${filename}`);
+              fs.writeFileSync(savedPath, buffer);
+
+              // Clean up temp file
+              fs.unlinkSync(tempPath);
+
+              emailAttachments.push({ filename, content: buffer, contentType: mimeType });
+              sentDocuments.push({
+                id: `sent-${docType}-${Date.now()}`,
+                title: filename,
+                type: "document",
+                status: "sent",
+                snippet: `Sent in onboarding pack`,
+                url: `/uploads/onboarding-packs/${candidate.id}_${filename}`,
+                docType,
+              });
+            }
+            if (batchFiles.length > 0) {
+              console.log(`[Onboarding] Moved ${batchFiles.length} pre-generated documents from temp to permanent storage`);
+            }
+          } catch (batchErr) {
+            console.error("[Onboarding] Failed to load pre-generated documents, falling back to generation:", batchErr);
+          }
+        }
+
+        // If no batchId or batch loading failed, generate fresh
+        if (sentDocuments.length === 0) {
+          try {
+            const { createDocumentGenerator } = await import("./document-generator");
+            const docGenerator = createDocumentGenerator(storage);
+            const tenantConfig = await storage.getTenantConfig(req.tenant.id);
+            const companyName = tenantConfig?.companyName || req.tenant.subdomain || "Company";
+
+            const employeeData = {
+              fullName: candidate.fullName,
+              email: candidate.email || undefined,
+              phone: candidate.phone || undefined,
+              jobTitle: (candidate as any).role || (candidate as any).position || "Position",
+              department: (candidate as any).department || "",
+              startDate: startDate || "TBD",
+              companyName,
+            };
+
+            for (const docType of parsedSelectedDocuments) {
+              try {
+                const { buffer, filename, mimeType } = await docGenerator.generateDocument(
+                  req.tenant.id,
+                  docType as any,
+                  employeeData
+                );
+                const savedPath = path.join(permanentDir, `${candidate.id}_${filename}`);
+                fs.writeFileSync(savedPath, buffer);
+
+                emailAttachments.push({ filename, content: buffer, contentType: mimeType });
+                sentDocuments.push({
+                  id: `sent-${docType}-${Date.now()}`,
+                  title: filename,
+                  type: "document",
+                  status: "sent",
+                  snippet: `Sent in onboarding pack`,
+                  url: `/uploads/onboarding-packs/${candidate.id}_${filename}`,
+                  docType,
+                });
+              } catch (docErr) {
+                console.error(`[Onboarding] Failed to generate ${docType} (non-blocking):`, docErr);
+              }
+            }
+          } catch (genErr) {
+            console.error("[Onboarding] Document generation setup failed (non-blocking):", genErr);
+          }
+        }
+      }
+
+      // Initialize document requests directly (don't rely on background orchestrator timing)
+      const { createOnboardingAgent } = await import("./onboarding-agent");
+      const onboardingAgent = createOnboardingAgent(storage);
+      let docRequests = await storage.getOnboardingDocumentRequests(req.tenant.id, workflow.id);
+      if (docRequests.length === 0) {
+        await onboardingAgent.initializeDocumentRequests(req.tenant.id, workflow.id, candidate.id.toString());
+        await onboardingAgent.requestDocuments(req.tenant.id, workflow.id, candidate.id.toString(), 'email');
+        docRequests = await storage.getOnboardingDocumentRequests(req.tenant.id, workflow.id);
+      }
+
+      // Generate upload portal token
+      const uploadToken = crypto.randomBytes(24).toString('hex');
+      const uploadTokenExpiresAt = new Date();
+      uploadTokenExpiresAt.setDate(uploadTokenExpiresAt.getDate() + 14);
+      await storage.updateOnboardingWorkflow(req.tenant.id, workflow.id, {
+        uploadToken,
+        uploadTokenExpiresAt,
+      } as any);
+      const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+      const uploadPortalUrl = `${baseUrl}/onboarding-upload/${uploadToken}`;
+
+      // Build document requirements HTML for the combined email
+      const docListHtml = docRequests.map(r => {
+        const dueDate = r.dueDate ? format(new Date(r.dueDate), 'dd MMM yyyy') : 'ASAP';
+        const priorityBadge = r.priority === 'urgent' ? ' <span style="color:#dc2626;font-weight:bold;">(Urgent)</span>' :
+                             r.priority === 'high' ? ' <span style="color:#ea580c;">(High Priority)</span>' : '';
+        return `<tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${r.documentName}${priorityBadge}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px;">${r.description || ''}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${dueDate}</td>
+        </tr>`;
+      }).join('');
+
+      const docListText = docRequests.map(r => {
+        const dueDate = r.dueDate ? format(new Date(r.dueDate), 'dd MMM yyyy') : 'ASAP';
+        return `- ${r.documentName}: ${r.description || ''} (Due: ${dueDate})`;
+      }).join('\n');
+
+      // Build attached documents HTML section
+      const attachedDocsHtml = emailAttachments.length > 0 ? `
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:20px 0;">
+      <h3 style="margin:0 0 8px 0;color:#166534;">Attached Documents</h3>
+      <p style="font-size:13px;color:#6b7280;margin:0 0 8px 0;">Please review the following attached onboarding documents:</p>
+      ${emailAttachments.map(a => `<p style="margin:4px 0;color:#374151;">- ${a.filename}</p>`).join('')}
+    </div>` : '';
+
+      // Build required documents HTML section
+      const requiredDocsHtml = docRequests.length > 0 ? `
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:20px;margin:20px 0;">
+      <h3 style="margin:0 0 12px 0;color:#92400e;">Documents We Need From You</h3>
+      <p style="font-size:13px;color:#6b7280;margin:0 0 12px 0;">Please submit the following documents as soon as possible:</p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:#fef3c7;">
+          <th style="padding:8px 12px;text-align:left;">Document</th>
+          <th style="padding:8px 12px;text-align:left;">Details</th>
+          <th style="padding:8px 12px;text-align:left;">Due Date</th>
+        </tr></thead>
+        <tbody>${docListHtml}</tbody>
+      </table>
+    </div>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${uploadPortalUrl}" style="display:inline-block;background:linear-gradient(135deg,#FFCB00,#E6B800);color:#000000;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:600;">Upload Your Documents</a>
+    </div>
+    <p style="font-size:12px;color:#9ca3af;text-align:center;">This link expires in 14 days. If you need a new link, please contact HR.</p>` : '';
+
+      let conversationId: string | undefined;
+
+      if (channel === "whatsapp") {
+        // Send onboarding pack via WhatsApp
+        const candidatePhone = candidate.phone || (candidate.metadata as any)?.phone;
+        if (!candidatePhone) {
+          return res.status(400).json({ message: "Candidate has no phone number for WhatsApp delivery" });
+        }
+        const { WhatsAppService } = await import("./whatsapp-service");
+        const whatsappService = new WhatsAppService();
+        const conversation = await whatsappService.getOrCreateConversation(
+          req.tenant.id, candidatePhone, candidatePhone,
+          candidate.fullName, candidate.id.toString(), "onboarding"
+        );
+        conversationId = conversation.id;
+
+        // Send each document as a WhatsApp file attachment
+        for (const att of emailAttachments) {
+          try {
+            await whatsappService.sendDocumentMessage(
+              req.tenant.id, conversation.id, candidatePhone,
+              att.content, att.filename, att.contentType,
+              att.filename, "ai"
+            );
+          } catch (docErr) {
+            console.error(`[Onboarding] WhatsApp document send failed for ${att.filename}:`, docErr);
+          }
+        }
+
+        // Send welcome text with upload portal link + required docs
+        const docsNeeded = docRequests.map(r => {
+          const dueDate = r.dueDate ? format(new Date(r.dueDate), 'dd MMM yyyy') : 'ASAP';
+          return `- ${r.documentName} (Due: ${dueDate})`;
+        }).join('\n');
+
+        const welcomeText = `Welcome to the team, ${candidate.fullName}! 🎉\n\n` +
+          (emailAttachments.length > 0 ? `We've sent you ${emailAttachments.length} onboarding document${emailAttachments.length > 1 ? 's' : ''} above. Please review them carefully.\n\n` : '') +
+          (docRequests.length > 0 ? `As part of your onboarding, we need the following documents from you:\n\n${docsNeeded}\n\n📤 Upload your documents here:\n${uploadPortalUrl}\n\nThis link expires in 14 days.\n\n` : '') +
+          `If you have any questions, please contact HR.`;
+
+        await whatsappService.sendTextMessage(req.tenant.id, conversation.id, candidatePhone, welcomeText, "ai");
+        console.log(`[Onboarding] Sent onboarding pack via WhatsApp for ${candidate.fullName} (${emailAttachments.length} documents, ${docRequests.length} document requests)`);
+      } else {
+        // Send single combined onboarding email
+        await emailService.sendEmail({
+          to: candidate.email || "no-email@placeholder.com",
+          subject: `Welcome to the Team, ${candidate.fullName}! - Onboarding Information`,
+          body: `Dear ${candidate.fullName},\n\nWelcome to the team! We're excited to have you join us.\n\n${emailAttachments.length > 0 ? `Please find attached your onboarding documents (${emailAttachments.length} file${emailAttachments.length > 1 ? 's' : ''}). Review them carefully.\n\n` : ''}${docRequests.length > 0 ? `As part of your onboarding, we need the following documents from you:\n\n${docListText}\n\nYou can upload your documents securely using this link:\n${uploadPortalUrl}\n\nThis link expires in 14 days.\n\n` : ''}Best regards,\nHR Team`,
+          html: `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:linear-gradient(135deg,#FFCB00,#FFD633);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="color:#000000;margin:0;font-size:24px;">Welcome to the Team!</h1>
+    <p style="color:rgba(0,0,0,0.7);margin:10px 0 0 0;">${candidate.fullName} - ${candidate.role || 'New Team Member'}</p>
+  </div>
+  <div style="background:#ffffff;border:1px solid #e5e7eb;border-top:none;padding:30px;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;color:#374151;">Dear ${candidate.fullName},</p>
+    <p style="font-size:14px;color:#6b7280;line-height:1.6;">Welcome to the team! We're excited to have you join us. Below you'll find everything you need to get started.</p>
+    ${attachedDocsHtml}
+    ${requiredDocsHtml}
+    <p style="font-size:14px;color:#6b7280;margin-top:20px;">Best regards,<br><strong>HR Team</strong></p>
+  </div>
+</div>`,
+          attachments: emailAttachments,
+        });
+        console.log(`[Onboarding] Sent combined onboarding email for ${candidate.fullName} (${emailAttachments.length} attachments, ${docRequests.length} document requests, upload link included)`);
+      }
+
+      // Store sent documents in the workflow for tracking
+      if (sentDocuments.length > 0) {
+        const existingDocs = (workflow.documents as any[]) || [];
+        await storage.updateOnboardingWorkflow(req.tenant.id, workflow.id, {
+          documents: [...existingDocs, ...sentDocuments] as any,
+        });
+      }
+
       res.status(201).json({
         message: "Onboarding workflow started",
         workflow,
+        conversationId,
       });
     } catch (error) {
       console.error("Error starting onboarding:", error);
       res.status(500).json({ message: "Failed to start onboarding workflow" });
+    }
+  });
+
+  // HR-facing endpoint: regenerate or extend the candidate upload portal token
+  app.post("/api/onboarding/workflows/:id/regenerate-upload-token", async (req, res) => {
+    try {
+      const workflow = await storage.getOnboardingWorkflow(req.tenant.id, req.params.id);
+      if (!workflow) {
+        return res.status(404).json({ message: "Workflow not found" });
+      }
+
+      const uploadToken = crypto.randomBytes(24).toString('hex');
+      const uploadTokenExpiresAt = new Date();
+      uploadTokenExpiresAt.setDate(uploadTokenExpiresAt.getDate() + 14);
+
+      const updated = await storage.updateOnboardingWorkflow(req.tenant.id, req.params.id, {
+        uploadToken,
+        uploadTokenExpiresAt,
+      } as any);
+
+      const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+      res.json({
+        workflow: updated,
+        uploadUrl: `${baseUrl}/onboarding-upload/${uploadToken}`,
+        expiresAt: uploadTokenExpiresAt,
+      });
+    } catch (error) {
+      console.error("Error regenerating upload token:", error);
+      res.status(500).json({ message: "Failed to regenerate upload token" });
+    }
+  });
+
+  // HR-facing endpoint: confirm provisioning sub-tasks from the dashboard
+  app.post("/api/onboarding/workflows/:id/confirm-provisioning", async (req, res) => {
+    try {
+      const { type, confirmedBy } = req.body;
+      if (!type || !["it", "buildingAccess", "equipment"].includes(type)) {
+        return res.status(400).json({ message: "type must be 'it', 'buildingAccess', or 'equipment'" });
+      }
+
+      const workflow = await storage.getOnboardingWorkflow(req.tenant.id, req.params.id);
+      if (!workflow) {
+        return res.status(404).json({ message: "Workflow not found" });
+      }
+
+      const pd = (workflow.provisioningData as any) || {};
+      const tasks = (workflow.tasks as any[]) || [];
+
+      if (type === "it") {
+        pd.itConfirmed = true;
+        pd.itConfirmedAt = new Date().toISOString();
+        pd.itConfirmedBy = confirmedBy || "HR Staff";
+      } else if (type === "buildingAccess") {
+        pd.buildingAccessConfirmed = true;
+        pd.buildingAccessConfirmedAt = new Date().toISOString();
+        pd.buildingAccessConfirmedBy = confirmedBy || "Facilities Staff";
+      } else if (type === "equipment") {
+        pd.equipmentConfirmed = true;
+        pd.equipmentConfirmedAt = new Date().toISOString();
+        pd.equipmentConfirmedBy = confirmedBy || "IT Staff";
+      }
+
+      // Check if all provisioning sub-tasks are confirmed
+      const itDone = pd.itConfirmed === true;
+      const buildingDone = pd.buildingAccessConfirmed === true;
+      const equipmentDone = pd.equipmentConfirmed === true || !(pd.equipmentList?.length > 0);
+      const allConfirmed = itDone && buildingDone && equipmentDone;
+
+      if (allConfirmed) {
+        const provTask = tasks.find((t: any) => t.type === "provisioning");
+        if (provTask) provTask.status = "completed";
+      }
+
+      const allTasksDone = tasks.every((t: any) => t.status === "completed");
+
+      await storage.updateOnboardingWorkflow(req.tenant.id, workflow.id, {
+        provisioningData: pd as any,
+        tasks: tasks as any,
+        ...(allTasksDone ? { status: "Completed", completedAt: new Date() } : {}),
+      });
+
+      res.json({
+        message: `${type} provisioning confirmed`,
+        itConfirmed: pd.itConfirmed || false,
+        buildingAccessConfirmed: pd.buildingAccessConfirmed || false,
+        equipmentConfirmed: pd.equipmentConfirmed || false,
+        allComplete: allConfirmed,
+      });
+    } catch (error) {
+      console.error("Error confirming provisioning:", error);
+      res.status(500).json({ message: "Failed to confirm provisioning" });
+    }
+  });
+
+  // Token-based confirmation endpoint (for IT/facilities staff via email link)
+  app.post("/api/onboarding/provisioning/confirm", async (req, res) => {
+    try {
+      const { token, confirmedBy, notes } = req.body;
+      if (!token) return res.status(400).json({ message: "Token required" });
+
+      const allWorkflows = await storage.getAllOnboardingWorkflows(req.tenant.id);
+      const workflow = allWorkflows.find(w => {
+        const pd = w.provisioningData as any;
+        return pd?.itConfirmationToken === token || pd?.buildingAccessToken === token;
+      });
+
+      if (!workflow) return res.status(404).json({ message: "Invalid or expired token" });
+
+      const pd = (workflow.provisioningData as any) || {};
+      const tasks = (workflow.tasks as any[]) || [];
+      const isITToken = pd.itConfirmationToken === token;
+      const isBuildingToken = pd.buildingAccessToken === token;
+
+      if (isITToken) {
+        pd.itConfirmed = true;
+        pd.itConfirmedAt = new Date().toISOString();
+        pd.itConfirmedBy = confirmedBy || "IT Staff";
+        if (notes) pd.itNotes = notes;
+      }
+      if (isBuildingToken) {
+        pd.buildingAccessConfirmed = true;
+        pd.buildingAccessConfirmedAt = new Date().toISOString();
+        pd.buildingAccessConfirmedBy = confirmedBy || "Facilities Staff";
+        if (notes) pd.buildingAccessNotes = notes;
+      }
+
+      const itDone = pd.itConfirmed === true;
+      const buildingDone = pd.buildingAccessConfirmed === true;
+      const equipmentDone = pd.equipmentConfirmed === true || !(pd.equipmentList?.length > 0);
+      const allConfirmed = itDone && buildingDone && equipmentDone;
+      if (allConfirmed) {
+        const provTask = tasks.find((t: any) => t.type === "provisioning");
+        if (provTask) provTask.status = "completed";
+      }
+
+      const allTasksDone = tasks.every((t: any) => t.status === "completed");
+
+      await storage.updateOnboardingWorkflow(req.tenant.id, workflow.id, {
+        provisioningData: pd as any,
+        tasks: tasks as any,
+        ...(allTasksDone ? { status: "Completed", completedAt: new Date() } : {}),
+      });
+
+      res.json({ message: "Provisioning confirmed", allComplete: allConfirmed });
+    } catch (error) {
+      console.error("Error confirming provisioning via token:", error);
+      res.status(500).json({ message: "Failed to confirm provisioning" });
     }
   });
 
@@ -3611,7 +4682,14 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
   app.get("/api/onboarding/workflows", async (req, res) => {
     try {
       const workflows = await storage.getAllOnboardingWorkflows(req.tenant.id);
-      res.json(workflows);
+      const enriched = await Promise.all(workflows.map(async (workflow) => {
+        const candidate = await storage.getCandidate(req.tenant.id, workflow.candidateId);
+        return {
+          ...workflow,
+          candidateName: candidate?.fullName || "Unknown Candidate",
+        };
+      }));
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching onboarding workflows:", error);
       res.status(500).json({ message: "Failed to fetch onboarding workflows" });
@@ -3657,12 +4735,15 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
 
   app.post("/api/onboarding/resolve-intervention/:logId", async (req, res) => {
     try {
-      const { notes } = req.body;
-      const updated = await storage.updateOnboardingAgentLog(req.tenant.id, req.params.logId, {
-        requiresHumanReview: 0,
-        reviewedAt: new Date(),
-        reviewNotes: notes,
-      });
+      const { notes, reviewedBy } = req.body;
+      const { createOnboardingAgent } = await import("./onboarding-agent");
+      const agent = createOnboardingAgent(storage);
+      const updated = await agent.resolveHumanIntervention(
+        req.tenant.id,
+        req.params.logId,
+        reviewedBy || "unknown",
+        notes || ""
+      );
       res.json(updated);
     } catch (error) {
       console.error("Error resolving intervention:", error);
@@ -3722,12 +4803,69 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
     }
   });
 
+  app.post("/api/onboarding/document-requests/:requestId/upload", upload.single("file"), async (req, res) => {
+    try {
+      const { createOnboardingAgent } = await import("./onboarding-agent");
+      const agent = createOnboardingAgent(storage);
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Get the document request to find candidateId and documentType
+      const request = await storage.getOnboardingDocumentRequest(req.tenant.id, req.params.requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Document request not found" });
+      }
+
+      // Save file to disk
+      const fileName = `onboarding_${request.candidateId}_${request.documentType}_${Date.now()}${path.extname(file.originalname)}`;
+      const filePath = path.join("uploads/onboarding-documents", fileName);
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      fs.writeFileSync(filePath, file.buffer);
+
+      // Create a document record (receivedDocumentId FK references the documents table)
+      const doc = await storage.createDocument(req.tenant.id, {
+        filename: fileName,
+        originalFilename: file.originalname,
+        mimeType: file.mimetype,
+        fileSize: file.size,
+        filePath: filePath,
+        type: "onboarding",
+        status: "uploaded",
+        linkedCandidateId: request.candidateId,
+      });
+
+      // Also create a candidateDocuments record so it appears in the Document Library
+      await storage.createCandidateDocument(req.tenant.id, {
+        candidateId: request.candidateId,
+        documentType: request.documentType || request.documentName,
+        fileName: file.originalname,
+        fileUrl: filePath,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        collectedVia: "portal",
+        status: "received",
+      });
+
+      // Mark the onboarding document request as received, linking the uploaded doc
+      const updated = await agent.markDocumentReceived(req.tenant.id, req.params.requestId, doc.id);
+
+      res.json({ documentRequest: updated, document: doc });
+    } catch (error) {
+      console.error("Error uploading onboarding document:", error);
+      res.status(500).json({ message: "Failed to upload document" });
+    }
+  });
+
   app.post("/api/onboarding/document-requests/:requestId/verified", async (req, res) => {
     try {
       const { createOnboardingAgent } = await import("./onboarding-agent");
       const agent = createOnboardingAgent(storage);
       
-      const updated = await agent.markDocumentVerified(req.tenant.id, req.params.requestId, "system");
+      const { verifiedBy } = req.body;
+      const updated = await agent.markDocumentVerified(req.tenant.id, req.params.requestId, verifiedBy || "HR Staff");
       
       if (!updated) {
         return res.status(404).json({ message: "Document request not found" });
@@ -3740,12 +4878,66 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
     }
   });
 
+  app.post("/api/onboarding/document-requests/:requestId/rejected", async (req, res) => {
+    try {
+      const { reason, rejectedBy } = req.body;
+      const request = await storage.getOnboardingDocumentRequest(req.tenant.id, req.params.requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Document request not found" });
+      }
+
+      const updated = await storage.updateOnboardingDocumentRequest(req.tenant.id, req.params.requestId, {
+        status: 'rejected',
+        metadata: { ...(request.metadata as any || {}), rejectionReason: reason || "Document not acceptable", rejectedBy: rejectedBy || "HR Staff", rejectedAt: new Date().toISOString() },
+      });
+
+      // Log the rejection
+      const { createOnboardingAgent } = await import("./onboarding-agent");
+      const agent = createOnboardingAgent(storage);
+      await agent.logStep(req.tenant.id, request.workflowId, request.candidateId, 'document_collector', 'document_rejected', {
+        stepName: 'documentation',
+        status: 'requires_intervention',
+        details: { documentType: request.documentType, documentName: request.documentName, reason },
+        targetEntity: 'candidate',
+        targetEntityId: request.candidateId,
+        communicationChannel: 'system',
+      });
+
+      // Auto-send reminder so candidate knows to resubmit
+      try {
+        await agent.sendReminder(req.tenant.id, req.params.requestId, 'email');
+      } catch (err) {
+        console.error("Failed to send rejection reminder:", err);
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error rejecting document:", error);
+      res.status(500).json({ message: "Failed to reject document" });
+    }
+  });
+
+  app.post("/api/onboarding/workflows/:workflowId/remind-all", async (req, res) => {
+    try {
+      const { createOnboardingAgent } = await import("./onboarding-agent");
+      const agent = createOnboardingAgent(storage);
+      const channel = req.body?.channel === "whatsapp" ? "whatsapp" : "email";
+
+      const result = await agent.sendBulkReminder(req.tenant.id, req.params.workflowId, channel);
+      res.json(result);
+    } catch (error) {
+      console.error("Error sending bulk reminder:", error);
+      res.status(500).json({ message: "Failed to send reminders" });
+    }
+  });
+
   app.post("/api/onboarding/document-requests/:requestId/remind", async (req, res) => {
     try {
       const { createOnboardingAgent } = await import("./onboarding-agent");
       const agent = createOnboardingAgent(storage);
-      
-      const result = await agent.sendReminder(req.tenant.id, req.params.requestId, 'whatsapp');
+      const channel = req.body?.channel === "whatsapp" ? "whatsapp" : "email";
+
+      const result = await agent.sendReminder(req.tenant.id, req.params.requestId, channel);
       res.json(result);
     } catch (error) {
       console.error("Error sending reminder:", error);
@@ -4278,6 +5470,13 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
           description: "Verify previous employment and references",
           enabled: checksConfig.employment?.enabled ?? false,
           cost: "R100"
+        },
+        {
+          id: "social-screening",
+          name: "Social Intelligence Screening",
+          description: "AI-powered screening of LinkedIn, Facebook, X (Twitter), and Instagram profiles",
+          enabled: checksConfig["social-screening"]?.enabled ?? true,
+          cost: "R50"
         }
       ];
       
@@ -4496,7 +5695,7 @@ ${results.filter(r => r.status === 'success').map(r => `- ${r.fullName}`).join('
         skills: skills.map(s => ({ name: s.name, category: s.category })),
       };
 
-      const systemPrompt = `You are an AI Workforce Intelligence Assistant for Avatar Human Capital. You help HR managers and executives understand their workforce data and make strategic decisions.
+      const systemPrompt = `You are an AI Workforce Intelligence Assistant for AHC - Human Capital. You help HR managers and executives understand their workforce data and make strategic decisions.
 
 You have access to the following workforce data:
 ${JSON.stringify(workforceContext, null, 2)}
@@ -4522,7 +5721,7 @@ Format your response as JSON:
 }`;
 
       const completion = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: question }
@@ -5234,8 +6433,10 @@ Format your response as JSON:
   // Get all documents
   app.get("/api/documents", async (req, res) => {
     try {
-      const docs = await storage.getAllDocuments(req.tenant.id);
-      res.json(docs);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+      const { data, total } = await storage.getDocumentsPaginated(req.tenant.id, page, limit);
+      res.json({ data, total, page, limit });
     } catch (error) {
       console.error("Error fetching documents:", error);
       res.status(500).json({ message: "Failed to fetch documents" });
@@ -5673,7 +6874,7 @@ Format your response as JSON:
           const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
           
           const completion = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
+            model: "openai/gpt-oss-120b",
             messages: [
               {
                 role: "system",
@@ -5859,7 +7060,7 @@ Format your response as JSON:
 
           // Use Groq to extract job details
           const completion = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
+            model: "openai/gpt-oss-120b",
             messages: [
               {
                 role: "system",
@@ -5988,16 +7189,22 @@ Format your response as JSON:
   app.get("/api/whatsapp/conversations", async (req, res) => {
     try {
       const { type, status } = req.query;
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
       let conversations = await storage.getAllWhatsappConversations(req.tenant.id);
-      
+
       if (type && typeof type === "string") {
         conversations = conversations.filter(c => c.type === type);
       }
       if (status && typeof status === "string") {
         conversations = conversations.filter(c => c.status === status);
       }
-      
-      res.json(conversations);
+
+      // Paginate after filtering
+      const total = conversations.length;
+      const data = conversations.slice((page - 1) * limit, page * limit);
+
+      res.json({ data, total, page, limit });
     } catch (error) {
       console.error("Error fetching WhatsApp conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -6153,7 +7360,7 @@ Format your response as JSON:
         body,
         senderType || "human"
       );
-      
+
       // Message is always stored locally, even if WhatsApp API fails
       res.status(201).json(message);
     } catch (error: any) {
@@ -6549,7 +7756,8 @@ Format your response as JSON:
   // Get interview session by ID
   app.get("/api/interviews/:id", async (req, res) => {
     try {
-      const details = await interviewOrchestrator.getInterviewDetails(req.tenant.id, req.params.id);
+      const stage = req.query.stage as 'voice' | 'video' | undefined;
+      const details = await interviewOrchestrator.getInterviewDetails(req.tenant.id, req.params.id, stage);
       if (!details) {
         return res.status(404).json({ message: "Interview not found" });
       }
@@ -6557,6 +7765,84 @@ Format your response as JSON:
     } catch (error) {
       console.error("Error fetching interview:", error);
       res.status(500).json({ message: "Failed to fetch interview" });
+    }
+  });
+
+  // Add video stage to an existing interview session
+  app.post("/api/interviews/:id/add-video-stage", async (req, res) => {
+    try {
+      const { prompt } = req.body || {};
+      const session = await interviewOrchestrator.addVideoStage(
+        req.tenant.id,
+        req.params.id,
+        prompt
+      );
+      if (!session) {
+        return res.status(404).json({ message: "Interview not found" });
+      }
+      const videoInterviewUrl = `${req.protocol}://${req.get('host')}/interview/invite/${session.videoToken}`;
+      res.json({ ...session, videoInterviewUrl });
+    } catch (error) {
+      console.error("Error adding video stage:", error);
+      res.status(500).json({ message: "Failed to add video stage" });
+    }
+  });
+
+  // Mark face-to-face stage as complete on an existing interview session
+  app.post("/api/interviews/:id/complete-f2f", async (req, res) => {
+    try {
+      const session = await storage.getInterviewSession(req.tenant.id, req.params.id);
+      if (!session) {
+        return res.status(404).json({ message: "Interview not found" });
+      }
+      const updated = await storage.updateInterviewSession(req.tenant.id, req.params.id, {
+        f2fStatus: 'completed',
+        f2fCompletedAt: new Date(),
+      } as any);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error completing f2f stage:", error);
+      res.status(500).json({ message: "Failed to complete f2f stage" });
+    }
+  });
+
+  // Schedule a face-to-face interview on an existing interview session
+  app.post("/api/interviews/:id/schedule-f2f", async (req, res) => {
+    try {
+      const session = await storage.getInterviewSession(req.tenant.id, req.params.id);
+      if (!session) {
+        return res.status(404).json({ message: "Interview not found" });
+      }
+      const { date, time, location, interviewer, notes } = req.body;
+      const updated = await storage.updateInterviewSession(req.tenant.id, req.params.id, {
+        f2fStatus: 'scheduled',
+        f2fScheduledDate: date,
+        f2fScheduledTime: time,
+        f2fLocation: location,
+        f2fInterviewer: interviewer,
+        f2fNotes: notes || null,
+      } as any);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error scheduling f2f:", error);
+      res.status(500).json({ message: "Failed to schedule f2f interview" });
+    }
+  });
+
+  // Mark offer as initiated on an existing interview session
+  app.post("/api/interviews/:id/initiate-offer", async (req, res) => {
+    try {
+      const session = await storage.getInterviewSession(req.tenant.id, req.params.id);
+      if (!session) {
+        return res.status(404).json({ message: "Interview not found" });
+      }
+      const updated = await storage.updateInterviewSession(req.tenant.id, req.params.id, {
+        offerStatus: 'initiated',
+      } as any);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error initiating offer:", error);
+      res.status(500).json({ message: "Failed to initiate offer" });
     }
   });
 
@@ -6590,6 +7876,7 @@ Format your response as JSON:
     emotionAnalysis: z.record(z.string(), z.any()).optional(),
     recordingUrl: z.string().url().optional(),
     duration: z.number().int().positive().optional(),
+    stage: z.enum(['voice', 'video']).optional().default('voice'),
   });
 
   const updateDecisionRequestSchema = z.object({
@@ -6644,8 +7931,8 @@ Format your response as JSON:
       if (!parsed.success) {
         return res.status(400).json({ message: fromZodError(parsed.error).message });
       }
-      
-      const { transcripts, emotionAnalysis, recordingUrl, duration } = parsed.data;
+
+      const { transcripts, emotionAnalysis, recordingUrl, duration, stage } = parsed.data;
 
       const result = await interviewOrchestrator.completeInterview(
         req.tenant.id,
@@ -6653,7 +7940,8 @@ Format your response as JSON:
         transcripts,
         emotionAnalysis,
         recordingUrl,
-        duration
+        duration,
+        stage
       );
       
       if (!result) {
@@ -6664,6 +7952,65 @@ Format your response as JSON:
     } catch (error) {
       console.error("Error completing interview:", error);
       res.status(500).json({ message: "Failed to complete interview" });
+    }
+  });
+
+  // Fetch Hume EVI chat audio recording and save it
+  app.post("/api/interviews/:id/fetch-hume-audio", async (req, res) => {
+    try {
+      const { chatId } = req.body;
+      if (!chatId) {
+        return res.status(400).json({ message: "chatId is required" });
+      }
+
+      const HUMAI_API_KEY = process.env.HUMAI_API_KEY;
+      const HUMAI_SECRET_KEY = process.env.HUMAI_SECRET_KEY;
+      if (!HUMAI_API_KEY || !HUMAI_SECRET_KEY) {
+        return res.status(500).json({ message: "Hume AI credentials not configured" });
+      }
+
+      // Get access token
+      const accessToken = await getHumeAccessToken(HUMAI_API_KEY, HUMAI_SECRET_KEY);
+
+      // Fetch audio metadata with signed URL
+      const audioRes = await fetch(`https://api.hume.ai/v0/evi/chats/${chatId}/audio`, {
+        headers: { Authorization: `Bearer ${accessToken}`, "X-Hume-Api-Key": HUMAI_API_KEY },
+      });
+
+      if (!audioRes.ok) {
+        const errText = await audioRes.text();
+        return res.status(audioRes.status).json({ message: `Hume audio fetch failed: ${errText}` });
+      }
+
+      const audioData = await audioRes.json() as { signed_audio_url?: string; status?: string };
+      if (!audioData.signed_audio_url) {
+        return res.status(404).json({ message: "Audio not yet available", status: audioData.status });
+      }
+
+      // Save as a recording entry pointing to the signed URL (skip if one already exists)
+      const session = await storage.getInterviewSession(req.tenant.id, req.params.id);
+      if (!session) {
+        return res.status(404).json({ message: "Interview session not found" });
+      }
+
+      const existingRecordings = await storage.getInterviewRecordings(req.tenant.id, req.params.id);
+      if (existingRecordings.length > 0) {
+        return res.json({ recording: existingRecordings[0], signedUrl: audioData.signed_audio_url, deduplicated: true });
+      }
+
+      const recording = await storage.createInterviewRecording(req.tenant.id, {
+        sessionId: req.params.id,
+        candidateId: session.candidateId || undefined,
+        recordingType: "audio",
+        mediaUrl: audioData.signed_audio_url,
+        duration: session.duration || undefined,
+        storageProvider: "hume",
+      });
+
+      res.json({ recording, signedUrl: audioData.signed_audio_url });
+    } catch (error) {
+      console.error("Error fetching Hume audio:", error);
+      res.status(500).json({ message: "Failed to fetch Hume audio recording" });
     }
   });
 
@@ -6710,7 +8057,8 @@ Format your response as JSON:
   // Get interview recordings
   app.get("/api/interviews/:id/recordings", async (req, res) => {
     try {
-      const recordings = await storage.getInterviewRecordings(req.tenant.id, req.params.id);
+      const stage = req.query.stage as string | undefined;
+      const recordings = await storage.getInterviewRecordings(req.tenant.id, req.params.id, stage);
       res.json(recordings);
     } catch (error) {
       console.error("Error fetching recordings:", error);
@@ -6721,7 +8069,8 @@ Format your response as JSON:
   // Get interview transcripts
   app.get("/api/interviews/:id/transcripts", async (req, res) => {
     try {
-      const transcripts = await storage.getInterviewTranscripts(req.tenant.id, req.params.id);
+      const stage = req.query.stage as string | undefined;
+      const transcripts = await storage.getInterviewTranscripts(req.tenant.id, req.params.id, stage);
       res.json(transcripts);
     } catch (error) {
       console.error("Error fetching transcripts:", error);
@@ -6767,6 +8116,649 @@ Format your response as JSON:
     } catch (error) {
       console.error("Error checking interview status:", error);
       res.status(500).json({ message: "Failed to check status" });
+    }
+  });
+
+  // ==================== ViTT TIMELINE TAGS & TRANSCRIPT ANALYSIS ====================
+
+  // Get timeline tags for a session
+  app.get("/api/interviews/:sessionId/timeline-tags", async (req, res) => {
+    try {
+      const { tagType, stage } = req.query;
+      let tags;
+      if (tagType) {
+        tags = await storage.getTimelineTagsByType(req.tenant.id, req.params.sessionId, tagType as string, stage as string | undefined);
+      } else {
+        tags = await storage.getTimelineTags(req.tenant.id, req.params.sessionId, stage as string | undefined);
+      }
+      res.json(tags);
+    } catch (error) {
+      console.error("Error fetching timeline tags:", error);
+      res.status(500).json({ message: "Failed to fetch timeline tags" });
+    }
+  });
+
+  // Create a manual timeline tag
+  app.post("/api/interviews/:sessionId/timeline-tags", async (req, res) => {
+    try {
+      const { tagTime, ...rest } = req.body;
+      const tag = await storage.createTimelineTag(req.tenant.id, {
+        ...rest,
+        tagTime: tagTime ? new Date(tagTime) : new Date(),
+        sessionId: req.params.sessionId,
+        tagSource: "manual",
+        createdBy: req.user?.id,
+      });
+      res.status(201).json(tag);
+    } catch (error) {
+      console.error("Error creating timeline tag:", error);
+      res.status(500).json({ message: "Failed to create timeline tag" });
+    }
+  });
+
+  // Update a timeline tag
+  app.patch("/api/interviews/:sessionId/timeline-tags/:tagId", async (req, res) => {
+    try {
+      const tag = await storage.updateTimelineTag(req.tenant.id, req.params.tagId, req.body);
+      if (!tag) return res.status(404).json({ message: "Tag not found" });
+      res.json(tag);
+    } catch (error) {
+      console.error("Error updating timeline tag:", error);
+      res.status(500).json({ message: "Failed to update timeline tag" });
+    }
+  });
+
+  // Delete a timeline tag
+  app.delete("/api/interviews/:sessionId/timeline-tags/:tagId", async (req, res) => {
+    try {
+      await storage.deleteTimelineTag(req.tenant.id, req.params.tagId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting timeline tag:", error);
+      res.status(500).json({ message: "Failed to delete timeline tag" });
+    }
+  });
+
+  // Clear all timeline tags for a session
+  app.delete("/api/interviews/:sessionId/timeline-tags", async (req, res) => {
+    try {
+      const stage = req.query.stage as string | undefined;
+      const count = await storage.clearTimelineTags(req.tenant.id, req.params.sessionId, stage);
+      res.json({ deleted: count });
+    } catch (error) {
+      console.error("Error clearing timeline tags:", error);
+      res.status(500).json({ message: "Failed to clear timeline tags" });
+    }
+  });
+
+  // Get transcript jobs for a session
+  app.get("/api/interviews/:sessionId/transcript-jobs", async (req, res) => {
+    try {
+      const jobs = await storage.getTranscriptJobs(req.tenant.id, req.params.sessionId);
+      res.json(jobs);
+    } catch (error) {
+      console.error("Error fetching transcript jobs:", error);
+      res.status(500).json({ message: "Failed to fetch transcript jobs" });
+    }
+  });
+
+  // Submit a transcript job for a specific provider
+  app.post("/api/interviews/:sessionId/transcript-jobs", async (req, res) => {
+    try {
+      const { provider, audioUrl, config, stage } = req.body;
+
+      if (!provider || !audioUrl) {
+        return res.status(400).json({ message: "Provider and audioUrl are required" });
+      }
+
+      if (!transcriptProviderManager.isProviderAvailable(provider)) {
+        return res.status(400).json({ message: `Provider ${provider} is not configured` });
+      }
+
+      const job = await storage.createTranscriptJob(req.tenant.id, {
+        sessionId: req.params.sessionId,
+        provider,
+        status: "pending",
+        submittedAt: new Date(),
+        ...config,
+      });
+
+      // Run transcription async
+      transcriptProviderManager
+        .transcribeWithProvider(req.tenant.id, job.id, audioUrl, provider, config || {})
+        .then(async (result) => {
+          await transcriptProviderManager.generateTimelineTags(
+            req.tenant.id,
+            req.params.sessionId,
+            result,
+            job.recordingId || undefined,
+            stage
+          );
+        })
+        .catch((err) => console.error(`[TranscriptJob] Error: ${err.message}`));
+
+      res.status(202).json(job);
+    } catch (error) {
+      console.error("Error submitting transcript job:", error);
+      res.status(500).json({ message: "Failed to submit transcript job" });
+    }
+  });
+
+  // Submit transcript jobs for ALL configured providers
+  app.post("/api/interviews/:sessionId/transcript-jobs/all", async (req, res) => {
+    try {
+      const { audioUrl, config } = req.body;
+      if (!audioUrl) return res.status(400).json({ message: "audioUrl is required" });
+
+      const results = await transcriptProviderManager.transcribeWithAllProviders(
+        req.tenant.id,
+        req.params.sessionId,
+        audioUrl,
+        config || {}
+      );
+
+      res.json(results);
+    } catch (error) {
+      console.error("Error submitting all transcript jobs:", error);
+      res.status(500).json({ message: "Failed to submit transcript jobs" });
+    }
+  });
+
+  // Get recording sources for a session
+  app.get("/api/interviews/:sessionId/recording-sources", async (req, res) => {
+    try {
+      const sources = await storage.getRecordingSources(req.tenant.id, req.params.sessionId);
+      res.json(sources);
+    } catch (error) {
+      console.error("Error fetching recording sources:", error);
+      res.status(500).json({ message: "Failed to fetch recording sources" });
+    }
+  });
+
+  // Create recording source (browser, Zoom, Skype, upload)
+  app.post("/api/interviews/:sessionId/recording-sources", async (req, res) => {
+    try {
+      const source = await storage.createRecordingSource(req.tenant.id, {
+        ...req.body,
+        sessionId: req.params.sessionId,
+      });
+      res.status(201).json(source);
+    } catch (error) {
+      console.error("Error creating recording source:", error);
+      res.status(500).json({ message: "Failed to create recording source" });
+    }
+  });
+
+  // Upload interview recording to Object Storage
+  app.post("/api/interviews/:sessionId/upload-recording", uploadLarge.single("recording"), async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const file = req.file;
+      if (!file) return res.status(400).json({ message: "No recording file provided" });
+
+      const tenantId = req.tenant.id;
+      const timestamp = Date.now();
+      const ext = file.originalname.split(".").pop() || "webm";
+      const recordingType = file.mimetype.startsWith("video/") ? "video" : "audio";
+      const filename = `${timestamp}_${recordingType}.${ext}`;
+
+      const { key, size } = await recordingStorage.uploadRecording(tenantId, sessionId, filename, file.buffer, file.mimetype);
+      const mediaUrl = `/api/recordings/${key}`;
+
+      const recording = await storage.createInterviewRecording(tenantId, {
+        sessionId,
+        candidateId: req.body.candidateId || null,
+        recordingType: recordingType as "video" | "audio",
+        mediaUrl,
+        storageProvider: "local",
+        fileSize: size,
+        mimeType: file.mimetype,
+        duration: req.body.duration ? parseInt(req.body.duration) : null,
+        metadata: { objectStorageKey: key },
+      });
+
+      const sourceType = req.body.sourceType || "browser_mediarecorder";
+      await storage.createRecordingSource(tenantId, {
+        sessionId,
+        recordingId: recording.id,
+        sourceType,
+        status: "completed",
+        isAudioOnly: recordingType === "audio",
+        hasVideo: recordingType === "video",
+      });
+
+      // Fire-and-forget: auto-trigger transcript providers
+      try {
+        const absoluteUrl = `${req.protocol}://${req.get("host")}${mediaUrl}`;
+        transcriptProviderManager.transcribeWithAllProviders(
+          tenantId, sessionId, absoluteUrl, {}
+        ).catch((err: any) => console.error("Auto-transcription failed:", err));
+      } catch {}
+
+      res.status(201).json(recording);
+    } catch (error) {
+      console.error("Error uploading recording:", error);
+      res.status(500).json({ message: "Failed to upload recording" });
+    }
+  });
+
+  // Stream proxy for recordings from Object Storage
+  app.get("/api/recordings/*", async (req, res) => {
+    try {
+      // Extract key: everything after /api/recordings/
+      const key = req.params[0] || req.path.replace("/api/recordings/", "");
+      if (!key) return res.status(400).json({ message: "Missing recording key" });
+
+      const buffer = await recordingStorage.downloadRecording(key);
+
+      // Determine content type from extension
+      const ext = key.split(".").pop()?.toLowerCase();
+      const mimeMap: Record<string, string> = {
+        webm: "audio/webm",
+        mp4: "video/mp4",
+        mp3: "audio/mpeg",
+        wav: "audio/wav",
+        ogg: "audio/ogg",
+        m4a: "audio/mp4",
+      };
+      const contentType = mimeMap[ext || ""] || "application/octet-stream";
+
+      // Support HTTP Range requests for seeking
+      const rangeHeader = req.headers.range;
+      if (rangeHeader) {
+        const parts = rangeHeader.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : buffer.length - 1;
+        const chunkSize = end - start + 1;
+
+        res.writeHead(206, {
+          "Content-Range": `bytes ${start}-${end}/${buffer.length}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": chunkSize,
+          "Content-Type": contentType,
+          "Cache-Control": "private, max-age=3600",
+        });
+        res.end(buffer.subarray(start, end + 1));
+      } else {
+        res.writeHead(200, {
+          "Content-Length": buffer.length,
+          "Content-Type": contentType,
+          "Accept-Ranges": "bytes",
+          "Cache-Control": "private, max-age=3600",
+        });
+        res.end(buffer);
+      }
+    } catch (error: any) {
+      console.error("Error streaming recording:", error);
+      if (error.message?.includes("not found")) {
+        res.status(404).json({ message: "Recording not found" });
+      } else {
+        res.status(500).json({ message: "Failed to stream recording" });
+      }
+    }
+  });
+
+  // Fetch Tavus recording, transcript, and trigger AI scoring
+  app.post("/api/interviews/:sessionId/fetch-tavus-recording", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const { conversationId, candidateId } = req.body;
+      if (!conversationId) return res.status(400).json({ message: "conversationId is required" });
+
+      const tenantId = req.tenant.id;
+      const tavusApiKey = process.env.TAVUS_API_KEY;
+      if (!tavusApiKey) return res.status(500).json({ message: "Tavus API key not configured" });
+
+      // Fetch conversation details from Tavus (verbose=true required for transcript)
+      const tavusRes = await axios.get(`https://tavusapi.com/v2/conversations/${conversationId}?verbose=true`, {
+        headers: { "x-api-key": tavusApiKey },
+      });
+
+      const tavusData = tavusRes.data;
+
+      // Log the full response structure for debugging
+      console.log(`[Interview] Tavus manual fetch response for ${conversationId}:`, JSON.stringify({
+        status: tavusData?.status,
+        has_recording_url: !!tavusData?.recording_url,
+        has_conversation_transcript: !!tavusData?.conversation_transcript,
+        has_transcript: !!tavusData?.transcript,
+        keys: tavusData ? Object.keys(tavusData) : [],
+      }));
+
+      let recordingUrl = tavusData?.recording_url;
+      if (!recordingUrl) {
+        console.log(`[Interview] Recording not yet available for ${conversationId}, starting background polling...`);
+        res.status(202).json({ message: "Recording not yet available. Background polling started." });
+
+        (async () => {
+          const delays = Array.from({ length: 20 }, () => 30000); // every 30s for 10 min
+          for (const delay of delays) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            try {
+              const retryRes = await axios.get(`https://tavusapi.com/v2/conversations/${conversationId}?verbose=true`, {
+                headers: { "x-api-key": tavusApiKey },
+              });
+              const retryUrl = retryRes.data?.recording_url;
+              if (retryUrl) {
+                console.log(`[Interview] Tavus recording now available for ${conversationId}, downloading...`);
+                const videoRes = await axios.get(retryUrl, { responseType: "arraybuffer" });
+                const videoBuffer = Buffer.from(videoRes.data);
+                const filename = `${Date.now()}_video.mp4`;
+                const { key, size } = await recordingStorage.uploadRecording(tenantId, sessionId, filename, videoBuffer, "video/mp4");
+
+                const recording = await storage.createInterviewRecording(tenantId, {
+                  sessionId,
+                  candidateId: candidateId || null,
+                  recordingType: "video",
+                  mediaUrl: `/api/recordings/${key}`,
+                  storageProvider: "tavus",
+                  externalId: conversationId,
+                  fileSize: size,
+                  mimeType: "video/mp4",
+                  metadata: { objectStorageKey: key, tavusConversationId: conversationId },
+                });
+
+                await storage.createRecordingSource(tenantId, {
+                  sessionId,
+                  recordingId: recording.id,
+                  sourceType: "tavus",
+                  sourceId: conversationId,
+                  sourceUrl: retryUrl,
+                  status: "completed",
+                  hasVideo: true,
+                });
+
+                // Also grab transcript if available on retry
+                let retryTranscript = retryRes.data?.conversation_transcript || retryRes.data?.transcript || [];
+                if ((!retryTranscript || retryTranscript.length === 0) && retryRes.data?.events && Array.isArray(retryRes.data.events)) {
+                  const txEvent = retryRes.data.events.find((e: any) => e.event_type === "application.transcription_ready");
+                  if (txEvent?.properties?.transcript) {
+                    retryTranscript = txEvent.properties.transcript;
+                  }
+                }
+                if (retryTranscript.length > 0) {
+                  const mapped = retryTranscript
+                    .filter((t: any) => t.role !== 'system')
+                    .map((t: any) => ({
+                      role: t.role === 'user' || t.role === 'candidate' ? 'candidate' as const : 'ai' as const,
+                      text: t.content || t.text || '',
+                      timestamp: t.timestamp,
+                    }))
+                    .filter((t: any) => t.text.trim());
+                  await interviewOrchestrator.completeInterview(tenantId, sessionId, mapped, undefined, undefined, undefined, 'video');
+                }
+
+                console.log(`[Interview] Background recording download completed for ${conversationId}`);
+                return;
+              }
+            } catch (err) {
+              console.warn(`[Interview] Background recording retry failed for ${conversationId}:`, err);
+            }
+          }
+          console.warn(`[Interview] Could not get Tavus recording for ${conversationId} after 10 minutes of retries`);
+        })();
+        return;
+      }
+
+      // Download the video
+      const videoRes = await axios.get(recordingUrl, { responseType: "arraybuffer" });
+      const videoBuffer = Buffer.from(videoRes.data);
+
+      const timestamp = Date.now();
+      const filename = `${timestamp}_video.mp4`;
+      const { key, size } = await recordingStorage.uploadRecording(tenantId, sessionId, filename, videoBuffer, "video/mp4");
+      const mediaUrl = `/api/recordings/${key}`;
+
+      const recording = await storage.createInterviewRecording(tenantId, {
+        sessionId,
+        candidateId: candidateId || null,
+        recordingType: "video",
+        mediaUrl,
+        storageProvider: "tavus",
+        externalId: conversationId,
+        fileSize: size,
+        mimeType: "video/mp4",
+        metadata: { objectStorageKey: key, tavusConversationId: conversationId },
+      });
+
+      await storage.createRecordingSource(tenantId, {
+        sessionId,
+        recordingId: recording.id,
+        sourceType: "tavus",
+        sourceId: conversationId,
+        sourceUrl: recordingUrl,
+        status: "completed",
+        hasVideo: true,
+      });
+
+      // Extract transcript from Tavus and trigger AI analysis/scoring
+      // Check multiple possible locations: top-level fields and events array
+      let transcript = tavusData.conversation_transcript || tavusData.transcript || [];
+      if ((!transcript || transcript.length === 0) && tavusData.events && Array.isArray(tavusData.events)) {
+        const transcriptionEvent = tavusData.events.find((e: any) => e.event_type === "application.transcription_ready");
+        if (transcriptionEvent?.properties?.transcript) {
+          transcript = transcriptionEvent.properties.transcript;
+        }
+      }
+      console.log(`[Interview] Tavus transcript extraction for ${conversationId}: ${transcript.length} entries, checked: conversation_transcript=${!!tavusData.conversation_transcript}, transcript=${!!tavusData.transcript}, events=${!!tavusData.events}`);
+      if (transcript.length > 0) {
+        const mappedTranscripts = transcript
+          .filter((t: any) => t.role !== 'system')
+          .map((t: any) => ({
+            role: t.role === 'user' || t.role === 'candidate' ? 'candidate' as const : 'ai' as const,
+            text: t.content || t.text || '',
+            timestamp: t.timestamp,
+          }))
+          .filter((t: any) => t.text.trim());
+
+        console.log(`[Interview] Tavus transcript available (${mappedTranscripts.length} segments), running AI analysis for session ${sessionId}...`);
+
+        // Run completeInterview to save transcripts, run AI analysis, and create feedback
+        await interviewOrchestrator.completeInterview(
+          tenantId,
+          sessionId,
+          mappedTranscripts,
+          undefined,
+          undefined,
+          undefined,
+          'video'
+        );
+        console.log(`[Interview] AI analysis completed for Tavus session ${sessionId}`);
+      } else {
+        console.log(`[Interview] No transcript available from Tavus for ${conversationId}, scoring skipped. Will retry in background.`);
+
+        // Start background retry for transcript (Tavus may still be processing)
+        (async () => {
+          const delays = Array.from({ length: 10 }, () => 30000); // retry every 30s for 5 min
+          for (const delay of delays) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            try {
+              const retryRes = await axios.get(`https://tavusapi.com/v2/conversations/${conversationId}?verbose=true`, {
+                headers: { "x-api-key": tavusApiKey },
+              });
+              const retryData = retryRes.data;
+              let retryTranscript = retryData?.conversation_transcript || retryData?.transcript || [];
+              if ((!retryTranscript || retryTranscript.length === 0) && retryData?.events && Array.isArray(retryData.events)) {
+                const txEvent = retryData.events.find((e: any) => e.event_type === "application.transcription_ready");
+                if (txEvent?.properties?.transcript) {
+                  retryTranscript = txEvent.properties.transcript;
+                }
+              }
+              if (retryTranscript.length > 0) {
+                const mappedRetry = retryTranscript
+                  .filter((t: any) => t.role !== 'system')
+                  .map((t: any) => ({
+                    role: t.role === 'user' || t.role === 'candidate' ? 'candidate' as const : 'ai' as const,
+                    text: t.content || t.text || '',
+                    timestamp: t.timestamp,
+                  }))
+                  .filter((t: any) => t.text.trim());
+                console.log(`[Interview] Tavus transcript now available (${mappedRetry.length} segments), running analysis...`);
+                await interviewOrchestrator.completeInterview(tenantId, sessionId, mappedRetry, undefined, undefined, undefined, 'video');
+                console.log(`[Interview] Background AI analysis completed for session ${sessionId}`);
+                return;
+              }
+            } catch (err) {
+              console.warn(`[Interview] Background Tavus transcript retry failed:`, err);
+            }
+          }
+          console.warn(`[Interview] Could not get Tavus transcript for ${conversationId} after retries`);
+        })();
+      }
+
+      res.status(201).json(recording);
+    } catch (error: any) {
+      console.error("Error fetching Tavus recording:", error);
+      if (error.response?.status === 404) {
+        return res.status(404).json({ message: "Recording not yet available. Tavus may still be processing." });
+      }
+      res.status(500).json({ message: "Failed to fetch Tavus recording" });
+    }
+  });
+
+  // LeMUR Q&A - Ask a question about the interview
+  app.post("/api/interviews/:sessionId/ask", async (req, res) => {
+    try {
+      const { question, stage } = req.body;
+      if (!question) return res.status(400).json({ message: "Question is required" });
+
+      const result = await transcriptAnalysisAgent.askQuestion(
+        { tenantId: req.tenant.id, sessionId: req.params.sessionId, userId: req.user?.id, stage },
+        question
+      );
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error asking question:", error);
+      res.status(500).json({ message: error.message || "Failed to process question" });
+    }
+  });
+
+  // Generate interview summary
+  app.post("/api/interviews/:sessionId/summary", async (req, res) => {
+    try {
+      const { stage } = req.body || {};
+      const summary = await transcriptAnalysisAgent.generateSummary({
+        tenantId: req.tenant.id,
+        sessionId: req.params.sessionId,
+        userId: req.user?.id,
+        stage,
+      });
+      res.json({ summary });
+    } catch (error: any) {
+      console.error("Error generating summary:", error);
+      res.status(500).json({ message: error.message || "Failed to generate summary" });
+    }
+  });
+
+  // Extract action items
+  app.post("/api/interviews/:sessionId/action-items", async (req, res) => {
+    try {
+      const { stage } = req.body || {};
+      const result = await transcriptAnalysisAgent.extractActionItems({
+        tenantId: req.tenant.id,
+        sessionId: req.params.sessionId,
+        userId: req.user?.id,
+        stage,
+      });
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error extracting action items:", error);
+      res.status(500).json({ message: error.message || "Failed to extract action items" });
+    }
+  });
+
+  // Auto-tag transcript
+  app.post("/api/interviews/:sessionId/auto-tag", async (req, res) => {
+    try {
+      const { stage } = req.body || {};
+      const result = await transcriptAnalysisAgent.autoTagTranscript({
+        tenantId: req.tenant.id,
+        sessionId: req.params.sessionId,
+        userId: req.user?.id,
+        stage,
+      });
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error auto-tagging:", error);
+      res.status(500).json({ message: error.message || "Failed to auto-tag" });
+    }
+  });
+
+  // Full re-analysis
+  app.post("/api/interviews/:sessionId/reanalyze", async (req, res) => {
+    try {
+      const { stage } = req.body || {};
+      const result = await transcriptAnalysisAgent.fullReanalysis({
+        tenantId: req.tenant.id,
+        sessionId: req.params.sessionId,
+        userId: req.user?.id,
+        stage,
+      });
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error in re-analysis:", error);
+      res.status(500).json({ message: error.message || "Failed to re-analyze" });
+    }
+  });
+
+  // Re-run AI scoring analysis (used when original analysis failed e.g. due to API key issues)
+  app.post("/api/interviews/:sessionId/reanalyze-score", async (req, res) => {
+    try {
+      const { stage } = req.body || {};
+      const result = await interviewOrchestrator.reanalyzeInterview(
+        req.tenant.id,
+        req.params.sessionId,
+        stage
+      );
+      if (!result) {
+        return res.status(404).json({ message: "Session or transcripts not found" });
+      }
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error in score re-analysis:", error);
+      res.status(500).json({ message: error.message || "Failed to re-analyze scores" });
+    }
+  });
+
+  // Get sentiment timeline
+  app.post("/api/interviews/:sessionId/sentiment-timeline", async (req, res) => {
+    try {
+      const { stage } = req.body || {};
+      const result = await transcriptAnalysisAgent.generateSentimentTimeline({
+        tenantId: req.tenant.id,
+        sessionId: req.params.sessionId,
+        userId: req.user?.id,
+        stage,
+      });
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error generating sentiment timeline:", error);
+      res.status(500).json({ message: error.message || "Failed to generate sentiment timeline" });
+    }
+  });
+
+  // Get analysis history for a session
+  app.get("/api/interviews/:sessionId/analysis-history", async (req, res) => {
+    try {
+      const results = await storage.getLemurAnalysisResults(req.tenant.id, req.params.sessionId);
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching analysis history:", error);
+      res.status(500).json({ message: "Failed to fetch analysis history" });
+    }
+  });
+
+  // Get available transcript providers
+  app.get("/api/transcript-providers/status", async (_req, res) => {
+    try {
+      res.json({
+        providers: transcriptProviderManager.getStatus(),
+        available: transcriptProviderManager.getAvailableProviders(),
+        analysisAgent: transcriptAnalysisAgent.isConfigured(),
+      });
+    } catch (error) {
+      console.error("Error checking provider status:", error);
+      res.status(500).json({ message: "Failed to check provider status" });
     }
   });
 
@@ -7713,12 +9705,12 @@ Format your response as JSON:
 
           const message = `Hi ${employee.firstName}! 👋\n\nYou have a performance self-assessment to complete for *${cycle.name}*.\n\nPlease rate your performance on your assigned KPIs by clicking the link below:\n\n🔗 ${assessmentUrl}\n\n⏰ This link expires in ${expiryDays} days.\n\nIf you have any questions, please contact your HR department.`;
 
-          await whatsappService.sendMessage(
+          await whatsappService.sendTextMessage(
             req.tenant.id,
             conversation.id,
             employee.phone,
             message,
-            'self_assessment_link'
+            'ai'
           );
           whatsappSent = true;
         } catch (whatsappError) {
@@ -8281,7 +10273,9 @@ Format your response as JSON:
   app.get("/api/social-screening/consents", async (req, res) => {
     try {
       const consents = await storage.getAllSocialConsents(req.tenant.id);
-      res.json(consents);
+      // Enrich with candidate names
+      const enriched = await enrichFindingsWithCandidateNames(req.tenant.id, consents);
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching social consents:", error);
       res.status(500).json({ message: "Failed to fetch social consents" });
@@ -8510,11 +10504,26 @@ Format your response as JSON:
   });
 
   // Social Screening - Findings
+  // Helper: enrich findings with candidate names so the client doesn't need a separate lookup
+  async function enrichFindingsWithCandidateNames(tenantId: string, findings: any[]) {
+    if (findings.length === 0) return findings;
+    const uniqueIds = [...new Set(findings.map(f => f.candidateId).filter(Boolean))];
+    const candidateMap = new Map<string, string>();
+    await Promise.all(uniqueIds.map(async (id) => {
+      const candidate = await storage.getCandidate(tenantId, id);
+      if (candidate) candidateMap.set(id, candidate.fullName);
+    }));
+    return findings.map(f => ({
+      ...f,
+      candidateName: candidateMap.get(f.candidateId) || 'Unknown Candidate',
+    }));
+  }
+
   app.get("/api/social-screening/findings", async (req, res) => {
     try {
       const candidateId = req.query.candidateId as string | undefined;
       const findings = await storage.getSocialScreeningFindings(req.tenant.id, candidateId);
-      res.json(findings);
+      res.json(await enrichFindingsWithCandidateNames(req.tenant.id, findings));
     } catch (error) {
       console.error("Error fetching social findings:", error);
       res.status(500).json({ message: "Failed to fetch social findings" });
@@ -8524,7 +10533,7 @@ Format your response as JSON:
   app.get("/api/social-screening/findings/pending-review", async (req, res) => {
     try {
       const findings = await storage.getPendingHumanReviewFindings(req.tenant.id);
-      res.json(findings);
+      res.json(await enrichFindingsWithCandidateNames(req.tenant.id, findings));
     } catch (error) {
       console.error("Error fetching pending review findings:", error);
       res.status(500).json({ message: "Failed to fetch pending findings" });
@@ -8537,7 +10546,8 @@ Format your response as JSON:
       if (!finding) {
         return res.status(404).json({ message: "Social screening finding not found" });
       }
-      res.json(finding);
+      const [enriched] = await enrichFindingsWithCandidateNames(req.tenant.id, [finding]);
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching social finding:", error);
       res.status(500).json({ message: "Failed to fetch social finding" });
@@ -8547,7 +10557,7 @@ Format your response as JSON:
   app.get("/api/social-screening/findings/candidate/:candidateId", async (req, res) => {
     try {
       const findings = await storage.getSocialScreeningFindingsByCandidate(req.tenant.id, req.params.candidateId);
-      res.json(findings);
+      res.json(await enrichFindingsWithCandidateNames(req.tenant.id, findings));
     } catch (error) {
       console.error("Error fetching social findings:", error);
       res.status(500).json({ message: "Failed to fetch social findings" });
@@ -8650,8 +10660,26 @@ Format your response as JSON:
       if (!run) {
         return res.status(404).json({ message: "Run not found or expired" });
       }
-      
-      res.json(run);
+
+      // Transform to the format the client expects
+      const agents = [
+        run.orchestratorStatus,
+        run.facebookAgentStatus,
+        run.xAgentStatus,
+        run.linkedinAgentStatus,
+        run.instagramAgentStatus,
+      ].filter(Boolean);
+
+      const completedAgents = agents.filter(a => a.status === 'completed').length;
+      const totalAgents = agents.length;
+      const progress = Math.round((completedAgents / totalAgents) * 100);
+
+      res.json({
+        ...run,
+        agents,
+        progress: run.status === 'completed' ? 100 : progress,
+        result: run.orchestratorStatus?.results || null,
+      });
     } catch (error) {
       console.error("Error fetching orchestrator status:", error);
       res.status(500).json({ message: "Failed to fetch status" });
@@ -8772,18 +10800,7 @@ Format your response as JSON:
     }
   });
 
-  // ==================== ADMIN TENANT MANAGEMENT ====================
-  
-  // Get all tenants (admin only)
-  app.get("/api/admin/tenants", async (req, res) => {
-    try {
-      const tenants = await storage.getAllTenants();
-      res.json(tenants);
-    } catch (error) {
-      console.error("Error fetching tenants:", error);
-      res.status(500).json({ message: "Failed to fetch tenants" });
-    }
-  });
+  // ==================== ADMIN TENANT MANAGEMENT (continued) ====================
 
   // Get tenant payments
   app.get("/api/admin/tenants/:tenantId/payments", async (req, res) => {
@@ -9901,6 +11918,569 @@ Format your response as JSON:
       res.json({ success: true, message: "Conversation history cleared" });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message || "Failed to clear history" });
+    }
+  });
+
+  // ============= OFFERS MANAGEMENT =============
+
+  app.get("/api/offers", async (req, res) => {
+    try {
+      const allOffers = await storage.getAllOffers(req.tenant.id);
+      const now = new Date();
+      const enriched = await Promise.all(allOffers.map(async (offer) => {
+        // Auto-expire sent offers past their expiresAt date
+        if (offer.status === "sent" && offer.expiresAt && new Date(offer.expiresAt) < now) {
+          try {
+            await storage.updateOffer(req.tenant.id, offer.id, { status: "expired" } as any);
+            offer = { ...offer, status: "expired" };
+          } catch {}
+        }
+        const candidate = await storage.getCandidate(req.tenant.id, offer.candidateId);
+        return {
+          ...offer,
+          candidateName: candidate?.fullName || "Unknown Candidate",
+        };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching offers:", error);
+      res.status(500).json({ message: "Failed to fetch offers" });
+    }
+  });
+
+  app.get("/api/offers/candidate/:candidateId", async (req, res) => {
+    try {
+      const offer = await storage.getOfferByCandidateId(req.tenant.id, req.params.candidateId);
+      res.json(offer || null);
+    } catch (error) {
+      console.error("Error fetching candidate offer:", error);
+      res.status(500).json({ message: "Failed to fetch candidate offer" });
+    }
+  });
+
+  app.get("/api/offers/:id", async (req, res) => {
+    try {
+      const offer = await storage.getOffer(req.tenant.id, req.params.id);
+      if (!offer) {
+        return res.status(404).json({ message: "Offer not found" });
+      }
+      res.json(offer);
+    } catch (error) {
+      console.error("Error fetching offer:", error);
+      res.status(500).json({ message: "Failed to fetch offer" });
+    }
+  });
+
+  app.post("/api/offers", async (req, res) => {
+    try {
+      const result = insertOfferSchema.safeParse(req.body);
+      if (!result.success) {
+        const validationError = fromZodError(result.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      const offer = await storage.createOffer(req.tenant.id, result.data);
+      res.status(201).json(offer);
+    } catch (error) {
+      console.error("Error creating offer:", error);
+      res.status(500).json({ message: "Failed to create offer" });
+    }
+  });
+
+  app.patch("/api/offers/:id", async (req, res) => {
+    try {
+      const result = insertOfferSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        const validationError = fromZodError(result.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      const offer = await storage.updateOffer(req.tenant.id, req.params.id, result.data);
+      if (!offer) {
+        return res.status(404).json({ message: "Offer not found" });
+      }
+      res.json(offer);
+    } catch (error) {
+      console.error("Error updating offer:", error);
+      res.status(500).json({ message: "Failed to update offer" });
+    }
+  });
+
+  app.delete("/api/offers/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteOffer(req.tenant.id, req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Offer not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting offer:", error);
+      res.status(500).json({ message: "Failed to delete offer" });
+    }
+  });
+
+  // Generate document preview (returns DOCX binary, no file saved)
+  app.post("/api/offers/generate-document-preview", async (req, res) => {
+    try {
+      const { candidateId, jobId, contractType, salary, startDate, benefits } = req.body;
+      if (!candidateId || !contractType) {
+        return res.status(400).json({ message: "candidateId and contractType are required" });
+      }
+
+      const candidate = await storage.getCandidate(req.tenant.id, candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      let jobTitle = candidate.role || "Position";
+      let department = "";
+      if (jobId) {
+        const job = await storage.getJob(req.tenant.id, jobId);
+        if (job) {
+          jobTitle = job.title;
+          department = job.department || "";
+        }
+      }
+
+      const { createDocumentGenerator } = await import("./document-generator");
+      const docGenerator = createDocumentGenerator(storage);
+
+      const employeeData: EmployeeData = {
+        fullName: candidate.fullName,
+        email: candidate.email || undefined,
+        phone: candidate.phone || undefined,
+        jobTitle,
+        department,
+        startDate: startDate || "TBD",
+        salary: salary || undefined,
+        currency: "ZAR",
+        benefits: benefits || undefined,
+        companyName: "AHC Recruiting",
+      };
+
+      const { buffer, filename, mimeType } = await docGenerator.generateDocumentForOffer(
+        req.tenant.id,
+        contractType,
+        employeeData
+      );
+
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error generating document preview:", error);
+      res.status(500).json({ message: "Failed to generate document preview" });
+    }
+  });
+
+  app.post("/api/offers/:id/send", upload.single("attachment"), async (req, res) => {
+    try {
+      const offer = await storage.getOffer(req.tenant.id, req.params.id);
+      if (!offer) {
+        return res.status(404).json({ message: "Offer not found" });
+      }
+
+      const candidate = await storage.getCandidate(req.tenant.id, offer.candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      let jobTitle = candidate.role || "Position";
+      let department = "";
+      if (offer.jobId) {
+        const job = await storage.getJob(req.tenant.id, offer.jobId);
+        if (job) {
+          jobTitle = job.title;
+          department = job.department || "";
+        }
+      }
+
+      // Build email attachments from uploaded file
+      const emailAttachments: { filename: string; content: Buffer; contentType?: string }[] = [];
+      if (req.file) {
+        emailAttachments.push({
+          filename: req.file.originalname,
+          content: req.file.buffer,
+          contentType: req.file.mimetype,
+        });
+      }
+
+      // If offer has contractType, generate DOCX, save to disk, and attach to email
+      let documentPath: string | undefined;
+      if (offer.contractType) {
+        try {
+          const { createDocumentGenerator } = await import("./document-generator");
+          const docGenerator = createDocumentGenerator(storage);
+
+          const employeeData: EmployeeData = {
+            fullName: candidate.fullName,
+            email: candidate.email || undefined,
+            phone: candidate.phone || undefined,
+            jobTitle,
+            department,
+            startDate: offer.startDate ? new Date(offer.startDate).toLocaleDateString() : "TBD",
+            salary: offer.salary || undefined,
+            currency: offer.currency || "ZAR",
+            benefits: Array.isArray(offer.benefits) ? offer.benefits as string[] : undefined,
+            companyName: "AHC Recruiting",
+          };
+
+          const { buffer, filename, mimeType } = await docGenerator.generateDocumentForOffer(
+            req.tenant.id,
+            offer.contractType as any,
+            employeeData
+          );
+
+          // Save to disk
+          const uploadDir = path.join(process.cwd(), "uploads", "offer-documents");
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          const savedPath = path.join(uploadDir, filename);
+          fs.writeFileSync(savedPath, buffer);
+          documentPath = `/uploads/offer-documents/${filename}`;
+
+          // Add generated document as email attachment
+          emailAttachments.push({
+            filename,
+            content: buffer,
+            contentType: mimeType,
+          });
+        } catch (docErr) {
+          console.error("Document generation failed (non-blocking):", docErr);
+        }
+      }
+
+      // Generate a secure response token for the candidate portal
+      const crypto = await import("crypto");
+      const responseToken = crypto.randomBytes(24).toString("hex");
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      const updatedOffer = await storage.updateOffer(req.tenant.id, offer.id, {
+        status: "sent",
+        sentAt: new Date(),
+        expiresAt,
+        responseToken,
+        responseTokenExpiresAt: expiresAt,
+        ...(documentPath ? { documentPath } : {}),
+      } as any);
+
+      // Build response URL for the candidate portal
+      const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+      const host = req.headers["x-forwarded-host"] || req.get("host");
+      const baseUrl = `${protocol}://${host}`;
+      const responseUrl = `${baseUrl}/offer-response/${responseToken}`;
+
+      let emailSent = false;
+      if (candidate.email) {
+        emailSent = await emailService.sendOfferNotification({
+          to: candidate.email,
+          candidateName: candidate.fullName,
+          jobTitle,
+          salary: `${offer.currency || "ZAR"} ${String(offer.salary).replace(/^R\s*/i, "")}`,
+          startDate: offer.startDate ? new Date(offer.startDate).toLocaleDateString() : "TBD",
+          responseUrl,
+          attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
+        });
+      }
+
+      let pipelineTransition = null;
+      try {
+        const { pipelineOrchestrator } = await import("./pipeline-orchestrator");
+        pipelineTransition = await pipelineOrchestrator.transitionCandidate(
+          offer.candidateId,
+          "offer_pending",
+          req.tenant.id,
+          {
+            triggeredBy: "manual",
+            triggeredByUserId: req.user?.id,
+            reason: "Offer sent to candidate",
+            skipPrerequisites: true,
+          }
+        );
+      } catch (err) {
+        console.error("Pipeline transition failed (non-blocking):", err);
+      }
+
+      res.json({
+        offer: updatedOffer,
+        emailSent,
+        pipelineTransition,
+      });
+    } catch (error) {
+      console.error("Error sending offer:", error);
+      res.status(500).json({ message: "Failed to send offer" });
+    }
+  });
+
+  app.post("/api/offers/:id/respond", async (req, res) => {
+    try {
+      const { response } = req.body;
+      if (!response || !["accepted", "declined"].includes(response)) {
+        return res.status(400).json({ message: "response must be 'accepted' or 'declined'" });
+      }
+
+      const offer = await storage.getOffer(req.tenant.id, req.params.id);
+      if (!offer) {
+        return res.status(404).json({ message: "Offer not found" });
+      }
+
+      const updatedOffer = await storage.updateOffer(req.tenant.id, offer.id, {
+        status: response,
+        respondedAt: new Date(),
+      } as any);
+
+      const candidate = await storage.getCandidate(req.tenant.id, offer.candidateId);
+      let jobTitle = candidate?.role || "Position";
+      if (offer.jobId) {
+        const job = await storage.getJob(req.tenant.id, offer.jobId);
+        if (job) jobTitle = job.title;
+      }
+
+      await emailService.notifyHROfOfferResponse(
+        candidate?.fullName || "Unknown",
+        jobTitle,
+        response
+      );
+
+      let pipelineTransition = null;
+      try {
+        const { pipelineOrchestrator } = await import("./pipeline-orchestrator");
+        if (response === "accepted") {
+          pipelineTransition = await pipelineOrchestrator.transitionCandidate(
+            offer.candidateId,
+            "integrity_checks",
+            req.tenant.id,
+            {
+              triggeredBy: "manual",
+              triggeredByUserId: req.user?.id,
+              reason: "Candidate accepted the offer",
+            }
+          );
+        } else {
+          pipelineTransition = await pipelineOrchestrator.transitionCandidate(
+            offer.candidateId,
+            "offer_declined",
+            req.tenant.id,
+            {
+              triggeredBy: "manual",
+              triggeredByUserId: req.user?.id,
+              reason: "Candidate declined the offer",
+            }
+          );
+        }
+      } catch (err) {
+        console.error("Pipeline transition failed (non-blocking):", err);
+      }
+
+      res.json({ offer: updatedOffer, pipelineTransition });
+    } catch (error) {
+      console.error("Error responding to offer:", error);
+      res.status(500).json({ message: "Failed to process offer response" });
+    }
+  });
+
+  // ============= INTEREST CHECKS =============
+
+  app.get("/api/interest-checks", async (req, res) => {
+    try {
+      const checks = await storage.getAllInterestChecks(req.tenant.id);
+      res.json(checks);
+    } catch (error) {
+      console.error("Error fetching interest checks:", error);
+      res.status(500).json({ message: "Failed to fetch interest checks" });
+    }
+  });
+
+  app.get("/api/interest-checks/candidate/:candidateId", async (req, res) => {
+    try {
+      const checks = await storage.getInterestChecksByCandidateId(req.tenant.id, req.params.candidateId);
+      res.json(checks);
+    } catch (error) {
+      console.error("Error fetching candidate interest checks:", error);
+      res.status(500).json({ message: "Failed to fetch interest checks" });
+    }
+  });
+
+  app.post("/api/interest-checks", async (req, res) => {
+    try {
+      const { candidateId, jobId, channel } = req.body;
+
+      if (!candidateId || !jobId) {
+        return res.status(400).json({ message: "candidateId and jobId are required" });
+      }
+
+      const candidate = await storage.getCandidate(req.tenant.id, candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      const job = await storage.getJob(req.tenant.id, jobId);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      // Validate channel-specific contact info before doing any work
+      const sendChannel = channel || "email";
+      if (sendChannel === "email" && !candidate.email) {
+        return res.status(400).json({ message: "Candidate has no email address on file" });
+      }
+      if (sendChannel === "whatsapp") {
+        const phone = candidate.phone || (candidate.metadata as any)?.phone;
+        if (!phone) {
+          return res.status(400).json({ message: "Candidate has no phone number on file" });
+        }
+      }
+
+      const tenant = await storage.getTenantById(req.tenant.id);
+      const companyName = tenant?.companyName || "AHC Recruiting";
+
+      // Generate token
+      const interestToken = crypto.randomBytes(24).toString("hex");
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const interestUrl = `${baseUrl}/interest-check/${interestToken}`;
+
+      // Generate job spec .docx
+      const { Document, Paragraph, TextRun, AlignmentType, HeadingLevel } = await import("docx");
+
+      const docSections: any[] = [];
+      docSections.push(
+        new Paragraph({ text: job.title, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+        new Paragraph({ text: "" }),
+      );
+      if (job.department) {
+        docSections.push(new Paragraph({ children: [new TextRun({ text: "Department: ", bold: true }), new TextRun(job.department)] }));
+      }
+      if (job.location) {
+        docSections.push(new Paragraph({ children: [new TextRun({ text: "Location: ", bold: true }), new TextRun(job.location)] }));
+      }
+      if (job.employmentType) {
+        docSections.push(new Paragraph({ children: [new TextRun({ text: "Employment Type: ", bold: true }), new TextRun(job.employmentType)] }));
+      }
+      // Build salary range from actual DB columns
+      const salaryRange = job.salaryMin || job.salaryMax
+        ? `R${job.salaryMin?.toLocaleString() || "??"} - R${job.salaryMax?.toLocaleString() || "??"}${job.payRateUnit ? ` / ${job.payRateUnit}` : ""}`
+        : null;
+      if (salaryRange) {
+        docSections.push(new Paragraph({ children: [new TextRun({ text: "Salary Range: ", bold: true }), new TextRun(salaryRange)] }));
+      }
+      docSections.push(new Paragraph({ text: "" }));
+
+      // Parse structured sections from the composed description
+      if (job.description) {
+        const blocks = job.description.split(/\n(?=(?:Key Duties|Key Attributes|Qualifications|Requirements|Responsibilities|Benefits|Skills|Remuneration):?\s*$)/m);
+
+        for (const block of blocks) {
+          const lines = block.trim().split("\n");
+          if (!lines.length || !lines[0].trim()) continue;
+
+          const headingMatch = lines[0].trim().match(/^(Key Duties|Key Attributes|Qualifications|Requirements|Responsibilities|Benefits|Skills|Remuneration):?\s*$/);
+          if (headingMatch) {
+            // This block starts with a known heading
+            docSections.push(new Paragraph({ text: headingMatch[1], heading: HeadingLevel.HEADING_2 }));
+            for (let i = 1; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (!line) continue;
+              if (line.startsWith("- ")) {
+                docSections.push(new Paragraph({ text: line.substring(2), bullet: { level: 0 } }));
+              } else {
+                docSections.push(new Paragraph({ text: line }));
+              }
+            }
+            docSections.push(new Paragraph({ text: "" }));
+          } else {
+            // Introductory text or unstructured content
+            docSections.push(new Paragraph({ text: "Job Description", heading: HeadingLevel.HEADING_2 }));
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+              docSections.push(new Paragraph({ text: trimmed }));
+            }
+            docSections.push(new Paragraph({ text: "" }));
+          }
+        }
+      }
+
+      const doc = new Document({
+        sections: [{ properties: {}, children: docSections }],
+      });
+      const docBuffer = await Packer.toBuffer(doc);
+      const docFilename = `Job_Description_${job.title.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.docx`;
+
+      // Create interest check record
+      const check = await storage.createInterestCheck(req.tenant.id, {
+        candidateId,
+        jobId,
+        interestToken,
+        status: "sent",
+        sentVia: channel || "email",
+        sentAt: new Date(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      });
+
+      // Send notification
+      if (sendChannel === "email") {
+        const sent = await emailService.sendInterestCheckNotification({
+          to: candidate.email!,
+          candidateName: candidate.fullName || "Candidate",
+          jobTitle: job.title,
+          companyName,
+          interestUrl,
+          attachments: [{
+            filename: docFilename,
+            content: docBuffer as Buffer,
+            contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          }],
+        });
+        if (!sent) {
+          // Clean up the DB record since the email wasn't delivered
+          await storage.updateInterestCheck(req.tenant.id, check.id, { status: "pending" });
+          return res.status(500).json({ message: "Failed to send email. Please check email configuration and try again." });
+        }
+      } else if (sendChannel === "whatsapp") {
+        const phone = candidate.phone || (candidate.metadata as any)?.phone;
+
+        try {
+          const { whatsappService } = await import("./whatsapp-service");
+
+          // Get or create conversation (using same pattern as all other WhatsApp senders)
+          const waId = phone.replace(/\D/g, "");
+          const conversation = await whatsappService.getOrCreateConversation(
+            req.tenant.id, phone, waId,
+            candidate.fullName || "Candidate",
+            candidateId, "interest_check"
+          );
+          const conversationId = conversation.id;
+
+          // Send text message with link
+          const message = `Dear ${candidate.fullName || "Candidate"},
+
+We have an exciting career opportunity for the position of *${job.title}* at *${companyName}* that may interest you.
+
+Please click the link below to view the full job description and let us know if you're interested:
+${interestUrl}
+
+This link expires in 7 days.
+
+Best regards,
+${companyName} HR Team`;
+
+          await whatsappService.sendTextMessage(req.tenant.id, conversationId, phone, message, "ai");
+
+          // Send document attachment
+          await whatsappService.sendDocumentMessage(
+            req.tenant.id, conversationId, phone,
+            docBuffer as Buffer, docFilename,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            docFilename, "ai"
+          );
+        } catch (waErr) {
+          console.error("WhatsApp send failed (record still created):", waErr);
+        }
+      }
+
+      res.status(201).json(check);
+    } catch (error) {
+      console.error("Error creating interest check:", error);
+      res.status(500).json({ message: "Failed to create interest check" });
     }
   });
 

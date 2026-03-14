@@ -1,13 +1,16 @@
 import { db } from "./db";
-import { 
-  candidates, 
-  candidateStageHistory, 
-  jobWorkflowConfigs, 
+import {
+  candidates,
+  candidateStageHistory,
+  jobWorkflowConfigs,
   pipelineBlockers,
   integrityChecks,
+  integrityDocumentRequirements,
   onboardingWorkflows,
+  interviewSessions,
+  jobs,
   pipelineStages,
-  type PipelineStage 
+  type PipelineStage
 } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 
@@ -37,6 +40,7 @@ const stagePrerequisites: StagePrerequisites = {
     requiredConditions: async (candidateId: string) => {
       const candidate = await db.select().from(candidates).where(eq(candidates.id, candidateId)).limit(1);
       if (candidate.length === 0) return { met: false, reason: "Candidate not found" };
+      if (!candidate[0].jobId) return { met: false, reason: "Candidate has no job assigned" };
       if ((candidate[0].match ?? 0) < 50) return { met: false, reason: "Match score too low (min 50%)" };
       return { met: true };
     },
@@ -46,12 +50,26 @@ const stagePrerequisites: StagePrerequisites = {
   },
   offer_pending: {
     allowedFromStages: ["interviewing"],
+    requiredConditions: async (candidateId: string, tenantId: string) => {
+      const sessions = await db.select().from(interviewSessions)
+        .where(and(
+          eq(interviewSessions.candidateId, candidateId),
+          eq(interviewSessions.tenantId, tenantId)
+        ));
+
+      if (sessions.length === 0) return { met: false, reason: "No interview session found" };
+
+      const completed = sessions.some(s => s.status === "completed" || s.status === "voice_completed");
+      if (!completed) return { met: false, reason: "Interview not yet completed" };
+
+      return { met: true };
+    },
   },
-  offer_accepted: {
+  offer_declined: {
     allowedFromStages: ["offer_pending"],
   },
   integrity_checks: {
-    allowedFromStages: ["offer_accepted"],
+    allowedFromStages: ["offer_pending"],
   },
   integrity_passed: {
     allowedFromStages: ["integrity_checks"],
@@ -64,7 +82,9 @@ const stagePrerequisites: StagePrerequisites = {
       
       if (checks.length === 0) return { met: false, reason: "No integrity checks found" };
       
-      const pendingChecks = checks.filter(c => c.status === "Pending" || c.status === "In Progress");
+      const pendingChecks = checks.filter(c =>
+        c.status === "Pending" || c.status === "In Progress" || c.status === "Documents Required"
+      );
       if (pendingChecks.length > 0) {
         return { met: false, reason: `${pendingChecks.length} check(s) still pending` };
       }
@@ -106,7 +126,7 @@ const stagePrerequisites: StagePrerequisites = {
     allowedFromStages: ["sourcing", "screening", "shortlisted", "interviewing", "offer_pending", "integrity_checks", "integrity_failed"],
   },
   withdrawn: {
-    allowedFromStages: ["sourcing", "screening", "shortlisted", "interviewing", "offer_pending", "offer_accepted", "integrity_checks", "onboarding"],
+    allowedFromStages: ["sourcing", "screening", "shortlisted", "interviewing", "offer_pending", "offer_declined", "integrity_checks", "onboarding"],
   },
 };
 
@@ -144,7 +164,7 @@ export class PipelineOrchestrator {
         };
       }
       
-      const fromStage = (candidate.stage || "sourcing") as PipelineStage;
+      const fromStage = (candidate.stage || "sourcing").toLowerCase().replace(/\s+/g, '_') as PipelineStage;
       
       if (!skipPrerequisites) {
         const prereqs = stagePrerequisites[toStage];
@@ -248,24 +268,18 @@ export class PipelineOrchestrator {
       ));
     
     switch (stage) {
-      case "offer_accepted":
+      case "integrity_checks":
         if (!config || config.autoLaunchIntegrity) {
           await this.launchIntegrityChecks(candidateId, tenantId, config?.requiredChecks || null);
           actions.push("Launched integrity checks");
-          
-          await this.transitionCandidate(candidateId, "integrity_checks", tenantId, {
-            triggeredBy: "auto",
-            reason: "Auto-launched after offer accepted",
-          });
-          actions.push("Transitioned to integrity_checks");
         }
         break;
-        
+
       case "integrity_passed":
         if (!config || config.autoLaunchOnboarding) {
           await this.launchOnboarding(candidateId, tenantId, jobId);
           actions.push("Launched onboarding workflow");
-          
+
           await this.transitionCandidate(candidateId, "onboarding", tenantId, {
             triggeredBy: "auto",
             reason: "Auto-launched after integrity passed",
@@ -283,7 +297,7 @@ export class PipelineOrchestrator {
     tenantId: string, 
     requiredChecks: string[] | null
   ): Promise<void> {
-    const checkTypes = requiredChecks || ["Criminal Record", "Reference Check", "ID Verification"];
+    const checkTypes = requiredChecks || ["Comprehensive", "Criminal Record", "Reference Check", "ID Verification"];
     
     for (const checkType of checkTypes) {
       const existingCheck = await db.select().from(integrityChecks)
@@ -304,6 +318,66 @@ export class PipelineOrchestrator {
     }
   }
   
+  private async launchInterviewSession(
+    candidateId: string,
+    tenantId: string,
+    jobId: string | null
+  ): Promise<void> {
+    // Check if there's already a pending/sent session
+    const existing = await db.select().from(interviewSessions)
+      .where(and(
+        eq(interviewSessions.candidateId, candidateId),
+        eq(interviewSessions.tenantId, tenantId)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) return;
+
+    const [candidate] = await db.select().from(candidates)
+      .where(eq(candidates.id, candidateId));
+    if (!candidate) return;
+
+    let jobTitle = "Open Position";
+    if (jobId) {
+      const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId));
+      if (job) jobTitle = job.title;
+    }
+
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    await db.insert(interviewSessions).values({
+      tenantId,
+      candidateId,
+      candidateName: candidate.fullName,
+      candidatePhone: candidate.phone || undefined,
+      jobTitle,
+      token,
+      interviewType: "voice",
+      status: "pending",
+      expiresAt,
+    });
+
+    // Send email invite if candidate has an email
+    if (candidate.email) {
+      try {
+        const { EmailService } = await import("./email-service");
+        const emailService = new EmailService();
+        const interviewUrl = `${process.env.APP_URL || 'http://localhost:5000'}/interview/invite/${token}`;
+        await emailService.sendInterviewInvitation({
+          to: candidate.email,
+          candidateName: candidate.fullName || "Candidate",
+          jobTitle,
+          interviewUrl,
+        });
+      } catch (e) {
+        console.error("[Pipeline] Failed to send interview invite email:", e);
+      }
+    }
+  }
+
   private async launchOnboarding(
     candidateId: string, 
     tenantId: string, 
@@ -405,22 +479,34 @@ export class PipelineOrchestrator {
         eq(integrityChecks.candidateId, candidateId),
         eq(integrityChecks.tenantId, tenantId)
       ));
-    
+
     if (checks.length === 0) return false;
-    
-    const allComplete = checks.every(c => c.status === "Completed" || c.status === "Clear");
+
+    const allComplete = checks.every(c =>
+      c.status === "Completed" || c.status === "Clear"
+    );
     const anyFailed = checks.some(c => c.result === "Failed" || c.result === "High Risk");
-    
-    if (allComplete) {
-      const toStage = anyFailed ? "integrity_failed" : "integrity_passed";
-      const result = await this.transitionCandidate(candidateId, toStage, tenantId, {
-        triggeredBy: "auto",
-        reason: anyFailed ? "Integrity check(s) failed" : "All integrity checks passed",
-      });
-      return result.success;
+
+    if (!allComplete) return false;
+
+    // Also check that all integrity document requirements are verified
+    const docReqs = await db.select().from(integrityDocumentRequirements)
+      .where(and(
+        eq(integrityDocumentRequirements.candidateId, candidateId),
+        eq(integrityDocumentRequirements.tenantId, tenantId)
+      ));
+
+    if (docReqs.length > 0) {
+      const allDocsVerified = docReqs.every(d => d.status === "verified");
+      if (!allDocsVerified) return false;
     }
-    
-    return false;
+
+    const toStage = anyFailed ? "integrity_failed" : "integrity_passed";
+    const result = await this.transitionCandidate(candidateId, toStage, tenantId, {
+      triggeredBy: "auto",
+      reason: anyFailed ? "Integrity check(s) failed" : "All integrity checks passed and documents verified",
+    });
+    return result.success;
   }
 }
 

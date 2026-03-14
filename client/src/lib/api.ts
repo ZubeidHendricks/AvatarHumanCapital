@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Candidate, InsertCandidate, Job, InsertJob, IntegrityCheck, InsertIntegrityCheck, Interview } from "@shared/schema";
+import type { Candidate, InsertCandidate, Job, InsertJob, IntegrityCheck, InsertIntegrityCheck, Interview, OnboardingWorkflow } from "@shared/schema";
 
 // Determine the API URL based on environment
 // In development (Replit), use relative URLs
@@ -51,10 +51,17 @@ api.interceptors.request.use(
   }
 );
 
+// Helper: unwrap paginated { data, total, page, limit } responses into plain arrays
+function unwrapArray<T>(body: any): T[] {
+  if (Array.isArray(body)) return body;
+  if (body && Array.isArray(body.data)) return body.data;
+  return [];
+}
+
 export const jobsService = {
   getAll: async (): Promise<Job[]> => {
     const response = await api.get("/jobs");
-    return response.data;
+    return unwrapArray<Job>(response.data);
   },
   getArchived: async (): Promise<Job[]> => {
     const response = await api.get("/jobs/archived");
@@ -88,7 +95,7 @@ export const jobsService = {
 export const candidateService = {
   getAll: async (): Promise<Candidate[]> => {
     const response = await api.get("/candidates");
-    return response.data;
+    return unwrapArray<Candidate>(response.data);
   },
   getById: async (id: string): Promise<Candidate> => {
     const response = await api.get(`/candidates/${id}`);
@@ -129,9 +136,24 @@ export const interviewService = {
     return response.data;
   },
   createVideoSession: async (candidateId?: string, candidateName?: string, jobRole?: string): Promise<{ sessionUrl: string; sessionId: string; status: string; candidateId?: string; candidateName?: string; interviewId?: string }> => {
-    const response = await api.post("/interview/video/session", { 
-      candidateId, 
+    const response = await api.post("/interview/video/session", {
+      candidateId,
       candidateName,
+      jobRole
+    });
+    return response.data;
+  },
+  endTavusConversation: async (conversationId: string): Promise<any> => {
+    const response = await api.post(`/interview/video/end/${conversationId}`);
+    return response.data;
+  },
+  getTavusTranscript: async (conversationId: string): Promise<any> => {
+    const response = await api.get(`/interview/video/transcript/${conversationId}`);
+    return response.data;
+  },
+  createPracticeVideoSession: async (candidateName?: string, jobRole?: string): Promise<{ sessionUrl: string; sessionId: string; status: string; interviewId?: string }> => {
+    const response = await api.post("/interview/video/session", {
+      candidateName: `[Practice] ${candidateName || "Practice"}`,
       jobRole
     });
     return response.data;
@@ -155,7 +177,108 @@ export const interviewService = {
   update: async (id: string, updates: Partial<Interview>): Promise<Interview> => {
     const response = await api.patch(`/interviews/${id}`, updates);
     return response.data;
+  },
+  completeInterview: async (sessionId: string, data: {
+    transcripts: { role: string; text: string; timestamp?: number; emotion?: string; emotionScores?: Record<string, number> }[];
+    emotionAnalysis?: Record<string, any>;
+    duration?: number;
+    stage?: 'voice' | 'video';
+  }) => {
+    const response = await api.post(`/interviews/${sessionId}/complete`, data);
+    return response.data;
+  },
+  fetchHumeAudio: async (sessionId: string, chatId: string) => {
+    const response = await api.post(`/interviews/${sessionId}/fetch-hume-audio`, { chatId });
+    return response.data;
+  },
+  addVideoStage: async (sessionId: string, prompt?: string) => {
+    const response = await api.post(`/interviews/${sessionId}/add-video-stage`, { prompt });
+    return response.data;
   }
+};
+
+// ViTT Timeline Tags & Transcript Analysis Service
+export const timelineService = {
+  getTags: async (sessionId: string) => {
+    const res = await api.get(`/interviews/${sessionId}/timeline-tags`);
+    return res.data;
+  },
+  createTag: async (sessionId: string, tag: any) => {
+    const res = await api.post(`/interviews/${sessionId}/timeline-tags`, tag);
+    return res.data;
+  },
+  updateTag: async (sessionId: string, tagId: string, updates: any) => {
+    const res = await api.patch(`/interviews/${sessionId}/timeline-tags/${tagId}`, updates);
+    return res.data;
+  },
+  deleteTag: async (sessionId: string, tagId: string) => {
+    await api.delete(`/interviews/${sessionId}/timeline-tags/${tagId}`);
+  },
+  getTranscriptJobs: async (sessionId: string) => {
+    const res = await api.get(`/interviews/${sessionId}/transcript-jobs`);
+    return res.data;
+  },
+  submitTranscriptJob: async (sessionId: string, provider: string, audioUrl: string, config?: any) => {
+    const res = await api.post(`/interviews/${sessionId}/transcript-jobs`, { provider, audioUrl, config });
+    return res.data;
+  },
+  submitAllTranscriptJobs: async (sessionId: string, audioUrl: string, config?: any) => {
+    const res = await api.post(`/interviews/${sessionId}/transcript-jobs/all`, { audioUrl, config });
+    return res.data;
+  },
+  askQuestion: async (sessionId: string, question: string) => {
+    const res = await api.post(`/interviews/${sessionId}/ask`, { question });
+    return res.data;
+  },
+  generateSummary: async (sessionId: string) => {
+    const res = await api.post(`/interviews/${sessionId}/summary`);
+    return res.data;
+  },
+  extractActionItems: async (sessionId: string) => {
+    const res = await api.post(`/interviews/${sessionId}/action-items`);
+    return res.data;
+  },
+  autoTag: async (sessionId: string) => {
+    const res = await api.post(`/interviews/${sessionId}/auto-tag`);
+    return res.data;
+  },
+  reanalyze: async (sessionId: string) => {
+    const res = await api.post(`/interviews/${sessionId}/reanalyze`);
+    return res.data;
+  },
+  getAnalysisHistory: async (sessionId: string) => {
+    const res = await api.get(`/interviews/${sessionId}/analysis-history`);
+    return res.data;
+  },
+  getProviderStatus: async () => {
+    const res = await api.get("/transcript-providers/status");
+    return res.data;
+  },
+};
+
+// Recording Capture & Storage Service
+export const recordingService = {
+  uploadRecording: async (sessionId: string, blob: Blob, metadata?: { candidateId?: string; sourceType?: string; duration?: number }) => {
+    const formData = new FormData();
+    const ext = blob.type.includes("mp4") ? "mp4" : blob.type.includes("webm") ? "webm" : "webm";
+    formData.append("recording", blob, `recording.${ext}`);
+    if (metadata?.candidateId) formData.append("candidateId", metadata.candidateId);
+    if (metadata?.sourceType) formData.append("sourceType", metadata.sourceType);
+    if (metadata?.duration) formData.append("duration", String(metadata.duration));
+    const res = await api.post(`/interviews/${sessionId}/upload-recording`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 300000,
+    });
+    return res.data;
+  },
+  fetchTavusRecording: async (sessionId: string, conversationId: string, candidateId?: string) => {
+    const res = await api.post(`/interviews/${sessionId}/fetch-tavus-recording`, { conversationId, candidateId });
+    return res.data;
+  },
+  getRecordings: async (sessionId: string) => {
+    const res = await api.get(`/interviews/${sessionId}/recordings`);
+    return res.data;
+  },
 };
 
 export const integrityChecksService = {
@@ -194,4 +317,178 @@ export const integrityChecksService = {
     const response = await api.patch(`/integrity-checks/${id}/reminder-config`, config);
     return response.data;
   }
+};
+
+export const onboardingService = {
+  getWorkflows: async (): Promise<OnboardingWorkflow[]> => {
+    const response = await api.get("/onboarding/workflows");
+    return response.data;
+  },
+  getWorkflow: async (id: string): Promise<OnboardingWorkflow> => {
+    const response = await api.get(`/onboarding/workflows/${id}`);
+    return response.data;
+  },
+  triggerOnboarding: async (
+    candidateId: string,
+    options?: { requirements?: { itSetup?: boolean; buildingAccess?: boolean; equipment?: boolean }; equipmentList?: string[]; startDate?: string; files?: File[]; selectedDocuments?: string[]; generatedBatchId?: string; channel?: "email" | "whatsapp" }
+  ): Promise<{ message: string; workflow: OnboardingWorkflow; conversationId?: string }> => {
+    const formData = new FormData();
+    if (options?.requirements) formData.append("requirements", JSON.stringify(options.requirements));
+    if (options?.equipmentList) formData.append("equipmentList", JSON.stringify(options.equipmentList));
+    if (options?.startDate) formData.append("startDate", options.startDate);
+    if (options?.selectedDocuments) formData.append("selectedDocuments", JSON.stringify(options.selectedDocuments));
+    if (options?.generatedBatchId) formData.append("generatedBatchId", options.generatedBatchId);
+    if (options?.channel) formData.append("channel", options.channel);
+    if (options?.files) {
+      for (const file of options.files) {
+        formData.append("files", file);
+      }
+    }
+    const response = await api.post(`/onboarding/trigger/${candidateId}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
+  confirmProvisioning: async (workflowId: string, type: "it" | "buildingAccess" | "equipment", confirmedBy?: string): Promise<any> => {
+    const response = await api.post(`/onboarding/workflows/${workflowId}/confirm-provisioning`, { type, confirmedBy });
+    return response.data;
+  },
+  getStatus: async (candidateId: string): Promise<OnboardingWorkflow | null> => {
+    const response = await api.get(`/onboarding/status/${candidateId}`);
+    return response.data;
+  },
+  getDocumentRequests: async (workflowId: string) => {
+    const response = await api.get(`/onboarding/document-requests/${workflowId}`);
+    return response.data;
+  },
+  getAgentLogs: async (workflowId: string) => {
+    const response = await api.get(`/onboarding/agent-logs/${workflowId}`);
+    return response.data;
+  },
+  initializeDocumentRequests: async (workflowId: string) => {
+    const response = await api.post(`/onboarding/document-requests/${workflowId}/initialize`);
+    return response.data;
+  },
+  markDocumentReceived: async (requestId: string, documentId?: string) => {
+    const response = await api.post(`/onboarding/document-requests/${requestId}/received`, { documentId });
+    return response.data;
+  },
+  uploadDocument: async (requestId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await api.post(`/onboarding/document-requests/${requestId}/upload`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
+  markDocumentVerified: async (requestId: string, verifiedBy: string) => {
+    const response = await api.post(`/onboarding/document-requests/${requestId}/verified`, { verifiedBy });
+    return response.data;
+  },
+  sendReminder: async (requestId: string, channel?: "email" | "whatsapp") => {
+    const response = await api.post(`/onboarding/document-requests/${requestId}/remind`, { channel: channel || "email" });
+    return response.data;
+  },
+  sendBulkReminder: async (workflowId: string, channel?: "email" | "whatsapp") => {
+    const response = await api.post(`/onboarding/workflows/${workflowId}/remind-all`, { channel: channel || "email" });
+    return response.data;
+  },
+};
+
+export const integrityDocService = {
+  getByCandidate: async (candidateId: string) => {
+    const response = await api.get(`/candidates/${candidateId}/document-requirements`);
+    return response.data;
+  },
+  verify: async (id: string) => {
+    const response = await api.post(`/document-requirements/${id}/verify`);
+    return response.data;
+  },
+  sendReminder: async (id: string, channel: "email" | "whatsapp" = "whatsapp") => {
+    const response = await api.post(`/document-requirements/${id}/send-reminder`, { channel });
+    return response.data;
+  },
+  requestDocs: async (checkId: string, documentTypes: string[], sendWhatsappRequest = true) => {
+    const response = await api.post(`/integrity-checks/${checkId}/request-documents`, {
+      documentTypes,
+      sendWhatsappRequest,
+    });
+    return response.data;
+  },
+  upload: async (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await api.post(`/document-requirements/${id}/upload`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
+  reject: async (id: string, reason: string) => {
+    const response = await api.post(`/document-requirements/${id}/reject`, { reason });
+    return response.data;
+  },
+  remindAll: async (candidateId: string, channel: "email" | "whatsapp" = "whatsapp") => {
+    const response = await api.post(`/candidates/${candidateId}/integrity-docs/remind-all`, { channel });
+    return response.data;
+  },
+};
+
+export const offersService = {
+  getAll: async (): Promise<any[]> => {
+    const response = await api.get("/offers");
+    return response.data;
+  },
+  getById: async (id: string): Promise<any> => {
+    const response = await api.get(`/offers/${id}`);
+    return response.data;
+  },
+  getByCandidateId: async (candidateId: string): Promise<any> => {
+    const response = await api.get(`/offers/candidate/${candidateId}`);
+    return response.data;
+  },
+  create: async (data: {
+    candidateId: string;
+    jobId?: string;
+    salary: string;
+    currency?: string;
+    startDate?: string;
+    benefits?: string[];
+    notes?: string;
+    contractType?: string;
+  }): Promise<any> => {
+    const response = await api.post("/offers", data);
+    return response.data;
+  },
+  generateDocumentPreview: async (data: {
+    candidateId: string;
+    jobId?: string;
+    contractType: string;
+    salary?: string;
+    startDate?: string;
+    benefits?: string[];
+  }): Promise<{ blob: Blob; filename: string }> => {
+    const response = await api.post("/offers/generate-document-preview", data, {
+      responseType: "blob",
+    });
+    // Extract filename from Content-Disposition header
+    const disposition = response.headers["content-disposition"] || "";
+    const match = disposition.match(/filename="?([^";\n]+)"?/);
+    const filename = match?.[1] || "document-preview.docx";
+    return { blob: response.data, filename };
+  },
+  update: async (id: string, data: any): Promise<any> => {
+    const response = await api.patch(`/offers/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/offers/${id}`);
+  },
+  send: async (id: string): Promise<any> => {
+    const response = await api.post(`/offers/${id}/send`);
+    return response.data;
+  },
+  respond: async (id: string, response: "accepted" | "declined"): Promise<any> => {
+    const resp = await api.post(`/offers/${id}/respond`, { response });
+    return resp.data;
+  },
 };

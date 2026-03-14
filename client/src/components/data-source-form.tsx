@@ -142,8 +142,8 @@ export function DataSourceForm({
             onClick={() => setMode("select")}
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
               mode === "select" 
-                ? "bg-blue-600 text-white" 
-                : "text-gray-400 hover:text-white"
+                ? "bg-muted text-white" 
+                : "text-muted-foreground hover:text-white"
             }`}
             data-testid="tab-select-source"
           >
@@ -154,8 +154,8 @@ export function DataSourceForm({
             onClick={() => setMode("create")}
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
               mode === "create" 
-                ? "bg-blue-600 text-white" 
-                : "text-gray-400 hover:text-white"
+                ? "bg-muted text-white" 
+                : "text-muted-foreground hover:text-white"
             }`}
             data-testid="tab-create-source"
           >
@@ -166,7 +166,7 @@ export function DataSourceForm({
 
       {mode === "select" && existingSources.length > 0 && (
         <div className="space-y-3">
-          <p className="text-sm text-gray-400">Select an existing data source to link to this KPI</p>
+          <p className="text-sm text-muted-foreground">Select an existing data source to link to this KPI</p>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {existingSources.map((source) => {
               const TypeIcon = DATA_SOURCE_TYPES.find(t => t.value === source.type)?.icon || Database;
@@ -177,7 +177,7 @@ export function DataSourceForm({
                   onClick={() => onSelectSource?.(source.id)}
                   className={`p-4 rounded-lg border cursor-pointer transition-all ${
                     isSelected 
-                      ? "border-blue-500 bg-blue-500/10" 
+                      ? "border-border bg-muted/10" 
                       : "border-gray-700 bg-gray-800/50 hover:border-gray-600"
                   }`}
                   data-testid={`card-source-${source.id}`}
@@ -185,7 +185,7 @@ export function DataSourceForm({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-gray-700/50 rounded-lg">
-                        <TypeIcon className="h-5 w-5 text-gray-400" />
+                        <TypeIcon className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div>
                         <p className="font-medium text-white">{source.name}</p>
@@ -193,7 +193,7 @@ export function DataSourceForm({
                       </div>
                     </div>
                     {isSelected && (
-                      <CheckCircle className="h-5 w-5 text-blue-500" />
+                      <CheckCircle className="h-5 w-5 text-foreground" />
                     )}
                   </div>
                 </div>
@@ -204,7 +204,7 @@ export function DataSourceForm({
           {selectedSourceId && (
             <Button 
               onClick={() => onSourceCreated(selectedSourceId)}
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              className="w-full bg-muted hover:bg-muted"
               data-testid="button-use-selected"
             >
               Use Selected Source
@@ -217,7 +217,7 @@ export function DataSourceForm({
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 md:col-span-1">
-              <Label className="text-gray-300">Name *</Label>
+              <Label className="text-muted-foreground">Name *</Label>
               <Input
                 value={formData.name || ""}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -227,7 +227,7 @@ export function DataSourceForm({
               />
             </div>
             <div className="col-span-2 md:col-span-1">
-              <Label className="text-gray-300">Sync Frequency</Label>
+              <Label className="text-muted-foreground">Sync Frequency</Label>
               <Select
                 value={formData.refreshSchedule || "daily"}
                 onValueChange={(v) => setFormData({ ...formData, refreshSchedule: v })}
@@ -248,7 +248,7 @@ export function DataSourceForm({
           </div>
 
           <div>
-            <Label className="text-gray-300">Description (Optional)</Label>
+            <Label className="text-muted-foreground">Description (Optional)</Label>
             <Textarea
               value={formData.description || ""}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -260,7 +260,7 @@ export function DataSourceForm({
           </div>
 
           <div>
-            <Label className="text-gray-300 mb-3 block">Source Type *</Label>
+            <Label className="text-muted-foreground mb-3 block">Source Type *</Label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {DATA_SOURCE_TYPES.map((type) => {
                 const TypeIcon = type.icon;
@@ -272,16 +272,16 @@ export function DataSourceForm({
                     onClick={() => setSelectedType(type.value)}
                     className={`p-4 rounded-lg border text-left transition-all ${
                       isSelected
-                        ? "border-blue-500 bg-blue-500/10"
+                        ? "border-border bg-muted/10"
                         : "border-gray-700 bg-gray-800/50 hover:border-gray-600"
                     }`}
                     data-testid={`card-type-${type.value}`}
                   >
-                    <TypeIcon className={`h-6 w-6 mb-2 ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`} />
-                    <p className={`font-medium text-sm ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-white"}`}>
+                    <TypeIcon className={`h-6 w-6 mb-2 ${isSelected ? "text-foreground dark:text-foreground" : "text-muted-foreground"}`} />
+                    <p className={`font-medium text-sm ${isSelected ? "text-foreground dark:text-foreground" : "text-white"}`}>
                       {type.label}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">{type.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{type.description}</p>
                   </button>
                 );
               })}
@@ -290,11 +290,11 @@ export function DataSourceForm({
 
           {typeConfig && typeConfig.fields.length > 0 && (
             <div className="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-              <p className="text-sm font-medium text-gray-300">Configuration</p>
+              <p className="text-sm font-medium text-muted-foreground">Configuration</p>
               <div className="grid grid-cols-2 gap-4">
                 {typeConfig.fields.map((field) => (
                   <div key={field.name} className={field.type === "textarea" ? "col-span-2" : ""}>
-                    <Label className="text-gray-400">
+                    <Label className="text-muted-foreground">
                       {field.label} {field.required && "*"}
                     </Label>
                     {field.type === "select" ? (
@@ -383,7 +383,7 @@ export function DataSourceForm({
           <Button 
             onClick={handleSubmit}
             disabled={!canSubmit || creating}
-            className="w-full bg-blue-600 hover:bg-blue-700"
+            className="w-full bg-muted hover:bg-muted"
             data-testid="button-create-source"
           >
             {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

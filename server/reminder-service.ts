@@ -1,5 +1,6 @@
 import type { IStorage } from "./storage";
 import type { IntegrityDocumentRequirement, Candidate } from "@shared/schema";
+import { EmailService } from "./email-service";
 
 export interface ReminderConfig {
   intervalHours: number;
@@ -30,7 +31,11 @@ const DOC_TYPE_LABELS: Record<string, string> = {
 };
 
 export class ReminderService {
-  constructor(private storage: IStorage) {}
+  private emailService: EmailService;
+
+  constructor(private storage: IStorage) {
+    this.emailService = new EmailService(storage);
+  }
 
   getDocTypeLabel(docType: string): string {
     return DOC_TYPE_LABELS[docType] || docType;
@@ -62,6 +67,22 @@ export class ReminderService {
         
         // Also check document requirements with reminders enabled
         await this.checkDocumentRequirementReminders(tenant.id, now);
+
+        // Process onboarding document reminders
+        try {
+          const { createOnboardingAgent } = await import("./onboarding-agent");
+          const onboardingAgent = createOnboardingAgent(this.storage);
+          const remindersSent = await onboardingAgent.processScheduledReminders(tenant.id);
+          if (remindersSent > 0) {
+            console.log(`[Tenant ${tenant.companyName}] Sent ${remindersSent} onboarding document reminders`);
+          }
+          const { processed, escalated } = await onboardingAgent.processOverdueDocuments(tenant.id);
+          if (processed > 0) {
+            console.log(`[Tenant ${tenant.companyName}] Processed ${processed} overdue onboarding docs (${escalated} escalated)`);
+          }
+        } catch (error) {
+          console.error(`[Tenant ${tenant.companyName}] Failed to process onboarding reminders:`, error);
+        }
       } catch (error) {
         console.error(`[Tenant ${tenant.companyName}] Failed to process reminders:`, error);
       }
@@ -115,7 +136,7 @@ ${docList}
 Please submit these documents via WhatsApp by replying to this message with each document.
 
 Thank you,
-Avatar Human Capital Team`;
+AHC - Human Capital Team`;
 
     // Send via WhatsApp if available
     if (candidate.phone && process.env.WHATSAPP_API_TOKEN) {
@@ -231,7 +252,7 @@ ${missingDocuments.map((doc, idx) => `${idx + 1}. ${doc}`).join('\n')}
 Please submit these documents as soon as possible to continue with your application process.
 
 Thank you,
-Avatar Human Capital Team`;
+AHC - Human Capital Team`;
   }
 
   private buildHRMessage(candidate: any, missingDocuments: string[], check: any): string {
@@ -280,10 +301,11 @@ Reminders sent: ${(check.remindersSent || 0) + 1}`;
   }
 
   private async sendEmailNotification(email: string, subject: string, message: string): Promise<void> {
-    // Placeholder for email integration (SendGrid, Resend, etc.)
-    // This would be implemented using one of the Replit connectors
-    console.log(`Email reminder would be sent to ${email}: ${subject}`);
-    console.log(message);
+    await this.emailService.sendEmail({
+      to: email,
+      subject,
+      body: message,
+    });
   }
 
   async configureReminder(tenantId: string, checkId: string, config: Partial<ReminderConfig>): Promise<void> {

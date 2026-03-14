@@ -135,17 +135,17 @@ function StatCard({
   color?: "blue" | "green" | "amber" | "rose";
 }) {
   const colorClasses = {
-    blue: "from-blue-900/20 to-blue-800/10 border-blue-500/30",
-    green: "from-green-900/20 to-green-800/10 border-green-500/30",
-    amber: "from-amber-900/20 to-amber-800/10 border-amber-500/30",
-    rose: "from-rose-900/20 to-rose-800/10 border-rose-500/30",
+    blue: "from-muted/20 to-background/10 border-border/30",
+    green: "from-muted/20 to-background/10 border-border/30",
+    amber: "from-muted/20 to-background/10 border-border/30",
+    rose: "from-muted/20 to-background/10 border-border/30",
   };
 
   const iconColors = {
-    blue: "text-blue-600 dark:text-blue-400",
-    green: "text-green-600 dark:text-green-400",
-    amber: "text-amber-600 dark:text-amber-400",
-    rose: "text-rose-600 dark:text-rose-400",
+    blue: "text-foreground dark:text-foreground",
+    green: "text-foreground",
+    amber: "text-foreground dark:text-foreground",
+    rose: "text-foreground dark:text-foreground",
   };
 
   return (
@@ -153,13 +153,13 @@ function StatCard({
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm text-gray-400">{title}</p>
+            <p className="text-sm text-muted-foreground">{title}</p>
             <p className="text-3xl font-bold text-white mt-1">{value}</p>
-            {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+            {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
             {trend && (
               <div className={cn(
                 "flex items-center gap-1 mt-2 text-sm",
-                trend.positive ? "text-green-600 dark:text-green-400" : "text-rose-600 dark:text-rose-400"
+                trend.positive ? "text-foreground" : "text-foreground dark:text-foreground"
               )}>
                 {trend.positive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                 <span>{trend.value}% vs last cycle</span>
@@ -251,7 +251,7 @@ HR Team`);
       <DialogContent className="max-w-2xl bg-gray-900 border-border dark:border-white/10">
         <DialogHeader>
           <DialogTitle className="text-xl text-white flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <MessageSquare className="w-5 h-5 text-foreground dark:text-foreground" />
             Send Review Reminders
           </DialogTitle>
           <DialogDescription>
@@ -261,7 +261,7 @@ HR Team`);
 
         <div className="space-y-6">
           <div>
-            <Label className="text-gray-400 mb-2 block">Communication Channel</Label>
+            <Label className="text-muted-foreground mb-2 block">Communication Channel</Label>
             <div className="grid grid-cols-3 gap-3">
               <Button
                 type="button"
@@ -281,7 +281,7 @@ HR Team`);
                 variant={channel === "whatsapp" ? "default" : "outline"}
                 className={cn(
                   "flex items-center gap-2",
-                  channel === "whatsapp" ? "bg-green-600 hover:bg-green-700" : "border-gray-700"
+                  channel === "whatsapp" ? "bg-muted hover:bg-muted" : "border-gray-700"
                 )}
                 onClick={() => setChannel("whatsapp")}
                 data-testid="channel-whatsapp"
@@ -294,7 +294,7 @@ HR Team`);
                 variant={channel === "teams" ? "default" : "outline"}
                 className={cn(
                   "flex items-center gap-2",
-                  channel === "teams" ? "bg-blue-600 hover:bg-blue-700" : "border-gray-700"
+                  channel === "teams" ? "bg-muted hover:bg-muted" : "border-gray-700"
                 )}
                 onClick={() => setChannel("teams")}
                 data-testid="channel-teams"
@@ -306,12 +306,12 @@ HR Team`);
           </div>
 
           <div>
-            <Label className="text-gray-400 mb-2 block">Recipients ({employeesWithContact.length} reachable)</Label>
+            <Label className="text-muted-foreground mb-2 block">Recipients ({employeesWithContact.length} reachable)</Label>
             <div className="bg-gray-800/50 rounded-lg p-3 max-h-32 overflow-y-auto">
               {selectedEmployees.map(emp => (
                 <div key={emp.id} className="flex items-center justify-between py-1 text-sm">
                   <span className="text-white">{emp.employee?.name || `Employee #${emp.employeeId}`}</span>
-                  <span className="text-gray-500">
+                  <span className="text-muted-foreground">
                     {channel === "email" && (emp.employee?.email || "No email")}
                     {channel === "whatsapp" && (emp.employee?.phone || "No phone")}
                     {channel === "teams" && (emp.employee?.email || "No Teams ID")}
@@ -320,14 +320,14 @@ HR Team`);
               ))}
             </div>
             {employeesWithContact.length < selectedEmployees.length && (
-              <p className="text-amber-600 dark:text-amber-400 text-xs mt-2">
+              <p className="text-foreground dark:text-foreground text-xs mt-2">
                 {selectedEmployees.length - employeesWithContact.length} employee(s) don't have {channel} contact info
               </p>
             )}
           </div>
 
           <div>
-            <Label className="text-gray-400 mb-2 block">Message</Label>
+            <Label className="text-muted-foreground mb-2 block">Message</Label>
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -335,7 +335,7 @@ HR Team`);
               placeholder="Enter your message..."
               data-testid="message-input"
             />
-            <p className="text-gray-500 text-xs mt-1">
+            <p className="text-muted-foreground text-xs mt-1">
               Use [Employee Name] to personalize the message
             </p>
           </div>
@@ -404,7 +404,7 @@ function EmployeeDetailDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-border dark:border-white/10">
         <DialogHeader>
           <DialogTitle className="text-xl text-white flex items-center gap-2">
-            <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <User className="w-5 h-5 text-foreground dark:text-foreground" />
             {submission.employee?.name || `Employee #${submission.employeeId}`}
           </DialogTitle>
           <DialogDescription>
@@ -416,14 +416,14 @@ function EmployeeDetailDialog({
           <div className="grid grid-cols-3 gap-4">
             <Card className="bg-gray-800/50 border-border dark:border-white/10">
               <CardContent className="p-4 text-center">
-                <p className="text-sm text-gray-400">Final Score</p>
+                <p className="text-sm text-muted-foreground">Final Score</p>
                 <p className={cn(
                   "text-3xl font-bold mt-1",
                   submission.finalScore && parseFloat(submission.finalScore) >= 80 
-                    ? "text-green-600 dark:text-green-400" 
+                    ? "text-foreground" 
                     : submission.finalScore && parseFloat(submission.finalScore) >= 60
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-rose-600 dark:text-rose-400"
+                    ? "text-foreground dark:text-foreground"
+                    : "text-foreground dark:text-foreground"
                 )}>
                   {submission.finalScore ? `${submission.finalScore}%` : "-"}
                 </p>
@@ -431,7 +431,7 @@ function EmployeeDetailDialog({
             </Card>
             <Card className="bg-gray-800/50 border-border dark:border-white/10">
               <CardContent className="p-4 text-center">
-                <p className="text-sm text-gray-400">Self-Assessment</p>
+                <p className="text-sm text-muted-foreground">Self-Assessment</p>
                 <Badge variant={submission.selfAssessmentStatus === "completed" ? "default" : "secondary"} className="mt-2">
                   {submission.selfAssessmentStatus}
                 </Badge>
@@ -439,7 +439,7 @@ function EmployeeDetailDialog({
             </Card>
             <Card className="bg-gray-800/50 border-border dark:border-white/10">
               <CardContent className="p-4 text-center">
-                <p className="text-sm text-gray-400">Manager Review</p>
+                <p className="text-sm text-muted-foreground">Manager Review</p>
                 <Badge variant={submission.managerReviewStatus === "completed" ? "default" : "secondary"} className="mt-2">
                   {submission.managerReviewStatus}
                 </Badge>
@@ -451,20 +451,20 @@ function EmployeeDetailDialog({
             <h3 className="text-lg font-semibold text-white mb-3">KPI Breakdown</h3>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
+                <Loader2 className="w-6 h-6 animate-spin text-foreground dark:text-foreground" />
               </div>
             ) : assignments.length === 0 ? (
-              <p className="text-gray-400 text-center py-4">No KPIs assigned</p>
+              <p className="text-muted-foreground text-center py-4">No KPIs assigned</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow className="border-border dark:border-white/10">
-                    <TableHead className="text-gray-400">KPI</TableHead>
-                    <TableHead className="text-gray-400">Category</TableHead>
-                    <TableHead className="text-gray-400">Weight</TableHead>
-                    <TableHead className="text-gray-400">Self Score</TableHead>
-                    <TableHead className="text-gray-400">Manager Score</TableHead>
-                    <TableHead className="text-gray-400">Status</TableHead>
+                    <TableHead className="text-muted-foreground">KPI</TableHead>
+                    <TableHead className="text-muted-foreground">Category</TableHead>
+                    <TableHead className="text-muted-foreground">Weight</TableHead>
+                    <TableHead className="text-muted-foreground">Self Score</TableHead>
+                    <TableHead className="text-muted-foreground">Manager Score</TableHead>
+                    <TableHead className="text-muted-foreground">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -473,21 +473,21 @@ function EmployeeDetailDialog({
                       <TableCell className="text-white font-medium">
                         {assignment.template?.name}
                       </TableCell>
-                      <TableCell className="text-gray-400">
+                      <TableCell className="text-muted-foreground">
                         {assignment.template?.category}
                       </TableCell>
-                      <TableCell className="text-gray-400">
+                      <TableCell className="text-muted-foreground">
                         {assignment.template?.weight}%
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-600 dark:text-yellow-400 fill-yellow-400" />
+                          <Star className="w-4 h-4 text-foreground fill-yellow-400" />
                           <span className="text-white">{assignment.score?.selfScore || "-"}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-green-600 dark:text-green-400 fill-green-400" />
+                          <Star className="w-4 h-4 text-foreground fill-green-400" />
                           <span className="text-white">{assignment.score?.managerScore || "-"}</span>
                         </div>
                       </TableCell>
@@ -506,21 +506,21 @@ function EmployeeDetailDialog({
           {submission.employeeComments && (
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">Employee Comments</h3>
-              <p className="text-gray-300 bg-gray-800/50 p-4 rounded-lg">{submission.employeeComments}</p>
+              <p className="text-muted-foreground bg-gray-800/50 p-4 rounded-lg">{submission.employeeComments}</p>
             </div>
           )}
 
           {submission.managerComments && (
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">Manager Comments</h3>
-              <p className="text-gray-300 bg-gray-800/50 p-4 rounded-lg">{submission.managerComments}</p>
+              <p className="text-muted-foreground bg-gray-800/50 p-4 rounded-lg">{submission.managerComments}</p>
             </div>
           )}
 
           {submission.developmentPlan && (
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">Development Plan</h3>
-              <p className="text-gray-300 bg-gray-800/50 p-4 rounded-lg">{submission.developmentPlan}</p>
+              <p className="text-muted-foreground bg-gray-800/50 p-4 rounded-lg">{submission.developmentPlan}</p>
             </div>
           )}
 
@@ -535,7 +535,7 @@ function EmployeeDetailDialog({
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                           {Object.entries(fb.competencyScores).map(([key, value]) => (
                             <div key={key} className="text-center">
-                              <p className="text-xs text-gray-400 capitalize">{key.replace(/_/g, ' ')}</p>
+                              <p className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</p>
                               <p className="text-lg font-bold text-white">{value}/5</p>
                             </div>
                           ))}
@@ -543,13 +543,13 @@ function EmployeeDetailDialog({
                       )}
                       {fb.strengths && (
                         <div className="mb-2">
-                          <p className="text-sm text-gray-400">Strengths</p>
+                          <p className="text-sm text-muted-foreground">Strengths</p>
                           <p className="text-white text-sm">{fb.strengths}</p>
                         </div>
                       )}
                       {fb.areasForImprovement && (
                         <div>
-                          <p className="text-sm text-gray-400">Areas for Improvement</p>
+                          <p className="text-sm text-muted-foreground">Areas for Improvement</p>
                           <p className="text-white text-sm">{fb.areasForImprovement}</p>
                         </div>
                       )}
@@ -788,17 +788,17 @@ export default function KPIHRDashboard() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-3" data-testid="page-title">
-              <BarChart3 className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              <BarChart3 className="w-8 h-8 text-foreground dark:text-foreground" />
               HR Performance Dashboard
             </h1>
-            <p className="text-gray-400 mt-2">
+            <p className="text-muted-foreground mt-2">
               Organization-wide KPI performance overview
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Select value={String(selectedCycleId)} onValueChange={(v) => setSelectedCycleId(Number(v))}>
               <SelectTrigger className="w-48 bg-gray-800 border-gray-700" data-testid="select-cycle">
-                <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
                 <SelectValue placeholder="Select cycle" />
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-700">
@@ -846,7 +846,7 @@ export default function KPIHRDashboard() {
         <Card className="mb-8 bg-gray-900/50 border-border dark:border-white/10">
           <CardHeader>
             <CardTitle className="text-xl text-foreground">Custom Analytics</CardTitle>
-            <CardDescription className="text-gray-400">
+            <CardDescription className="text-muted-foreground">
               Build your own charts by selecting data sources and fields
             </CardDescription>
           </CardHeader>
@@ -897,19 +897,19 @@ export default function KPIHRDashboard() {
             <CardContent className="py-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Current Cycle</p>
+                  <p className="text-sm text-muted-foreground">Current Cycle</p>
                   <p className="text-xl font-semibold text-foreground">{selectedCycle.name}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     {format(new Date(selectedCycle.startDate), "MMM d, yyyy")} - {format(new Date(selectedCycle.endDate), "MMM d, yyyy")}
                   </p>
                 </div>
                 <div className="flex items-center gap-8">
                   <div>
-                    <p className="text-sm text-gray-400 mb-2">Self-Assessment Progress</p>
+                    <p className="text-sm text-muted-foreground mb-2">Self-Assessment Progress</p>
                     <Progress value={selfCompletionRate} className="w-32 h-2" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-400 mb-2">Manager Review Progress</p>
+                    <p className="text-sm text-muted-foreground mb-2">Manager Review Progress</p>
                     <Progress value={managerCompletionRate} className="w-32 h-2" />
                   </div>
                 </div>
@@ -927,7 +927,7 @@ export default function KPIHRDashboard() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="Search employees..."
                     value={searchTerm}
@@ -957,13 +957,13 @@ export default function KPIHRDashboard() {
           <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-foreground dark:text-foreground" />
               </div>
             ) : filteredSubmissions.length === 0 ? (
               <div className="text-center py-12">
-                <Users className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-foreground mb-2">No Reviews Found</h3>
-                <p className="text-gray-400">
+                <p className="text-muted-foreground">
                   {searchTerm || statusFilter !== "all" 
                     ? "No employees match your search criteria" 
                     : "No employees have been assigned to this review cycle"}
@@ -980,12 +980,12 @@ export default function KPIHRDashboard() {
                         data-testid="select-all-checkbox"
                       />
                     </TableHead>
-                    <TableHead className="text-gray-400">Employee</TableHead>
-                    <TableHead className="text-gray-400">Department</TableHead>
-                    <TableHead className="text-gray-400">Self-Assessment</TableHead>
-                    <TableHead className="text-gray-400">Manager Review</TableHead>
-                    <TableHead className="text-gray-400">Final Score</TableHead>
-                    <TableHead className="text-gray-400">Actions</TableHead>
+                    <TableHead className="text-muted-foreground">Employee</TableHead>
+                    <TableHead className="text-muted-foreground">Department</TableHead>
+                    <TableHead className="text-muted-foreground">Self-Assessment</TableHead>
+                    <TableHead className="text-muted-foreground">Manager Review</TableHead>
+                    <TableHead className="text-muted-foreground">Final Score</TableHead>
+                    <TableHead className="text-muted-foreground">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -994,7 +994,7 @@ export default function KPIHRDashboard() {
                       key={submission.id} 
                       className={cn(
                         "border-border dark:border-white/10 cursor-pointer hover:bg-white/5",
-                        selectedEmployeeIds.has(submission.id) && "bg-blue-500/10"
+                        selectedEmployeeIds.has(submission.id) && "bg-muted/10"
                       )}
                       data-testid={`employee-row-${submission.id}`}
                     >
@@ -1007,18 +1007,18 @@ export default function KPIHRDashboard() {
                       </TableCell>
                       <TableCell onClick={() => setSelectedSubmission(submission)}>
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                            <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          <div className="w-8 h-8 rounded-full bg-muted/20 flex items-center justify-center">
+                            <User className="w-4 h-4 text-foreground dark:text-foreground" />
                           </div>
                           <div>
                             <p className="font-medium text-foreground">
                               {submission.employee?.name || `Employee #${submission.employeeId}`}
                             </p>
-                            <p className="text-sm text-gray-500">{submission.employee?.email}</p>
+                            <p className="text-sm text-muted-foreground">{submission.employee?.email}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-gray-400" onClick={() => setSelectedSubmission(submission)}>
+                      <TableCell className="text-muted-foreground" onClick={() => setSelectedSubmission(submission)}>
                         {submission.employee?.department || "-"}
                       </TableCell>
                       <TableCell onClick={() => setSelectedSubmission(submission)}>
@@ -1044,15 +1044,15 @@ export default function KPIHRDashboard() {
                           <span className={cn(
                             "text-lg font-bold",
                             parseFloat(submission.finalScore) >= 80 
-                              ? "text-green-600 dark:text-green-400" 
+                              ? "text-foreground" 
                               : parseFloat(submission.finalScore) >= 60
-                              ? "text-amber-600 dark:text-amber-400"
-                              : "text-rose-600 dark:text-rose-400"
+                              ? "text-foreground dark:text-foreground"
+                              : "text-foreground dark:text-foreground"
                           )}>
                             {submission.finalScore}%
                           </span>
                         ) : (
-                          <span className="text-gray-500">-</span>
+                          <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -1070,7 +1070,7 @@ export default function KPIHRDashboard() {
                                 });
                               }}
                               disabled={sendingLinkFor === submission.id}
-                              className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
+                              className="text-foreground dark:text-foreground hover:text-foreground dark:hover:text-foreground"
                               data-testid={`send-link-${submission.id}`}
                             >
                               {sendingLinkFor === submission.id ? (

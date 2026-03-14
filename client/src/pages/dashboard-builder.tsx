@@ -48,12 +48,13 @@ export default function DashboardBuilder() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Fetch actual data from Avatar Human Capital
+  // Fetch actual data from AHC - Human Capital
   const { data: jobs } = useQuery({
     queryKey: ['jobs'],
     queryFn: async () => {
       const response = await api.get('/jobs');
-      return response.data;
+      const body = response.data;
+      return Array.isArray(body) ? body : body.data ?? [];
     }
   });
 
@@ -61,7 +62,8 @@ export default function DashboardBuilder() {
     queryKey: ['candidates'],
     queryFn: async () => {
       const response = await api.get('/candidates');
-      return response.data;
+      const body = response.data;
+      return Array.isArray(body) ? body : body.data ?? [];
     }
   });
 
@@ -82,7 +84,7 @@ export default function DashboardBuilder() {
       setLayout(JSON.parse(savedLayout));
       setWidgets(JSON.parse(savedWidgets));
     } else {
-      // Default layout with Avatar HC widgets
+      // Default layout with AHC HC widgets
       const defaultLayout: LayoutItem[] = [
         { i: 'total-jobs', x: 0, y: 0, w: 3, h: 2 },
         { i: 'total-candidates', x: 3, y: 0, w: 3, h: 2 },
@@ -331,7 +333,7 @@ export default function DashboardBuilder() {
               Dashboard Builder
             </h1>
             <p className="text-muted-foreground">
-              Customize your Avatar Human Capital dashboard with drag & drop
+              Customize your AHC - Human Capital dashboard with drag & drop
             </p>
           </div>
           

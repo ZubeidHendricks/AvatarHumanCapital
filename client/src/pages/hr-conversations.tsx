@@ -96,13 +96,14 @@ export default function HRConversations() {
       const response = await fetch("/api/whatsapp/conversations");
       if (response.ok) {
         const data = await response.json();
-        setConversations(data);
+        const convList = Array.isArray(data) ? data : (data.data || []);
+        setConversations(convList);
         
         // Fetch candidate details for linked conversations
-        const candidateIds = Array.from(new Set(data.filter((c: WhatsappConversation) => c.candidateId).map((c: WhatsappConversation) => c.candidateId))) as string[];
+        const candidateIds = Array.from(new Set(convList.filter((c: WhatsappConversation) => c.candidateId).map((c: WhatsappConversation) => c.candidateId))) as string[];
         const candidateMap: Record<string, Candidate> = {};
-        
-        for (const id of candidateIds) {
+
+        await Promise.all(candidateIds.map(async (id) => {
           try {
             const candResponse = await fetch(`/api/candidates/${id}`);
             if (candResponse.ok) {
@@ -112,8 +113,8 @@ export default function HRConversations() {
           } catch (e) {
             console.error("Failed to fetch candidate:", id);
           }
-        }
-        
+        }));
+
         setCandidates(candidateMap);
       }
     } catch (error) {
@@ -423,7 +424,7 @@ export default function HRConversations() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <MessageSquare className="h-6 w-6 text-green-500" />
+              <MessageSquare className="h-6 w-6 text-foreground" />
               WhatsApp Conversations
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -445,9 +446,9 @@ export default function HRConversations() {
             <p className="text-xs text-muted-foreground">Total Conversations</p>
           </CardContent>
         </Card>
-        <Card className={totalUnread > 0 ? 'border-red-200 bg-red-50' : ''}>
+        <Card className={totalUnread > 0 ? 'border-destructive bg-destructive' : ''}>
           <CardContent className="pt-6">
-            <div className={`text-2xl font-bold ${totalUnread > 0 ? 'text-red-600' : ''}`}>
+            <div className={`text-2xl font-bold ${totalUnread > 0 ? 'text-destructive' : ''}`}>
               {totalUnread}
             </div>
             <p className="text-xs text-muted-foreground">Unread Messages</p>
@@ -455,13 +456,13 @@ export default function HRConversations() {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">{aiControlled}</div>
+            <div className="text-2xl font-bold text-foreground">{aiControlled}</div>
             <p className="text-xs text-muted-foreground">AI Controlled</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">{humanControlled}</div>
+            <div className="text-2xl font-bold text-foreground">{humanControlled}</div>
             <p className="text-xs text-muted-foreground">HR Controlled</p>
           </CardContent>
         </Card>
@@ -613,11 +614,11 @@ export default function HRConversations() {
 
                 {/* Reference Codes Panel */}
                 {documentRequirements.length > 0 && (
-                  <div className="px-4 py-3 bg-amber-50 border-b border-amber-200">
+                  <div className="px-4 py-3 bg-muted border-b border-border">
                     <div className="flex items-center gap-2 mb-2">
-                      <FileUp className="h-4 w-4 text-amber-600" />
-                      <span className="text-sm font-medium text-amber-800">Active Document Requests</span>
-                      <Badge variant="outline" className="text-xs bg-amber-100 text-amber-700 border-amber-300">
+                      <FileUp className="h-4 w-4 text-foreground" />
+                      <span className="text-sm font-medium text-foreground">Active Document Requests</span>
+                      <Badge variant="outline" className="text-xs bg-muted text-foreground border-border">
                         {documentRequirements.filter(r => r.status === 'pending').length} pending
                       </Badge>
                     </div>
@@ -627,29 +628,29 @@ export default function HRConversations() {
                           key={req.id}
                           className={`flex items-center justify-between px-3 py-2 rounded-md text-sm ${
                             req.status === 'pending' 
-                              ? 'bg-white border border-amber-200' 
+                              ? 'bg-white border border-border' 
                               : req.status === 'submitted'
-                              ? 'bg-blue-50 border border-blue-200'
+                              ? 'bg-muted border border-border'
                               : req.status === 'verified'
-                              ? 'bg-green-50 border border-green-200'
-                              : 'bg-red-50 border border-red-200'
+                              ? 'bg-muted border border-border'
+                              : 'bg-destructive border border-destructive'
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <code className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-700">
+                            <code className="text-xs font-mono bg-secondary px-2 py-0.5 rounded text-foreground">
                               {req.referenceCode}
                             </code>
-                            <span className="text-gray-700">
+                            <span className="text-foreground">
                               {req.description || DOC_TYPE_OPTIONS.find(d => d.value === req.documentType)?.label || req.documentType}
                             </span>
                           </div>
                           <Badge 
                             variant="outline" 
                             className={`text-xs ${
-                              req.status === 'pending' ? 'text-amber-600 border-amber-300' :
-                              req.status === 'submitted' ? 'text-blue-600 border-blue-300' :
-                              req.status === 'verified' ? 'text-green-600 border-green-300' :
-                              'text-red-600 border-red-300'
+                              req.status === 'pending' ? 'text-foreground border-border' :
+                              req.status === 'submitted' ? 'text-foreground border-border' :
+                              req.status === 'verified' ? 'text-foreground border-border' :
+                              'text-destructive border-destructive'
                             }`}
                           >
                             {req.status}
@@ -676,24 +677,24 @@ export default function HRConversations() {
                             data-testid={`message-${msg.id}`}
                           >
                             {msg.direction === 'inbound' && (
-                              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                              <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                                 <User className="h-4 w-4 text-gray-600" />
                               </div>
                             )}
                             <div className={`max-w-[70%] rounded-lg px-4 py-2 ${
                               msg.direction === 'outbound'
                                 ? msg.senderType === 'ai' 
-                                  ? 'bg-blue-100 text-blue-900' 
-                                  : 'bg-blue-100 text-blue-900'
-                                : 'bg-gray-100 text-gray-900'
+                                  ? 'bg-muted text-foreground' 
+                                  : 'bg-muted text-foreground'
+                                : 'bg-secondary text-foreground'
                             }`}>
                               {msg.senderType === 'ai' && msg.direction === 'outbound' && (
-                                <div className="text-xs text-blue-600 mb-1 flex items-center gap-1">
+                                <div className="text-xs text-foreground mb-1 flex items-center gap-1">
                                   <Bot className="h-3 w-3" /> AI
                                 </div>
                               )}
                               {msg.senderType === 'human' && msg.direction === 'outbound' && (
-                                <div className="text-xs text-blue-600 mb-1 flex items-center gap-1">
+                                <div className="text-xs text-foreground mb-1 flex items-center gap-1">
                                   <UserCheck className="h-3 w-3" /> HR
                                 </div>
                               )}
@@ -724,12 +725,12 @@ export default function HRConversations() {
                             </div>
                             {msg.direction === 'outbound' && (
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                msg.senderType === 'ai' ? 'bg-blue-200' : 'bg-blue-200'
+                                msg.senderType === 'ai' ? 'bg-muted' : 'bg-muted'
                               }`}>
                                 {msg.senderType === 'ai' ? (
-                                  <Bot className="h-4 w-4 text-blue-600" />
+                                  <Bot className="h-4 w-4 text-foreground" />
                                 ) : (
-                                  <UserCheck className="h-4 w-4 text-blue-600" />
+                                  <UserCheck className="h-4 w-4 text-foreground" />
                                 )}
                               </div>
                             )}

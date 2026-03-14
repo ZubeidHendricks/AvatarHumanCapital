@@ -50,6 +50,7 @@ import InterviewInvite from "@/pages/interview-invite";
 import OnboardingDashboard from "@/pages/onboarding-dashboard";
 import HRConversations from "@/pages/hr-conversations";
 import InterviewConsole from "@/pages/interview-console";
+import InterviewTimeline from "@/pages/interview-timeline";
 import Recommendations from "@/pages/recommendations";
 import KpiManagement from "@/pages/kpi-management";
 import KpiReview from "@/pages/kpi-review";
@@ -59,7 +60,7 @@ import DocumentLibrary from "@/pages/document-library";
 import SocialScreening from "@/pages/social-screening";
 import SocialScreeningAgent from "@/pages/social-screening-agent";
 import CVTemplatePage from "@/pages/cv-template";
-import CVTemplatesPage from "@/pages/cv-templates";
+
 import DataSourcesPage from "@/pages/data-sources";
 import DataSourceDetailPage from "@/pages/data-source-detail";
 import SelfAssessment from "@/pages/self-assessment";
@@ -73,6 +74,10 @@ import EmployeeOnboarding from "@/pages/employee-onboarding";
 import TemplatesPage from "@/pages/templates";
 import AISupport from "@/pages/ai-support";
 import DemoShowcase from "@/pages/demo-showcase";
+import OnboardingUpload from "@/pages/onboarding-upload";
+import IntegrityUpload from "@/pages/integrity-upload";
+import OfferResponse from "@/pages/offer-response";
+import InterestCheck from "@/pages/interest-check";
 
 function Router() {
   return (
@@ -118,6 +123,7 @@ function Router() {
       <Route path="/onboarding-dashboard" component={OnboardingDashboard} />
       <Route path="/hr-conversations" component={HRConversations} />
       <Route path="/interview-console" component={InterviewConsole} />
+      <Route path="/interview-timeline/:sessionId" component={InterviewTimeline} />
       <Route path="/recommendations" component={Recommendations} />
       <Route path="/kpi-management" component={KpiManagement} />
       <Route path="/kpi-review/:id?" component={KpiReview} />
@@ -127,7 +133,7 @@ function Router() {
       <Route path="/social-screening" component={SocialScreening} />
       <Route path="/social-screening-agent" component={SocialScreeningAgent} />
       <Route path="/cv-template" component={CVTemplatePage} />
-      <Route path="/cv-templates" component={CVTemplatesPage} />
+
       <Route path="/templates" component={TemplatesPage} />
       <Route path="/data-sources" component={DataSourcesPage} />
       <Route path="/data-sources/:id" component={DataSourceDetailPage} />
@@ -143,6 +149,10 @@ function Router() {
       <Route path="/onboarding-setup" component={OnboardingSetup} />
       <Route path="/ai-support" component={AISupport} />
       <Route path="/demo" component={DemoShowcase} />
+      <Route path="/onboarding-upload/:token" component={OnboardingUpload} />
+      <Route path="/integrity-upload/:token" component={IntegrityUpload} />
+      <Route path="/offer-response/:token" component={OfferResponse} />
+      <Route path="/interest-check/:token" component={InterestCheck} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -151,7 +161,7 @@ function Router() {
 function AppWithLayout() {
   const [location, setLocation] = useLocation();
   
-  const publicRoutes = ['/', '/login', '/interview/invite', '/self-assessment', '/verify-certificate'];
+  const publicRoutes = ['/', '/login', '/interview/invite', '/self-assessment', '/verify-certificate', '/onboarding-upload', '/integrity-upload', '/offer-response', '/interest-check'];
   const exactPublicRoutes = ['/onboarding'];
   const isPublicRoute = publicRoutes.some(route => {
     if (route === '/') return location === '/';

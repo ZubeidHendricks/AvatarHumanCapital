@@ -84,7 +84,7 @@ export class CVTemplateGenerator {
       processedText += "\n\n[CV truncated due to length - extract what information is available]";
     }
 
-    const prompt = `Extract information from this CV/Resume to fill the Avatar Human Capital CV template. Return ONLY valid JSON matching this exact structure:
+    const prompt = `Extract information from this CV/Resume to fill the AHC - Human Capital CV template. Return ONLY valid JSON matching this exact structure:
 
 {
   "personalProfile": {
@@ -149,7 +149,7 @@ Return ONLY the JSON object, no explanations.`;
 
     try {
       const completion = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [
           {
             role: "system",

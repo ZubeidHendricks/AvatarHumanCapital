@@ -324,9 +324,9 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
   const hasAnyData = jobSpec && Object.values(jobSpec).some(v => v !== undefined && v !== null && v !== '');
 
   return (
-    <div className="flex flex-col h-[600px]">
+    <div className="flex flex-col h-[80vh]">
       {/* Mode Selector */}
-      <div className="p-4 border-b border-white/10">
+      <div className="p-4 pr-12 border-b border-white/10">
         <Tabs value={mode} onValueChange={(v) => setMode(v as "chat" | "paste" | "research")}>
           <TabsList className="grid w-full grid-cols-3 bg-card/50">
             <TabsTrigger value="research" className="gap-2" data-testid="tab-research-mode">
@@ -347,13 +347,13 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
 
       <div className="flex gap-4 flex-1 overflow-hidden p-4">
         {/* Main Content Area */}
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 basis-1/2">
           {mode === "research" ? (
             <>
               {/* AI Research Mode */}
-              <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-t-lg">
-                <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <Globe className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-gradient-to-r from-muted/10 to-background/10 rounded-t-lg">
+                <div className="w-10 h-10 rounded-full bg-muted/20 flex items-center justify-center">
+                  <Globe className="w-5 h-5 text-foreground" />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-white">AI Job Research</h3>
@@ -362,7 +362,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                   </p>
                 </div>
                 {isComplete && (
-                  <div className="flex items-center gap-2 text-green-500 text-sm">
+                  <div className="flex items-center gap-2 text-foreground text-sm">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Complete</span>
                   </div>
@@ -416,7 +416,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                       <Button
                         onClick={handleAIResearch}
                         disabled={isResearching || !researchJobTitle.trim()}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        className="flex-1 bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold"
                         data-testid="button-start-research"
                       >
                         {isResearching ? (
@@ -435,8 +435,8 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                    <div className="bg-muted/10 border border-border/20 rounded-lg p-3">
+                      <p className="text-sm text-foreground font-medium">
                         ✓ Job specification researched successfully! Review the details on the right and click "Create Job" to publish.
                       </p>
                     </div>
@@ -451,7 +451,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                       <Button
                         onClick={() => handleCreateJob(false)}
                         disabled={isLoading}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        className="flex-1 bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold"
                         data-testid="button-create-job-research"
                       >
                         {isLoading ? (
@@ -474,7 +474,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
           ) : mode === "chat" ? (
             <>
               {/* Chat Header */}
-              <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-gradient-to-r from-primary/10 to-blue-500/10 rounded-t-lg">
+              <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-gradient-to-r from-primary/10 to-background/10 rounded-t-lg">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
                   <Bot className="w-5 h-5 text-primary" />
                 </div>
@@ -485,7 +485,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                   </p>
                 </div>
                 {isComplete && (
-                  <div className="flex items-center gap-2 text-green-500 text-sm">
+                  <div className="flex items-center gap-2 text-foreground text-sm">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Complete</span>
                   </div>
@@ -555,8 +555,8 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
               <div className="p-4 border-t border-white/10">
                 {isComplete ? (
                   <div className="space-y-3">
-                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                    <div className="bg-muted/10 border border-border/20 rounded-lg p-3">
+                      <p className="text-sm text-foreground font-medium">
                         ✓ Job specification complete! Review the details and click "Create Job" to publish.
                       </p>
                     </div>
@@ -571,7 +571,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                       <Button
                         onClick={() => handleCreateJob(false)}
                         disabled={isLoading}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        className="flex-1 bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold"
                         data-testid="button-create-job"
                       >
                         {isLoading ? (
@@ -605,6 +605,7 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
                         onClick={handleSendMessage}
                         disabled={isLoading || !inputValue.trim()}
                         size="icon"
+                        className="bg-[#FFCB00] hover:bg-[#E6B800] text-black"
                         data-testid="button-send-message"
                       >
                         <Send className="w-4 h-4" />
@@ -639,9 +640,9 @@ export function JobCreationChat({ onJobCreated, onCancel }: JobCreationChatProps
           ) : (
             <>
               {/* Paste Full Spec Mode */}
-              <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-t-lg">
-                <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-blue-400" />
+              <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-gradient-to-r from-muted/10 to-background/10 rounded-t-lg">
+                <div className="w-10 h-10 rounded-full bg-muted/20 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-foreground" />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-white">Paste Full Job Specification</h3>
@@ -683,8 +684,8 @@ Benefits: Medical aid, retirement fund, flexible hours`}
 
                 {isComplete ? (
                   <div className="space-y-3">
-                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                    <div className="bg-muted/10 border border-border/20 rounded-lg p-3">
+                      <p className="text-sm text-foreground font-medium">
                         ✓ Job specification parsed successfully! Review the details and click "Create Job" to publish.
                       </p>
                     </div>
@@ -699,7 +700,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       <Button
                         onClick={() => handleCreateJob(false)}
                         disabled={isLoading}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        className="flex-1 bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold"
                         data-testid="button-create-job-paste"
                       >
                         {isLoading ? (
@@ -728,7 +729,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                     <Button
                       onClick={handleParseFullSpec}
                       disabled={isParsing || !fullJobSpec.trim()}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700"
+                      className="flex-1 bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold"
                       data-testid="button-parse-spec"
                     >
                       {isParsing ? (
@@ -752,7 +753,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
 
         {/* Collected Data Panel */}
         {showCollectedData && (
-          <Card className="w-80 flex-shrink-0 p-4 bg-card/50 border-white/10 overflow-hidden relative">
+          <Card className="flex-1 basis-1/2 p-4 bg-card/50 border-white/10 overflow-hidden relative">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-sm">{isEditing ? 'Edit Job Details' : 'Extracted Information'}</h3>
               <div className="flex items-center gap-1">
@@ -774,7 +775,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       variant="ghost"
                       size="sm"
                       onClick={handleSaveEdit}
-                      className="h-6 w-6 p-0 hover:bg-green-500/20 text-green-600 dark:text-green-400"
+                      className="h-6 w-6 p-0 hover:bg-muted/20 text-foreground"
                       data-testid="button-save-edit"
                       title="Save changes"
                     >
@@ -784,24 +785,14 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       variant="ghost"
                       size="sm"
                       onClick={handleCancelEdit}
-                      className="h-6 w-6 p-0 hover:bg-red-500/20 text-red-400"
+                      className="h-6 w-6 p-0 hover:bg-destructive/20 text-destructive"
                       data-testid="button-cancel-edit"
                       title="Cancel editing"
                     >
                       <X className="h-3 w-3" />
                     </Button>
                   </>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowCollectedData(false)}
-                    className="h-6 w-6 p-0"
-                    data-testid="button-hide-collected-data"
-                  >
-                    ✕
-                  </Button>
-                )}
+                ) : null}
               </div>
             </div>
             
@@ -996,7 +987,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       <ul className="mt-1 space-y-1">
                         {jobSpec.attributes.slice(0, 5).map((attr: string, i: number) => (
                           <li key={i} className="text-xs flex items-start gap-1">
-                            <span className="text-green-600 dark:text-green-400">•</span>
+                            <span className="text-foreground">•</span>
                             <span className="line-clamp-2">{attr}</span>
                           </li>
                         ))}
@@ -1012,7 +1003,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       <ul className="mt-1 space-y-1">
                         {jobSpec.qualifications.slice(0, 5).map((qual: string, i: number) => (
                           <li key={i} className="text-xs flex items-start gap-1">
-                            <span className="text-amber-400">•</span>
+                            <span className="text-foreground">•</span>
                             <span className="line-clamp-2">{qual}</span>
                           </li>
                         ))}
@@ -1089,7 +1080,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       <ul className="mt-1 space-y-1">
                         {jobSpec.responsibilities.slice(0, 5).map((resp: string, i: number) => (
                           <li key={i} className="text-xs flex items-start gap-1">
-                            <span className="text-green-600 dark:text-green-400">•</span>
+                            <span className="text-foreground">•</span>
                             <span className="line-clamp-2">{resp}</span>
                           </li>
                         ))}
@@ -1104,7 +1095,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       <span className="text-muted-foreground">Benefits:</span>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {jobSpec.benefits.map((benefit: string, i: number) => (
-                          <span key={i} className="bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-0.5 rounded text-xs">
+                          <span key={i} className="bg-muted/20 text-foreground px-2 py-0.5 rounded text-xs">
                             {benefit}
                           </span>
                         ))}
@@ -1128,7 +1119,7 @@ Benefits: Medical aid, retirement fund, flexible hours`}
                       <span className="text-muted-foreground">Certifications:</span>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {jobSpec.certificationsRequired.map((cert: string, i: number) => (
-                          <span key={i} className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded text-xs">
+                          <span key={i} className="bg-muted/20 text-foreground px-2 py-0.5 rounded text-xs">
                             {cert}
                           </span>
                         ))}

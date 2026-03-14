@@ -29,6 +29,8 @@ import {
   User,
   Facebook,
   Twitter,
+  Linkedin,
+  Instagram,
   MessageSquare,
   Search,
   AlertTriangle,
@@ -48,53 +50,69 @@ import { format } from "date-fns";
 import type { Candidate } from "@shared/schema";
 
 const platformAgents = [
-  { 
-    id: "consent_check", 
-    label: "Consent Verification", 
-    icon: FileCheck, 
+  {
+    id: "consent_check",
+    label: "Consent Verification",
+    icon: FileCheck,
     description: "Verifying candidate consent status and permissions...",
-    color: "text-blue-600 dark:text-blue-400",
+    color: "text-foreground dark:text-foreground",
+    bgColor: "bg-muted/20"
+  },
+  {
+    id: "linkedin",
+    label: "LinkedIn Agent",
+    icon: Linkedin,
+    description: "Analyzing professional profile, endorsements, and activity...",
+    color: "text-blue-500",
     bgColor: "bg-blue-500/20"
   },
-  { 
-    id: "facebook", 
-    label: "Facebook Agent", 
-    icon: Facebook, 
+  {
+    id: "facebook",
+    label: "Facebook Agent",
+    icon: Facebook,
     description: "Analyzing public Facebook profile and posts...",
-    color: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-500/20"
+    color: "text-foreground dark:text-foreground",
+    bgColor: "bg-muted/20"
   },
-  { 
-    id: "twitter", 
-    label: "X (Twitter) Agent", 
-    icon: Twitter, 
+  {
+    id: "twitter",
+    label: "X (Twitter) Agent",
+    icon: Twitter,
     description: "Scanning tweets, retweets, and engagement patterns...",
     color: "text-sky-400",
     bgColor: "bg-sky-500/20"
   },
-  { 
-    id: "sentiment", 
-    label: "Sentiment Analysis", 
-    icon: Heart, 
-    description: "Analyzing emotional tone and sentiment patterns...",
-    color: "text-pink-400",
+  {
+    id: "instagram",
+    label: "Instagram Agent",
+    icon: Instagram,
+    description: "Analyzing public posts, captions, and engagement...",
+    color: "text-pink-500",
     bgColor: "bg-pink-500/20"
   },
-  { 
-    id: "culture_fit", 
-    label: "Culture Fit Assessment", 
-    icon: Target, 
-    description: "Evaluating alignment with company values and culture...",
-    color: "text-green-600 dark:text-green-400",
-    bgColor: "bg-green-500/20"
+  {
+    id: "sentiment",
+    label: "Sentiment Analysis",
+    icon: Heart,
+    description: "Analyzing emotional tone and sentiment patterns...",
+    color: "text-foreground",
+    bgColor: "bg-muted/20"
   },
-  { 
-    id: "risk_scoring", 
-    label: "Risk Scoring", 
-    icon: Shield, 
+  {
+    id: "culture_fit",
+    label: "Culture Fit Assessment",
+    icon: Target,
+    description: "Evaluating alignment with company values and culture...",
+    color: "text-foreground",
+    bgColor: "bg-muted/20"
+  },
+  {
+    id: "risk_scoring",
+    label: "Risk Scoring",
+    icon: Shield,
     description: "Computing overall risk score and generating report...",
-    color: "text-teal-700 dark:text-teal-400",
-    bgColor: "bg-teal-600/20"
+    color: "text-foreground dark:text-foreground",
+    bgColor: "bg-muted/20"
   },
 ];
 
@@ -122,7 +140,7 @@ export default function SocialScreeningAgent() {
   const [, navigate] = useLocation();
   const { tenant } = useTenant();
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>("");
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["facebook", "twitter"]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["linkedin", "facebook", "twitter", "instagram"]);
   const [isRunningScreening, setIsRunningScreening] = useState(false);
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
@@ -240,7 +258,8 @@ export default function SocialScreeningAgent() {
                   .replace('consent verification', 'consent_check')
                   .replace('sentiment analysis', 'sentiment')
                   .replace('culture fit assessment', 'culture_fit')
-                  .replace('risk scoring', 'risk_scoring');
+                  .replace('risk scoring', 'risk_scoring')
+                  .replace('orchestrator', 'consent_check');
                   
                 const stepIdx = updated.findIndex(s => s.id === agentId);
                 
@@ -334,18 +353,18 @@ export default function SocialScreeningAgent() {
 
   const getLogIcon = (level: string) => {
     switch (level) {
-      case 'success': return <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />;
-      case 'warning': return <AlertTriangle className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />;
-      case 'error': return <XCircle className="w-3 h-3 text-red-600 dark:text-red-400" />;
-      default: return <Activity className="w-3 h-3 text-blue-600 dark:text-blue-400" />;
+      case 'success': return <CheckCircle2 className="w-3 h-3 text-foreground" />;
+      case 'warning': return <AlertTriangle className="w-3 h-3 text-foreground" />;
+      case 'error': return <XCircle className="w-3 h-3 text-destructive" />;
+      default: return <Activity className="w-3 h-3 text-foreground dark:text-foreground" />;
     }
   };
 
   const getRiskColor = (score: number) => {
-    if (score <= 25) return 'text-green-600 dark:text-green-400';
-    if (score <= 50) return 'text-yellow-600 dark:text-yellow-400';
-    if (score <= 75) return 'text-teal-700 dark:text-teal-400';
-    return 'text-red-600 dark:text-red-400';
+    if (score <= 25) return 'text-foreground';
+    if (score <= 50) return 'text-foreground';
+    if (score <= 75) return 'text-foreground dark:text-foreground';
+    return 'text-destructive';
   };
 
   const getRiskLabel = (score: number) => {
@@ -356,18 +375,18 @@ export default function SocialScreeningAgent() {
   };
 
   const getRiskBgColor = (score: number) => {
-    if (score <= 25) return 'bg-green-500/20 border-green-500/30';
-    if (score <= 50) return 'bg-yellow-500/20 border-yellow-500/30';
-    if (score <= 75) return 'bg-teal-600/20 border-teal-600/30';
-    return 'bg-red-500/20 border-red-500/30';
+    if (score <= 25) return 'bg-muted/20 border-border/30';
+    if (score <= 50) return 'bg-muted/20 border-border/30';
+    if (score <= 75) return 'bg-muted/20 border-border/30';
+    return 'bg-destructive/20 border-destructive/30';
   };
 
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment?.toLowerCase()) {
-      case 'positive': return 'text-green-600 dark:text-green-400';
-      case 'neutral': return 'text-blue-600 dark:text-blue-400';
-      case 'negative': return 'text-red-600 dark:text-red-400';
-      default: return 'text-gray-400';
+      case 'positive': return 'text-foreground';
+      case 'neutral': return 'text-foreground dark:text-foreground';
+      case 'negative': return 'text-destructive';
+      default: return 'text-muted-foreground';
     }
   };
 
@@ -380,23 +399,23 @@ export default function SocialScreeningAgent() {
         animate={{ opacity: 1, y: 0 }}
         className="lg:col-span-9 space-y-6"
       >
-        <Card className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border-blue-500/20" data-testid="results-header">
+        <Card className="bg-gradient-to-br from-muted/10 to-background/10 border-border/20" data-testid="results-header">
           <CardContent className="pt-6">
             <div className="flex items-start gap-6">
-              <div className="w-20 h-20 rounded-full bg-blue-500/20 flex items-center justify-center">
-                <User className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+              <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center">
+                <User className="w-10 h-10 text-foreground dark:text-foreground" />
               </div>
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-foreground">{selectedCandidate.fullName}</h2>
                 <p className="text-muted-foreground">{selectedCandidate.email}</p>
                 <div className="flex items-center gap-4 mt-2">
-                  <Badge variant="outline" className="text-blue-600 dark:text-blue-400 border-blue-400/30">
+                  <Badge variant="outline" className="text-foreground dark:text-foreground border-border/30">
                     {selectedCandidate.role || 'Candidate'}
                   </Badge>
-                  <Badge variant="outline" className="text-blue-600 dark:text-blue-400 border-blue-400/30">
+                  <Badge variant="outline" className="text-foreground dark:text-foreground border-border/30">
                     {selectedCandidate.stage}
                   </Badge>
-                  <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-0">
+                  <Badge className="bg-muted/20 text-foreground border-0">
                     <CheckCircle2 className="w-3 h-3 mr-1" />
                     Screening Complete
                   </Badge>
@@ -416,7 +435,7 @@ export default function SocialScreeningAgent() {
           <Card className="bg-card/30 border-border dark:border-white/10" data-testid="result-sentiment">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Heart className="w-4 h-4 text-pink-600 dark:text-pink-400" />
+                <Heart className="w-4 h-4 text-foreground dark:text-foreground" />
                 Overall Sentiment
               </CardTitle>
             </CardHeader>
@@ -431,12 +450,12 @@ export default function SocialScreeningAgent() {
           <Card className="bg-card/30 border-border dark:border-white/10" data-testid="result-culture">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Target className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <Target className="w-4 h-4 text-foreground" />
                 Culture Fit Score
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+              <div className="text-2xl font-bold text-foreground">
                 {screeningResult.cultureFitScore || Math.max(0, 100 - (screeningResult.riskScore || 0))}%
               </div>
               <p className="text-xs text-muted-foreground mt-1">Alignment with company values</p>
@@ -446,12 +465,12 @@ export default function SocialScreeningAgent() {
           <Card className="bg-card/30 border-border dark:border-white/10" data-testid="result-posts">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <MessageSquare className="w-4 h-4 text-foreground dark:text-foreground" />
                 Posts Analyzed
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <div className="text-2xl font-bold text-foreground dark:text-foreground">
                 {screeningResult.postsAnalyzed || 0}
               </div>
               <p className="text-xs text-muted-foreground mt-1">Across {selectedPlatforms.length} platforms</p>
@@ -460,9 +479,9 @@ export default function SocialScreeningAgent() {
         </div>
 
         {screeningResult.redFlags && screeningResult.redFlags.length > 0 && (
-          <Card className="bg-red-500/5 border-red-500/20" data-testid="result-red-flags">
+          <Card className="bg-destructive/5 border-destructive/20" data-testid="result-red-flags">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2 text-red-600 dark:text-red-400">
+              <CardTitle className="text-sm flex items-center gap-2 text-destructive">
                 <AlertTriangle className="w-4 h-4" />
                 Red Flags Identified ({screeningResult.redFlags.length})
               </CardTitle>
@@ -470,8 +489,8 @@ export default function SocialScreeningAgent() {
             <CardContent>
               <div className="space-y-2">
                 {screeningResult.redFlags.map((flag: string, idx: number) => (
-                  <div key={idx} className="flex items-start gap-2 p-2 rounded bg-red-500/10">
-                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                  <div key={idx} className="flex items-start gap-2 p-2 rounded bg-destructive/10">
+                    <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
                     <span className="text-sm">{flag}</span>
                   </div>
                 ))}
@@ -484,7 +503,7 @@ export default function SocialScreeningAgent() {
           <Card className="bg-card/30 border-border dark:border-white/10" data-testid="result-topics">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                <Sparkles className="w-4 h-4 text-foreground" />
                 Key Topics & Interests
               </CardTitle>
             </CardHeader>
@@ -503,19 +522,27 @@ export default function SocialScreeningAgent() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {selectedPlatforms.map((platform) => {
             const platformResult = screeningResult.platforms?.[platform] || {};
+            const platformMeta: Record<string, { icon: any; label: string; iconClass: string }> = {
+              linkedin: { icon: Linkedin, label: 'LinkedIn', iconClass: 'text-blue-500' },
+              facebook: { icon: Facebook, label: 'Facebook', iconClass: 'text-foreground dark:text-foreground' },
+              twitter: { icon: Twitter, label: 'X (Twitter)', iconClass: 'text-sky-400' },
+              instagram: { icon: Instagram, label: 'Instagram', iconClass: 'text-pink-500' },
+            };
+            const meta = platformMeta[platform] || { icon: Search, label: platform, iconClass: 'text-foreground' };
+            const PlatformIcon = meta.icon;
             return (
               <Card key={platform} className="bg-card/30 border-border dark:border-white/10" data-testid={`result-platform-${platform}`}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    {platform === 'facebook' ? <Facebook className="w-4 h-4 text-blue-600 dark:text-blue-400" /> : <Twitter className="w-4 h-4 text-sky-400" />}
-                    {platform === 'facebook' ? 'Facebook' : 'X (Twitter)'} Analysis
+                    <PlatformIcon className={`w-4 h-4 ${meta.iconClass}`} />
+                    {meta.label} Analysis
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground">Posts Found</p>
-                      <p className="font-medium">{platformResult.postsFound || Math.floor(Math.random() * 50) + 10}</p>
+                      <p className="font-medium">{platformResult.postsFound || 0}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Engagement</p>
@@ -539,10 +566,10 @@ export default function SocialScreeningAgent() {
         </div>
 
         {screeningResult.recommendation && (
-          <Card className="bg-gradient-to-r from-blue-500/10 to-blue-500/10 border-blue-500/20" data-testid="result-recommendation">
+          <Card className="bg-gradient-to-r from-muted/10 to-background/10 border-border/20" data-testid="result-recommendation">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Brain className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <Brain className="w-4 h-4 text-foreground dark:text-foreground" />
                 AI Recommendation
               </CardTitle>
             </CardHeader>
@@ -567,7 +594,7 @@ export default function SocialScreeningAgent() {
           </Button>
           <Button 
             onClick={() => navigate('/social-screening')}
-            className="flex-1 bg-blue-500 hover:bg-blue-400 text-blue-950"
+            className="flex-1 bg-muted hover:bg-muted text-foreground"
           >
             View All Screenings
           </Button>
@@ -581,9 +608,9 @@ export default function SocialScreeningAgent() {
       
       <div className="flex-1 pt-20 container mx-auto px-4 py-6 h-[calc(100vh-80px)]">
         <div className="mb-6">
-          <BackButton fallbackPath="/social-screening" className="mb-4" />
+          <BackButton fallbackPath="/hr?tab=integrity" className="mb-4" />
           <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Brain className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <Brain className="w-8 h-8 text-foreground dark:text-foreground" />
             Social Intelligence Agent
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -598,7 +625,7 @@ export default function SocialScreeningAgent() {
                 <Card className="bg-card/30 border-border dark:border-white/10 backdrop-blur-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-bold flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      <CheckCircle2 className="w-4 h-4 text-foreground" />
                       Screening Complete
                     </CardTitle>
                   </CardHeader>
@@ -619,7 +646,7 @@ export default function SocialScreeningAgent() {
                     <Button
                       onClick={() => navigate('/social-screening')}
                       size="sm"
-                      className="w-full bg-blue-500 hover:bg-blue-400 text-blue-950"
+                      className="w-full bg-muted hover:bg-muted text-foreground"
                     >
                       View All Screenings
                     </Button>
@@ -634,7 +661,7 @@ export default function SocialScreeningAgent() {
             <Card className="bg-card/30 border-border dark:border-white/10 backdrop-blur-sm" data-testid="card-candidate-selection">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" /> 
+                  <Users className="w-4 h-4 text-foreground dark:text-foreground" /> 
                   Select Candidate
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -672,7 +699,7 @@ export default function SocialScreeningAgent() {
                     data-testid="card-selected-candidate"
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <User className="w-4 h-4 text-foreground dark:text-foreground" />
                       <span className="font-semibold text-sm">{selectedCandidate.fullName}</span>
                     </div>
                     <div className="text-xs text-muted-foreground space-y-1">
@@ -684,8 +711,8 @@ export default function SocialScreeningAgent() {
                     {selectedConsent && (
                       <div className="mt-3 pt-3 border-t border-border dark:border-white/10">
                         <div className="flex items-center gap-2 text-xs">
-                          <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />
-                          <span className="text-green-600 dark:text-green-400">Consent Granted</span>
+                          <CheckCircle2 className="w-3 h-3 text-foreground" />
+                          <span className="text-foreground">Consent Granted</span>
                         </div>
                         <div className="text-[10px] text-muted-foreground mt-1">
                           Platforms: {selectedConsent.platformsConsented?.join(', ') || 'All'}
@@ -699,8 +726,10 @@ export default function SocialScreeningAgent() {
                   <Label className="text-xs text-muted-foreground">Platforms to Screen</Label>
                   <div className="space-y-2">
                     {[
+                      { id: 'linkedin', label: 'LinkedIn', icon: Linkedin },
                       { id: 'facebook', label: 'Facebook', icon: Facebook },
                       { id: 'twitter', label: 'X (Twitter)', icon: Twitter },
+                      { id: 'instagram', label: 'Instagram', icon: Instagram },
                     ].map((platform) => (
                       <div key={platform.id} className="flex items-center gap-2">
                         <Checkbox
@@ -727,7 +756,7 @@ export default function SocialScreeningAgent() {
                 <Button 
                   onClick={startSocialScreening}
                   disabled={!selectedCandidateId || isRunningScreening || !selectedConsent}
-                  className="w-full bg-blue-500 hover:bg-blue-400 text-blue-950"
+                  className="w-full bg-muted hover:bg-muted text-foreground"
                   data-testid="button-start-screening"
                 >
                   {isRunningScreening ? (
@@ -753,7 +782,7 @@ export default function SocialScreeningAgent() {
                 <Card className="bg-card/30 border-border dark:border-white/10 backdrop-blur-sm" data-testid="card-screening-result">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-bold flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      <TrendingUp className="w-4 h-4 text-foreground" />
                       Screening Result
                     </CardTitle>
                   </CardHeader>
@@ -793,11 +822,11 @@ export default function SocialScreeningAgent() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                    <Zap className="w-4 h-4 text-foreground" />
                     AI Agent Workflow
                   </CardTitle>
                   {isRunningScreening && (
-                    <Badge variant="outline" className="animate-pulse bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                    <Badge variant="outline" className="animate-pulse bg-muted/20 text-foreground dark:text-foreground">
                       <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                       Processing
                     </Badge>
@@ -820,7 +849,7 @@ export default function SocialScreeningAgent() {
                         animate={{ opacity: 1 }}
                         className="flex flex-col items-center justify-center py-12 text-center"
                       >
-                        <Brain className="w-16 h-16 text-blue-600/30 dark:text-blue-400/30 mb-4" />
+                        <Brain className="w-16 h-16 text-foreground/30 dark:text-foreground/30 mb-4" />
                         <p className="text-muted-foreground">Select a candidate and click "Start AI Screening" to begin</p>
                       </motion.div>
                     ) : (
@@ -834,9 +863,9 @@ export default function SocialScreeningAgent() {
                             step.status === 'processing' 
                               ? `${step.bgColor} border-current ${step.color} ring-2 ring-current/20`
                               : step.status === 'completed'
-                              ? 'bg-green-500/10 border-green-500/30'
+                              ? 'bg-muted/10 border-border/30'
                               : step.status === 'failed'
-                              ? 'bg-red-500/10 border-red-500/30'
+                              ? 'bg-destructive/10 border-destructive/30'
                               : 'bg-white/5 border-border dark:border-white/10'
                           }`}
                           data-testid={`workflow-step-${step.id}`}
@@ -846,9 +875,9 @@ export default function SocialScreeningAgent() {
                               {step.status === 'processing' ? (
                                 <Loader2 className={`w-5 h-5 ${step.color} animate-spin`} />
                               ) : step.status === 'completed' ? (
-                                <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                <CheckCircle2 className="w-5 h-5 text-foreground" />
                               ) : step.status === 'failed' ? (
-                                <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                <XCircle className="w-5 h-5 text-destructive" />
                               ) : (
                                 <step.icon className={`w-5 h-5 ${step.color}`} />
                               )}
@@ -859,10 +888,10 @@ export default function SocialScreeningAgent() {
                                 <Badge 
                                   variant="outline" 
                                   className={`text-[10px] ${
-                                    step.status === 'processing' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' :
-                                    step.status === 'completed' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
-                                    step.status === 'failed' ? 'bg-red-500/20 text-red-600 dark:text-red-400' :
-                                    'bg-gray-500/20 text-gray-400'
+                                    step.status === 'processing' ? 'bg-muted/20 text-foreground dark:text-foreground' :
+                                    step.status === 'completed' ? 'bg-muted/20 text-foreground' :
+                                    step.status === 'failed' ? 'bg-destructive/20 text-destructive' :
+                                    'bg-secondary0/20 text-muted-foreground'
                                   }`}
                                 >
                                   {step.status}
@@ -872,7 +901,7 @@ export default function SocialScreeningAgent() {
                                 <p className="text-xs text-muted-foreground">{step.details[0]}</p>
                               )}
                               {step.postsAnalyzed !== undefined && step.postsAnalyzed > 0 && (
-                                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                <p className="text-xs text-foreground dark:text-foreground mt-1">
                                   <MessageSquare className="w-3 h-3 inline mr-1" />
                                   {step.postsAnalyzed} posts analyzed
                                 </p>
@@ -901,7 +930,7 @@ export default function SocialScreeningAgent() {
             <Card className="bg-card/30 border-border dark:border-white/10 backdrop-blur-sm flex-1 flex flex-col overflow-hidden" data-testid="card-logs">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-cyan-400" />
+                  <Activity className="w-4 h-4 text-foreground" />
                   Agent Activity Log
                   {logs.length > 0 && (
                     <Badge variant="outline" className="ml-auto text-[10px]">
@@ -915,7 +944,7 @@ export default function SocialScreeningAgent() {
                   <div className="space-y-2">
                     {logs.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <Activity className="w-12 h-12 text-cyan-400/30 mb-3" />
+                        <Activity className="w-12 h-12 text-foreground/30 mb-3" />
                         <p className="text-sm text-muted-foreground">Agent logs will appear here</p>
                       </div>
                     ) : (
@@ -930,7 +959,7 @@ export default function SocialScreeningAgent() {
                             {getLogIcon(log.level)}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400">{log.agent}</span>
+                                <span className="text-[10px] font-medium text-foreground dark:text-foreground">{log.agent}</span>
                                 <span className="text-[9px] text-muted-foreground whitespace-nowrap">
                                   {format(new Date(log.timestamp), 'HH:mm:ss')}
                                 </span>

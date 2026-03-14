@@ -1,7 +1,9 @@
 import Groq from "groq-sdk";
+import { randomUUID } from "crypto";
 import type { IStorage } from "./storage";
 import type { Candidate, OnboardingWorkflow } from "@shared/schema";
 import { EmailService } from "./email-service";
+import { createOnboardingAgent } from "./onboarding-agent";
 
 interface OnboardingTask {
   id: string;
@@ -36,27 +38,24 @@ export class OnboardingOrchestrator {
     }
   }
 
-  async startOnboarding(tenantId: string, candidateId: string, restart: boolean = false): Promise<OnboardingWorkflow> {
+  async startOnboarding(
+    tenantId: string,
+    candidateId: string,
+    restart: boolean = false,
+    options?: { requirements?: { itSetup?: boolean; buildingAccess?: boolean; equipment?: boolean }; equipmentList?: string[]; startDate?: Date }
+  ): Promise<OnboardingWorkflow> {
     const candidate = await this.storage.getCandidate(tenantId, candidateId);
     if (!candidate) {
       throw new Error("Candidate not found");
     }
 
+    // If a workflow already exists, return it — never delete or duplicate
     const existing = await this.storage.getOnboardingWorkflowByCandidateId(tenantId, candidateId);
-    
-    if (existing && !restart) {
-      if (existing.status === "In Progress") {
-        return existing;
-      }
-      
-      if (existing.status === "Completed" || existing.status === "Failed") {
-        restart = true;
-      }
+    if (existing) {
+      return existing;
     }
 
-    if (restart && existing) {
-      await this.storage.deleteOnboardingWorkflow(tenantId, existing.id);
-    }
+    const reqs = options?.requirements || { itSetup: true, buildingAccess: true, equipment: true };
 
     const initialTasks: OnboardingTask[] = [
       {
@@ -73,13 +72,18 @@ export class OnboardingOrchestrator {
         type: "paperwork",
         details: ["Send tax forms (W-4/I-9)", "Request banking details", "Deploy NDA for e-signature"]
       },
-      {
+      ...(reqs.itSetup !== false ? [{
         id: "provisioning",
         title: "IT Provisioning",
-        status: "pending",
-        type: "provisioning",
-        details: ["Create AD account", "Order equipment", "Generate VPN credentials"]
-      },
+        status: "pending" as const,
+        type: "provisioning" as const,
+        details: [
+          "Create AD account",
+          ...(reqs.equipment !== false ? ["Order equipment"] : []),
+          "Generate VPN credentials",
+          ...(reqs.buildingAccess !== false ? ["Request building access card"] : []),
+        ]
+      }] : []),
       {
         id: "orientation",
         title: "Orientation",
@@ -95,7 +99,8 @@ export class OnboardingOrchestrator {
       currentStep: "welcome",
       tasks: initialTasks as any,
       documents: [] as any,
-      provisioningData: {} as any,
+      provisioningData: { requirements: reqs, equipmentList: options?.equipmentList || [] } as any,
+      ...(options?.startDate ? { startDate: options.startDate } : {}),
     });
 
     this.processWorkflow(tenantId, workflow.id, candidate).catch(error => {
@@ -125,24 +130,47 @@ export class OnboardingOrchestrator {
       await this.processPaperwork(tenantId, workflowId, candidate, tasks, documents);
       await new Promise(r => setTimeout(r, 1000));
       
-      const provisioningCredentials = await this.processProvisioning(tenantId, workflowId, candidate, tasks, documents);
-      await this.notifyITAfterProvisioning(candidate, provisioningCredentials || {});
+      const provisioningResult = await this.processProvisioning(tenantId, workflowId, candidate, tasks, documents);
+      await this.notifyITAfterProvisioning(candidate, provisioningResult || {});
+
+      // Send building access notification if requested
+      if (provisioningResult?.reqs?.buildingAccess !== false) {
+        const startDateStr = workflow.startDate
+          ? new Date(workflow.startDate).toLocaleDateString('en-ZA')
+          : "TBD";
+        try {
+          await this.emailService.notifyFacilitiesForBuildingAccess(
+            candidate.fullName,
+            candidate.email || "N/A",
+            startDateStr
+          );
+        } catch (error) {
+          console.error("Failed to send building access notification:", error);
+        }
+      }
       await new Promise(r => setTimeout(r, 1000));
       
       const orientationResult = await this.processOrientation(tenantId, workflowId, candidate, tasks, documents);
 
-      const finalTasks = tasks.map(t => ({ ...t, status: "completed" as const }));
+      // Mark document requests as 'requested' (email is now sent from the trigger route)
+      try {
+        const agent = createOnboardingAgent(this.storage);
+        await agent.requestDocuments(tenantId, workflowId, candidate.id.toString(), 'email');
+      } catch (error) {
+        console.error("Failed to update document request statuses:", error);
+      }
+
+      // Provisioning stays "pending" until IT/facilities confirm completion
+      const finalTasks = tasks.map(t =>
+        t.type === "provisioning"
+          ? { ...t, status: "pending" as const }
+          : { ...t, status: "completed" as const }
+      );
       await this.storage.updateOnboardingWorkflow(tenantId, workflowId, {
         tasks: finalTasks as any,
-        status: "Completed",
-        completedAt: new Date(),
+        status: "In Progress",
+        currentStep: "documentation",
       });
-
-      await this.emailService.notifyHRForOnboardingCompletion(
-        candidate.fullName,
-        candidate.email || "N/A",
-        orientationResult?.orientationDate || "TBD"
-      );
     } catch (error) {
       console.error("Workflow processing error:", error);
       await this.storage.updateOnboardingWorkflow(tenantId, workflowId, {
@@ -173,7 +201,7 @@ export class OnboardingOrchestrator {
     if (this.groq) {
       try {
         const completion = await this.groq.chat.completions.create({
-          model: "llama-3.3-70b-versatile",
+          model: "openai/gpt-oss-120b",
           messages: [
             {
               role: "system",
@@ -266,6 +294,17 @@ export class OnboardingOrchestrator {
       tasks: tasks as any,
       documents: documents as any,
     });
+
+    // Initialize real document tracking requests (only if not already done by trigger route)
+    try {
+      const existingRequests = await this.storage.getOnboardingDocumentRequests(tenantId, workflowId);
+      if (existingRequests.length === 0) {
+        const agent = createOnboardingAgent(this.storage);
+        await agent.initializeDocumentRequests(tenantId, workflowId, candidate.id.toString());
+      }
+    } catch (error) {
+      console.error("Failed to initialize document requests:", error);
+    }
   }
 
   private async processProvisioning(
@@ -295,7 +334,7 @@ export class OnboardingOrchestrator {
     if (this.groq) {
       try {
         const completion = await this.groq.chat.completions.create({
-          model: "llama-3.3-70b-versatile",
+          model: "openai/gpt-oss-120b",
           messages: [
             {
               role: "system",
@@ -324,41 +363,68 @@ export class OnboardingOrchestrator {
       }
     }
 
+    // Get the stored requirements and equipment list from the workflow
+    const currentWorkflow = await this.storage.getOnboardingWorkflow(tenantId, workflowId);
+    const storedData = (currentWorkflow?.provisioningData as any) || {};
+    const reqs = storedData.requirements || {};
+    const equipmentList: string[] = storedData.equipmentList || [];
+
+    const equipmentSnippet = equipmentList.length > 0
+      ? equipmentList.join(", ") + " — request sent to IT."
+      : "No equipment requested.";
+
     documents.push(
       {
         id: `asset-laptop-${Date.now()}`,
-        title: "IT_Asset_Request_#4922",
+        title: "IT_Asset_Request",
         type: "asset",
-        status: "provisioned",
-        snippet: "MacBook Pro M3 & Monitor dispatched to IT."
+        status: "pending",
+        snippet: equipmentSnippet
       },
       {
         id: `asset-access-${Date.now()}`,
         title: "System_Access_Credentials",
         type: "asset",
-        status: "provisioned",
+        status: "pending",
         snippet: "SSO Invite sent. VPN Access granted."
       }
     );
 
-    tasks[taskIndex].status = "completed";
+    // Generate confirmation tokens for IT and building access
+    const itConfirmationToken = randomUUID();
+    const buildingAccessToken = randomUUID();
+
+    // Provisioning stays "pending" until IT confirms
+    tasks[taskIndex].status = "pending";
     tasks[taskIndex].result = credentials;
+
+    const provisioningData = {
+      ...credentials,
+      requirements: reqs,
+      equipmentList,
+      itConfirmationToken,
+      itConfirmed: false,
+      buildingAccessToken,
+      buildingAccessConfirmed: reqs.buildingAccess === false, // auto-confirm if not requested
+      equipmentConfirmed: equipmentList.length === 0, // auto-confirm if no equipment requested
+    };
 
     await this.storage.updateOnboardingWorkflow(tenantId, workflowId, {
       tasks: tasks as any,
       documents: documents as any,
-      provisioningData: credentials as any,
+      provisioningData: provisioningData as any,
     });
 
-    return credentials;
+    return { credentials, equipmentList, itConfirmationToken, buildingAccessToken, reqs };
   }
 
-  private async notifyITAfterProvisioning(candidate: Candidate, credentials: any): Promise<void> {
+  private async notifyITAfterProvisioning(candidate: Candidate, provisioningResult: any): Promise<void> {
     try {
       await this.emailService.notifyITForProvisioning(
         candidate.fullName,
         candidate.email || "N/A",
-        credentials
+        provisioningResult.credentials || provisioningResult,
+        provisioningResult.equipmentList
       );
     } catch (error) {
       console.error("Failed to send IT notification:", error);

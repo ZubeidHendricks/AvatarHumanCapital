@@ -13,6 +13,7 @@ type Transcript = {
   role: "user" | "ai";
   text: string;
   emotion?: string;
+  timestamp?: number;
 };
 
 export default function InterviewVoice() {
@@ -22,9 +23,12 @@ export default function InterviewVoice() {
   const [currentEmotion, setCurrentEmotion] = useState<string>("Neutral");
   const [isStarted, setIsStarted] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const recordingStartTimeRef = useRef<number>(0);
+  const humeChatIdRef = useRef<string | null>(null);
 
   const { data: voiceConfig, isLoading, error } = useQuery({
     queryKey: ['voice-config'],
@@ -33,26 +37,31 @@ export default function InterviewVoice() {
     retry: 1
   });
 
-  useEffect(() => {
-    if (!voiceConfig || !isStarted || isConnected) return;
+  // Use a ref to track connection state inside the effect without triggering re-runs.
+  // Previously, having isConnected in the dependency array caused the cleanup function
+  // to close the WebSocket immediately after onopen set isConnected=true.
+  const isConnectedRef = useRef(false);
 
-    let hasConnected = false;
+  useEffect(() => {
+    if (!voiceConfig || !isStarted || isConnectedRef.current) return;
+
+    let cancelled = false;
 
     const connectToHume = async () => {
       try {
-        // Don't use config_id - let session settings handle the prompt
         const wsUrl = `wss://api.hume.ai/v0/evi/chat?access_token=${voiceConfig.accessToken}`;
-        
+
         console.log("Connecting to Hume AI...");
+        recordingStartTimeRef.current = Date.now();
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
+          if (cancelled) { ws.close(); return; }
           console.log("Connected to Hume AI");
-          hasConnected = true;
+          isConnectedRef.current = true;
           setIsConnected(true);
           setState("listening");
-          
-          // Send session settings to initialize the conversation
+
           const sessionSettings = {
             type: "session_settings",
             prompt: {
@@ -73,11 +82,18 @@ Guardrails:
 - Keep responses realistic in length for the role
 - Feedback must be objective, actionable, and encouraging
 
+Speech and listening rules:
+- Speak at a normal, natural conversational pace. Do not speak slowly or drag out words.
+- CRITICAL: Always wait for the user to fully finish their response before you start speaking. Do not interrupt or cut them off mid-sentence.
+- Be patient. Let silences happen naturally. The user may need a moment to gather their thoughts.
+- Only respond after the user has clearly finished their turn.
+- Do not rush to fill pauses—give the user space to complete their answer.
+
 At the start, ask the user to describe who they want you to roleplay as (role, relationship, personality traits) and the scenario they want to practice. Then fully embody that person until the roleplay is over.`
             },
             custom_session_id: `interview-${Date.now()}`
           };
-          
+
           ws.send(JSON.stringify(sessionSettings));
           console.log("Session settings sent");
           toast.success("Connected to AI interviewer");
@@ -87,26 +103,33 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
           try {
             const message = JSON.parse(event.data);
             console.log("Received message:", message);
-            
+
             if (message.type === "chat_metadata") {
               console.log("Chat initialized:", message);
+              if (message.chat_id) {
+                humeChatIdRef.current = message.chat_id;
+              }
             } else if (message.type === "assistant_message") {
               console.log("Assistant message received:", message);
               setState("speaking");
               if (message.message?.content) {
+                const elapsed = recordingStartTimeRef.current ? Math.round((Date.now() - recordingStartTimeRef.current) / 1000) : undefined;
                 setTranscripts(prev => [...prev, {
                   role: "ai",
                   text: message.message.content,
-                  emotion: message.models?.prosody?.scores?.[0]?.name || "Neutral"
+                  emotion: message.models?.prosody?.scores?.[0]?.name || "Neutral",
+                  timestamp: elapsed,
                 }]);
                 setCurrentEmotion(message.models?.prosody?.scores?.[0]?.name || "Neutral");
               }
             } else if (message.type === "user_message") {
               console.log("User message received:", message);
               if (message.message?.content) {
+                const elapsed = recordingStartTimeRef.current ? Math.round((Date.now() - recordingStartTimeRef.current) / 1000) : undefined;
                 setTranscripts(prev => [...prev, {
                   role: "user",
-                  text: message.message.content
+                  text: message.message.content,
+                  timestamp: elapsed,
                 }]);
               }
               setState("processing");
@@ -132,15 +155,13 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
 
         ws.onclose = (event) => {
           console.log("Disconnected from Hume AI. Code:", event.code, "Reason:", event.reason);
+          isConnectedRef.current = false;
           setIsConnected(false);
-          setIsStarted(false); // Prevent reconnection loop
+          setIsStarted(false);
           setState("idle");
-          
-          // Only show error if connection dropped unexpectedly
-          if (event.code !== 1000 && hasConnected) {
+
+          if (event.code !== 1000 && isConnectedRef.current) {
             toast.error(`Connection closed: ${event.reason || 'Connection lost'}`);
-          } else if (!hasConnected) {
-            toast.error("Failed to establish connection. Please try again.");
           }
         };
 
@@ -148,7 +169,10 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
 
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const mediaRecorder = new MediaRecorder(stream);
-        
+        recordingStartTimeRef.current = Date.now();
+
+        // Send live audio to Hume continuously via WebSocket.
+        // Hume EVI handles echo cancellation and turn-taking on their end.
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
             const reader = new FileReader();
@@ -177,6 +201,7 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
     connectToHume();
 
     return () => {
+      cancelled = true;
       if (socketRef.current) {
         socketRef.current.close();
       }
@@ -184,7 +209,7 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
         mediaRecorderRef.current.stop();
       }
     };
-  }, [voiceConfig, isStarted, isConnected]);
+  }, [voiceConfig, isStarted]);
 
   const playAudio = (base64Audio: string) => {
     try {
@@ -213,7 +238,7 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
     }
   };
 
-  const handleEndInterview = () => {
+  const handleEndInterview = async () => {
     if (socketRef.current) {
       socketRef.current.close();
     }
@@ -223,13 +248,53 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
     setIsStarted(false);
     setIsConnected(false);
     toast.success("Interview ended");
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get("sessionId") || urlParams.get("id") || `voice-${Date.now()}`;
+    const durationSec = Math.round((Date.now() - recordingStartTimeRef.current) / 1000);
+
+    // Send transcripts + analysis to complete the interview session
+    if (transcripts.length > 0) {
+      setIsUploading(true);
+      try {
+        const mappedTranscripts = transcripts.map((t) => ({
+          role: t.role === "user" ? "candidate" : "ai",
+          text: t.text,
+          emotion: t.emotion,
+          timestamp: t.timestamp,
+        }));
+        await interviewService.completeInterview(sessionId, {
+          transcripts: mappedTranscripts,
+          duration: durationSec,
+          stage: 'voice',
+        });
+        toast.success("Interview completed and analysis submitted");
+      } catch (err) {
+        console.error("Failed to complete interview:", err);
+        toast.error("Failed to submit interview analysis.");
+      }
+    }
+
+    // The full mixed recording (AI + candidate) is fetched from Hume's servers.
+    // We no longer upload the browser mic-only recording to avoid duplicate/overlapping audio.
+    if (humeChatIdRef.current) {
+      try {
+        await interviewService.fetchHumeAudio(sessionId, humeChatIdRef.current);
+        toast.success("Interview recording saved");
+      } catch (err) {
+        console.error("Failed to fetch Hume audio:", err);
+        toast.error("Recording will be fetched in the background. Check back shortly.");
+      }
+    }
+
+    setIsUploading(false);
   };
 
   if (error) {
     return (
       <div className="min-h-screen bg-black text-foreground flex items-center justify-center">
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Connection Error</h2>
+          <h2 className="text-2xl font-bold text-destructive">Connection Error</h2>
           <p className="text-foreground/70">Unable to connect to Hume AI. Please check your configuration.</p>
           <Link href="/hr-dashboard">
             <Button variant="outline">Return to Dashboard</Button>
@@ -246,7 +311,7 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
       <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-20">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-white/5 border border-border dark:border-white/10 flex items-center justify-center">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-muted animate-pulse' : 'bg-secondary0'}`} />
           </div>
           <div>
             <h1 className="font-medium text-sm text-foreground/90">Voice Interview Session</h1>
@@ -276,21 +341,28 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
                 This is an AI-led voice interview. Speak naturally as if you were talking to a person.
               </p>
             </div>
-            <Button 
-              size="lg" 
-              onClick={() => setIsStarted(true)}
-              disabled={isLoading}
-              className="h-14 px-8 rounded-full bg-white text-black hover:bg-white/90 font-medium text-lg transition-transform hover:scale-105"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                "Start Conversation"
-              )}
-            </Button>
+            {isUploading ? (
+              <div className="flex items-center gap-3 text-foreground/70">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Saving recording...</span>
+              </div>
+            ) : (
+              <Button
+                size="lg"
+                onClick={() => setIsStarted(true)}
+                disabled={isLoading}
+                className="h-14 px-8 rounded-full bg-white text-black hover:bg-white/90 font-medium text-lg transition-transform hover:scale-105"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  "Start Conversation"
+                )}
+              </Button>
+            )}
           </motion.div>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center">
@@ -310,7 +382,7 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
                     className={`text-xl md:text-2xl font-medium leading-relaxed ${
                       transcripts[transcripts.length - 1].role === "ai" 
                         ? "text-foreground" 
-                        : "text-blue-300"
+                        : "text-foreground"
                     }`}
                   >
                     {transcripts[transcripts.length - 1].text}
@@ -352,7 +424,7 @@ At the start, ask the user to describe who they want you to roleplay as (role, r
           </h3>
           <div className="space-y-2">
             {transcripts.map((t, i) => (
-              <div key={i} className={`text-xs ${t.role === "ai" ? "text-white/70" : "text-blue-300/70"}`}>
+              <div key={i} className={`text-xs ${t.role === "ai" ? "text-white/70" : "text-foreground/70"}`}>
                 <span className="font-bold">{t.role === "ai" ? "AI:" : "You:"}</span> {t.text}
               </div>
             ))}

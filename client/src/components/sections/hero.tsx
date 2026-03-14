@@ -4,39 +4,35 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 import { ArrowRight, PlayCircle, X } from "lucide-react";
 import { Link } from "wouter";
-import heroBg from "@assets/generated_images/abstract_tech_network_visualization.png";
 import demoVideo from "@/assets/videos/ahc-explainer.mp4";
 
 export function Hero() {
   const [showDemo, setShowDemo] = useState(false);
 
   return (
-    <section className="relative min-h-screen flex items-center pt-20 overflow-hidden bg-background">
-      {/* Background Image with Overlay */}
-      <div className="absolute inset-0 z-0">
-        <img 
-          src={heroBg} 
-          alt="Digital Network Background" 
-          className="w-full h-full object-cover opacity-20 dark:opacity-40"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,var(--background)_100%)]" />
-      </div>
-
+    <section className="relative min-h-screen flex items-center pt-20 overflow-hidden" style={{ backgroundColor: '#FFCB00' }}>
       <div className="container mx-auto px-6 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-5xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6 }}
+            className="flex flex-col items-center"
+          >
+            <img
+              src="/logos/ahc-logo.svg"
+              alt="AHC"
+              className="w-[280px] sm:w-[360px] md:w-[450px] lg:w-[550px] h-auto object-contain mb-10"
+              data-testid="img-hero-logo"
+            />
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col items-center"
+            transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <img 
-              src="/logos/main-logo.png" 
-              alt="Avatar Human Capital" 
-              className="h-24 sm:h-32 md:h-40 lg:h-48 w-auto object-contain mb-8"
-            />
-            <span className="inline-block py-1.5 px-4 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium tracking-wide mb-6">
+            <span className="inline-block py-1.5 px-4 rounded-full bg-black/10 text-black text-xs font-medium tracking-wide mb-6">
               NEXT GEN ADVISORY SERVICES
             </span>
           </motion.div>
@@ -44,18 +40,18 @@ export function Hero() {
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-6 text-foreground"
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-6 text-black"
           >
             Operational Excellence <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-700">Powered by Intelligence</span>
+            <span className="text-black/40">Powered by Intelligence</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="text-xl text-black/60 mb-10 max-w-2xl mx-auto"
           >
             Unify your HR, Finance, and Operations with our AI-driven advisory platform. 
             Automate compliance, streamline workflows, and visualize success.
@@ -64,18 +60,18 @@ export function Hero() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link href="/login">
-              <Button size="lg" className="h-12 px-8 text-base bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all hover:scale-105">
+              <Button size="lg" className="h-12 px-8 text-base shadow-lg bg-black text-white font-semibold hover:bg-gray-800" data-testid="button-start-transformation">
                 Start Transformation <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
             <Button 
               size="lg" 
               variant="outline" 
-              className="h-12 px-8 text-base border-border hover:bg-accent"
+              className="h-12 px-8 text-base border-black/30 text-black hover:bg-black/10 bg-transparent"
               onClick={() => setShowDemo(true)}
               data-testid="button-watch-demo"
             >
@@ -85,10 +81,8 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Decorative Elements */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent pointer-events-none" />
 
-      {/* Demo Video Modal */}
       <Dialog open={showDemo} onOpenChange={setShowDemo}>
         <DialogContent className="max-w-4xl p-0 bg-black border-0 overflow-hidden">
           <DialogTitle className="sr-only">AHC Platform Demo Video</DialogTitle>

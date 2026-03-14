@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTenantQueryKey } from "@/hooks/useTenant";
-import { Link, useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,19 +12,23 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Loader2, Users, Target, TrendingUp, CheckCircle, AlertCircle, Search, Sparkles,
   Bot, Brain, FileSearch, UserCheck, Zap, Clock, ArrowRight, Play, MessageSquare,
-  ChevronRight, Star, Briefcase, MapPin, Award, Activity, X, Building2, GraduationCap,
-  Mail, Phone, Linkedin, FileText, ThumbsUp, Eye
+  ChevronRight, ChevronDown, ChevronUp, Star, Briefcase, MapPin, Award, Activity, X, Building2, GraduationCap,
+  Mail, Phone, Linkedin, FileText, ThumbsUp, Eye, Send, RefreshCw
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, candidateService } from "@/lib/api";
+import { toast } from "sonner";
 import type { Job, RecruitmentSession, Candidate } from "@shared/schema";
+import { InterviewInviteDialog } from "@/components/interview-invite-dialog";
+import { InterestCheckDialog } from "@/components/interest-check-dialog";
 
 const AGENT_STEPS = [
   { id: "analyzing", name: "Analyzing Job", icon: FileSearch, description: "Understanding requirements and skills needed" },
-  { id: "sourcing_specialists", name: "Specialist Sourcing", icon: Users, description: "LinkedIn, PNet & Indeed specialists searching" },
+  { id: "sourcing_specialists", name: "Specialist Sourcing", icon: Users, description: "11 SA career sites: LinkedIn, PNet, Indeed, CareerJunction, JobMail & more" },
   { id: "sourcing_ai", name: "AI Search", icon: Search, description: "Augmenting with general AI search" },
   { id: "screening", name: "AI Screening", icon: Brain, description: "Evaluating candidate profiles with LLM" },
   { id: "ranking", name: "Smart Ranking", icon: TrendingUp, description: "Scoring and prioritizing matches" },
@@ -54,6 +58,15 @@ const AGENT_MESSAGES = [
   { agent: "LinkedIn Specialist", message: "Generating boolean search strings...", type: "sourcing_specialists" },
   { agent: "PNet Specialist", message: "Querying SA's largest CV database...", type: "sourcing_specialists" },
   { agent: "Indeed Specialist", message: "Searching resume database...", type: "sourcing_specialists" },
+  // Additional SA Career Sites
+  { agent: "CareerJunction Scraper", message: "Scraping CareerJunction for SA candidates...", type: "sourcing_specialists" },
+  { agent: "JobMail Scraper", message: "Searching JobMail job listings...", type: "sourcing_specialists" },
+  { agent: "MyJobMag Scraper", message: "Scanning MyJobMag SA profiles...", type: "sourcing_specialists" },
+  { agent: "OfferZen Scraper", message: "Searching OfferZen tech marketplace...", type: "sourcing_specialists" },
+  { agent: "RecruitMySelf Scraper", message: "Checking RecruitMySelf listings...", type: "sourcing_specialists" },
+  { agent: "BestJobs Scraper", message: "Searching BestJobs SA database...", type: "sourcing_specialists" },
+  { agent: "Gumtree Scraper", message: "Scanning Gumtree CVs and services...", type: "sourcing_specialists" },
+  { agent: "Careers24 Scraper", message: "Searching Careers24 listings...", type: "sourcing_specialists" },
   // AI Processing
   { agent: "AI Search", message: "Augmenting with general talent search...", type: "sourcing_ai" },
   { agent: "AI Search", message: "Deduplicating and merging candidate profiles...", type: "sourcing_ai" },
@@ -123,7 +136,7 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
   return (
     <div className="flex flex-wrap gap-2 mt-2">
       {candidate.email ? (
-        <a href={`mailto:${candidate.email}`} className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-300">
+        <a href={`mailto:${candidate.email}`} className="inline-flex items-center gap-1 text-xs text-[#FFCB00] hover:text-[#E6B800]">
           <Mail className="h-3 w-3" /> {candidate.email}
         </a>
       ) : null}
@@ -133,7 +146,7 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
         </a>
       ) : null}
       {metadata?.linkedinUrl && (
-        <a href={metadata.linkedinUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-300">
+        <a href={metadata.linkedinUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-[#FFCB00] hover:text-[#E6B800]">
           <Linkedin className="h-3 w-3" /> LinkedIn
         </a>
       )}
@@ -143,7 +156,7 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
         <Button
           variant="outline"
           size="sm"
-          className="h-7 text-xs gap-1 border-blue-500/50 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+          className="h-7 text-xs gap-1 border-[#FFCB00]/50 text-[#FFCB00] hover:bg-[#FFCB00]/10"
           onClick={handleEnrichContact}
           disabled={isEnriching}
           data-testid={`enrich-contact-${candidate.id}`}
@@ -167,7 +180,7 @@ function ContactEnrichmentSection({ candidate, metadata }: { candidate: Candidat
         <Button
           variant="outline"
           size="sm"
-          className="h-7 text-xs gap-1 border-blue-500/50 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+          className="h-7 text-xs gap-1 border-[#FFCB00]/50 text-[#FFCB00] hover:bg-[#FFCB00]/10"
           onClick={() => window.open(`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(candidate.fullName || '')}`, '_blank')}
           data-testid={`linkedin-search-${candidate.id}`}
         >
@@ -208,12 +221,28 @@ export default function RecruitmentAgent() {
   const [currentStep, setCurrentStep] = useState(0);
   const [agentMessages, setAgentMessages] = useState<typeof AGENT_MESSAGES>([]);
   const [isSimulating, setIsSimulating] = useState(false);
+  const agentActivityEndRef = useRef<HTMLDivElement>(null);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showCandidateDialog, setShowCandidateDialog] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [showAgentModal, setShowAgentModal] = useState(false);
-  
+  const [showShortlistDialog, setShowShortlistDialog] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteCandidate, setInviteCandidate] = useState<Candidate | null>(null);
+  const [interestCheckOpen, setInterestCheckOpen] = useState(false);
+  const [interestCheckCandidate, setInterestCheckCandidate] = useState<Candidate | null>(null);
+  const [shortlistingId, setShortlistingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [isRefreshingShortlist, setIsRefreshingShortlist] = useState(false);
+
+  const [hadRunningSessions, setHadRunningSessions] = useState(false);
+
+  // Auto-scroll agent activity feed to bottom when new messages arrive
+  useEffect(() => {
+    agentActivityEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [agentMessages.length]);
+
   // Update selectedJobId when URL param changes
   useEffect(() => {
     if (jobIdFromUrl && jobIdFromUrl !== selectedJobId) {
@@ -225,14 +254,23 @@ export default function RecruitmentAgent() {
   const jobsKey = useTenantQueryKey(['jobs']);
   const recruitmentSessionsKey = useTenantQueryKey(['recruitment-sessions']);
   const candidatesKey = useTenantQueryKey(['candidates']);
+  const interestChecksKey = useTenantQueryKey(['interest-checks']);
 
   const { data: jobs, isLoading: jobsLoading } = useQuery<Job[]>({
     queryKey: jobsKey,
     queryFn: async () => {
       const response = await api.get("/jobs");
-      return response.data;
+      const body = response.data;
+      return Array.isArray(body) ? body : body.data ?? [];
     },
   });
+
+  // Auto-select first job if navigated without a jobId (e.g. from sidebar menu)
+  useEffect(() => {
+    if (!jobIdFromUrl && !selectedJobId && jobs && jobs.length > 0) {
+      setSelectedJobId(jobs[0].id);
+    }
+  }, [jobs, jobIdFromUrl, selectedJobId]);
 
   const { data: sessions, isLoading: sessionsLoading } = useQuery<RecruitmentSession[]>({
     queryKey: recruitmentSessionsKey,
@@ -240,16 +278,78 @@ export default function RecruitmentAgent() {
       const response = await api.get("/recruitment-sessions");
       return response.data;
     },
-    refetchInterval: isSimulating ? 2000 : 5000,
+    refetchInterval: (isSimulating || hadRunningSessions) ? 2000 : 10000,
   });
 
   const { data: candidates } = useQuery<Candidate[]>({
     queryKey: candidatesKey,
     queryFn: async () => {
       const response = await api.get("/candidates");
+      const body = response.data;
+      return Array.isArray(body) ? body : body.data ?? [];
+    },
+    refetchInterval: (isSimulating || hadRunningSessions) ? 3000 : false,
+  });
+
+  const { data: interestChecks } = useQuery<any[]>({
+    queryKey: interestChecksKey,
+    queryFn: async () => {
+      const response = await api.get("/interest-checks");
       return response.data;
     },
   });
+
+  // When a running session completes, immediately refresh candidates
+  useEffect(() => {
+    const hasRunning = sessions?.some(s => s.status === "Running") || false;
+    if (hadRunningSessions && !hasRunning) {
+      queryClient.invalidateQueries({ queryKey: candidatesKey });
+    }
+    setHadRunningSessions(hasRunning);
+  }, [sessions]);
+
+  const updateCandidateMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: any }) =>
+      candidateService.update(id, updates),
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: candidatesKey });
+      const previous = queryClient.getQueryData<Candidate[]>(candidatesKey);
+      queryClient.setQueryData<Candidate[]>(candidatesKey, (old) =>
+        old?.map((c) => (String(c.id) === id ? { ...c, ...updates } : c))
+      );
+      return { previous };
+    },
+    onSuccess: (updatedCandidate, { id }) => {
+      // Write server response into cache so polling refetches can't overwrite with stale data
+      queryClient.setQueryData<Candidate[]>(candidatesKey, (old) =>
+        old?.map((c) => (String(c.id) === id ? { ...c, ...updatedCandidate } : c))
+      );
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(candidatesKey, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: candidatesKey });
+    },
+  });
+
+  const handleShortlist = async (candidate: Candidate, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setShortlistingId(String(candidate.id));
+    try {
+      await updateCandidateMutation.mutateAsync({
+        id: String(candidate.id),
+        updates: { stage: "Shortlisted" },
+      });
+      toast.success(`${candidate.fullName} moved to shortlisted`);
+    } catch {
+      toast.error("Failed to shortlist candidate");
+    } finally {
+      setShortlistingId(null);
+    }
+  };
 
   // Fetch enabled recruitment platforms from configuration
   const { data: platformConfigs } = useQuery<Array<{ id: string; enabled: boolean; connected: boolean }>>({
@@ -371,13 +471,19 @@ export default function RecruitmentAgent() {
   const sessionResults = activeSession?.results as any;
   const sessionStep = sessionResults?.step || null;
   const specialistResultsFromSession = sessionResults?.specialistResults || [];
+  const scraperResultsFromSession = sessionResults?.scraperResults || [];
+  const skippedRejected = sessionResults?.skippedRejected || 0;
+  const skippedDuplicate = sessionResults?.skippedDuplicate || 0;
+  const internalMatches = sessionResults?.internalMatches || 0;
 
-  // Map session step to workflow step index  
+  // Map session step to workflow step index
   const getStepIndexFromSession = (step: string | null): number => {
     if (!step) return -1;
     switch (step) {
       case "analyzing_job": return 0;
+      case "checking_internal": return 0;
       case "sourcing_specialists": return 1;
+      case "sourcing_scrapers": return 1;
       case "sourcing_ai_search": return 2;
       case "ranking_candidates": return 3;
       case "completed": return 5;
@@ -397,11 +503,15 @@ export default function RecruitmentAgent() {
 
   // Filter candidates by selected job OR by the latest session's job
   const activeJobId = selectedJobId || latestSession?.jobId;
-  
+
   const topCandidates = candidates
     ?.filter(c => activeJobId ? c.jobId === activeJobId : true)
     .sort((a, b) => (b.match || 0) - (a.match || 0))
     .slice(0, 10) || [];
+
+  const shortlistedCount = candidates
+    ?.filter(c => c.stage === "Shortlisted" && (activeJobId ? c.jobId === activeJobId : true))
+    .length || 0;
 
   // Get the job title for display
   const displayJobTitle = activeJobId ? jobs?.find(j => j.id === activeJobId)?.title : null;
@@ -460,14 +570,14 @@ export default function RecruitmentAgent() {
           {/* Header */}
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-teal-500 to-blue-600">
-                <Bot className="h-8 w-8 text-white" />
+              <div className="w-12 h-12 rounded-full bg-[#FFCB00]/10 flex items-center justify-center">
+                <Bot className="w-7 h-7 text-[#FFCB00]" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-blue-600 dark:from-teal-400 dark:to-blue-400 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold text-foreground dark:text-[#FFCB00]">
                   AI Recruitment Command Center
                 </h1>
-                <p className="text-gray-500 dark:text-gray-400">
+                <p className="text-muted-foreground">
                   Intelligent talent acquisition powered by LLaMA 3.1 70B via Groq
                 </p>
               </div>
@@ -501,7 +611,7 @@ export default function RecruitmentAgent() {
                 </div>
                 {selectedJob && (
                   <div className="hidden md:flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 px-3 py-2 bg-muted/50 rounded-lg border border-border">
-                    <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <Briefcase className="h-4 w-4 text-[#FFCB00]" />
                     <span className="font-medium text-foreground">{selectedJob.title}</span>
                     {selectedJob.department && <span>• {selectedJob.department}</span>}
                     {selectedJob.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{selectedJob.location}</span>}
@@ -530,7 +640,7 @@ export default function RecruitmentAgent() {
                 <Button
                   onClick={handleStartRecruitment}
                   disabled={!selectedJobId || startRecruitmentMutation.isPending || isSimulating}
-                  className="bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-500 hover:to-blue-500 h-10 px-6"
+                  className="bg-[#FFCB00] hover:bg-[#E6B800] text-black h-10 px-6"
                   data-testid="button-start-recruitment"
                 >
                   {startRecruitmentMutation.isPending || isSimulating ? (
@@ -553,11 +663,11 @@ export default function RecruitmentAgent() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <Card className="bg-gray-100 dark:bg-zinc-900/50 border-border">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-500/10">
-                  <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="p-2 rounded-lg bg-[#FFCB00]/10">
+                  <Activity className="h-5 w-5 text-[#FFCB00]" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{sessions?.length || 0}</p>
+                  <p className="text-2xl font-bold text-[#FFCB00]">{sessions?.length || 0}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-500">Sessions</p>
                 </div>
               </CardContent>
@@ -629,17 +739,41 @@ export default function RecruitmentAgent() {
                     </Select>
                   )}
                   {topCandidates.length > 0 && (
-                    <Link href="/candidates-list">
-                      <Button variant="outline" size="sm" className="border-border hover:bg-muted" data-testid="button-view-all-candidates">
-                        View All Candidates
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-border hover:bg-muted"
+                      data-testid="button-view-shortlist"
+                      onClick={() => setShowShortlistDialog(true)}
+                    >
+                      View Shortlist ({shortlistedCount})
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
                   )}
                 </div>
               </div>
             </CardHeader>
             <CardContent>
+              {(isSimulating || runningSessions.length > 0) && (
+                <div className="mb-4 p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
+                        AI agents are sourcing candidates...
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Matches will appear here automatically as they are found.
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      {[0,1,2].map(i => (
+                        <div key={i} className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" style={{ animationDelay: `${i * 0.3}s` }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
               {topCandidates.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {topCandidates.map((candidate, index) => {
@@ -649,7 +783,7 @@ export default function RecruitmentAgent() {
                       <div
                         key={candidate.id}
                         onClick={() => handleCandidateClick(candidate)}
-                        className="group p-5 rounded-xl border border-border bg-card hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/5 transition-all cursor-pointer relative"
+                        className="group p-5 rounded-xl border border-border bg-card hover:border-[#FFCB00]/40 hover:shadow-lg hover:shadow-[#FFCB00]/5 transition-all cursor-pointer relative"
                         data-testid={`candidate-card-${candidate.id}`}
                       >
                         {index < 3 && (
@@ -661,7 +795,7 @@ export default function RecruitmentAgent() {
                         )}
 
                         <div className="flex items-start gap-4 mb-3">
-                          <Avatar className="h-12 w-12 bg-gradient-to-br from-teal-500 to-blue-600 flex-shrink-0">
+                          <Avatar className="h-12 w-12 bg-[#0A0A0A] flex-shrink-0">
                             <AvatarFallback className="text-white text-sm font-bold bg-transparent">
                               {candidate.fullName?.split(' ').map(n => n[0]).join('') || '?'}
                             </AvatarFallback>
@@ -706,26 +840,58 @@ export default function RecruitmentAgent() {
                         <ContactEnrichmentSection candidate={candidate} metadata={metadata} />
 
                         <div className="mt-3 pt-3 border-t border-border flex gap-2">
-                          <Link href={`/candidates-list?candidateId=${candidate.id}`} onClick={(e: any) => e.stopPropagation()}>
-                            <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-xs h-7">
-                              <Eye className="h-3 w-3 mr-1" />
-                              Profile
-                            </Button>
-                          </Link>
-                          <Button size="sm" variant="outline" className="border-border hover:bg-muted text-xs h-7" onClick={(e: any) => e.stopPropagation()}>
-                            <ThumbsUp className="h-3 w-3 mr-1" />
-                            Shortlist
+                          <Button
+                            size="sm"
+                            className="bg-[#FFCB00] hover:bg-[#E6B800] text-black text-xs h-7"
+                            onClick={(e: any) => { e.stopPropagation(); handleCandidateClick(candidate); }}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View Profile
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className={`border-border hover:bg-muted text-xs h-7 ${candidate.stage === 'Shortlisted' ? 'bg-green-500/20 text-green-600 border-green-500/30' : ''}`}
+                            onClick={(e: any) => { e.stopPropagation(); handleShortlist(candidate, e); }}
+                            disabled={candidate.stage === 'Shortlisted' || shortlistingId === String(candidate.id)}
+                          >
+                            {shortlistingId === String(candidate.id) ? (
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            ) : (
+                              <ThumbsUp className="h-3 w-3 mr-1" />
+                            )}
+                            {candidate.stage === 'Shortlisted' ? 'Shortlisted' : shortlistingId === String(candidate.id) ? 'Shortlisting...' : 'Shortlist'}
                           </Button>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              ) : (
+              ) : !isSimulating && runningSessions.length === 0 ? (
                 <div className="text-center py-16 text-gray-500 dark:text-gray-500">
                   <Bot className="h-16 w-16 mx-auto mb-4 opacity-20" />
                   <h3 className="text-lg font-medium text-foreground mb-1">No candidates yet</h3>
                   <p className="text-sm max-w-md mx-auto">Select a job position above and deploy AI agents to find and rank top candidates automatically.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="p-5 rounded-xl border border-border bg-card animate-pulse">
+                      <div className="flex items-start gap-4 mb-3">
+                        <div className="h-12 w-12 rounded-full bg-muted" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-muted rounded w-3/4" />
+                          <div className="h-3 bg-muted rounded w-1/2" />
+                        </div>
+                      </div>
+                      <div className="h-8 bg-muted rounded w-24 mb-3" />
+                      <div className="flex gap-1">
+                        <div className="h-5 bg-muted rounded w-16" />
+                        <div className="h-5 bg-muted rounded w-14" />
+                        <div className="h-5 bg-muted rounded w-18" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -755,7 +921,7 @@ export default function RecruitmentAgent() {
                           </span>
                           <Badge className={`text-[10px] ml-2 ${
                             session.status === 'Completed' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
-                            session.status === 'Running' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' :
+                            session.status === 'Running' ? 'bg-blue-500/20 text-[#FFCB00]' :
                             'bg-red-500/20 text-red-600 dark:text-red-400'
                           }`}>
                             {session.status}
@@ -764,6 +930,12 @@ export default function RecruitmentAgent() {
                         <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
                           <span>{session.candidatesFound} found</span>
                           <span>{session.candidatesAdded} added</span>
+                          {(session.results as any)?.skippedDuplicate > 0 && (
+                            <span className="text-amber-500">{(session.results as any).skippedDuplicate} existing</span>
+                          )}
+                          {(session.results as any)?.skippedRejected > 0 && (
+                            <span className="text-red-400">{(session.results as any).skippedRejected} rejected</span>
+                          )}
                         </div>
                       </div>
                     );
@@ -777,10 +949,10 @@ export default function RecruitmentAgent() {
 
       {/* Agent Activity Modal */}
       <Dialog open={showAgentModal} onOpenChange={setShowAgentModal}>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden bg-card border-border text-foreground">
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden bg-card border-border text-foreground">
           <DialogHeader className="border-b border-border pb-4">
             <DialogTitle className="text-xl flex items-center gap-2">
-              <Bot className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <Bot className="h-6 w-6 text-[#FFCB00]" />
               AI Agents Working
               {isSimulating && (
                 <Badge className="ml-2 bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
@@ -800,16 +972,40 @@ export default function RecruitmentAgent() {
             </DialogDescription>
           </DialogHeader>
 
+          {/* Stats bar showing internal DB check, duplicates, and rejected */}
+          {(internalMatches > 0 || skippedDuplicate > 0 || skippedRejected > 0) && (
+            <div className="flex items-center gap-4 px-4 py-2 bg-muted/50 rounded-lg border border-border text-xs">
+              {internalMatches > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-blue-400" />
+                  <span className="text-gray-600 dark:text-gray-400"><strong>{internalMatches}</strong> already in DB</span>
+                </div>
+              )}
+              {skippedDuplicate > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="text-amber-600 dark:text-amber-400"><strong>{skippedDuplicate}</strong> duplicates skipped</span>
+                </div>
+              )}
+              {skippedRejected > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-red-400" />
+                  <span className="text-red-600 dark:text-red-400"><strong>{skippedRejected}</strong> previously rejected</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
             {/* Left: AI Agent Workflow */}
             <div className="border border-border rounded-lg overflow-hidden">
               <div className="px-4 py-3 bg-muted/50 border-b border-border">
                 <h3 className="font-medium text-sm flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Bot className="h-4 w-4 text-[#FFCB00]" />
                   AI Agent Workflow
                 </h3>
               </div>
-              <ScrollArea className="h-[400px]">
+              <ScrollArea className="h-[65vh]">
                 <div className="p-3 space-y-1.5">
                   {Object.entries(agentsByCategory).length === 0 ? (
                     <div className="text-center py-8">
@@ -829,12 +1025,12 @@ export default function RecruitmentAgent() {
                             <div
                               key={agent.platform}
                               className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
-                                isActive ? 'bg-blue-500/10' : hasResult ? 'bg-green-500/5' : ''
+                                isActive ? 'bg-[#FFCB00]/10' : hasResult ? 'bg-green-500/5' : ''
                               }`}
                               data-testid={`agent-${agent.platform.toLowerCase().replace(/\s+/g, '-')}`}
                             >
                               <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                isActive ? 'bg-blue-500' : hasResult ? 'bg-green-500' : 'bg-gray-300 dark:bg-zinc-700'
+                                isActive ? 'bg-[#FFCB00]' : hasResult ? 'bg-green-500' : 'bg-gray-300 dark:bg-zinc-700'
                               }`}>
                                 {isActive ? (
                                   <Loader2 className="h-3 w-3 animate-spin text-white" />
@@ -866,11 +1062,11 @@ export default function RecruitmentAgent() {
             <div className="border border-border rounded-lg overflow-hidden">
               <div className="px-4 py-3 bg-muted/50 border-b border-border">
                 <h3 className="font-medium text-sm flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <MessageSquare className="h-4 w-4 text-[#FFCB00]" />
                   Live Agent Activity
                 </h3>
               </div>
-              <ScrollArea className="h-[400px]">
+              <ScrollArea className="h-[65vh]">
                 <div className="p-3 space-y-2">
                   {agentMessages.length === 0 && !isSimulating ? (
                     <div className="text-center py-12 text-gray-500 dark:text-gray-500">
@@ -898,21 +1094,200 @@ export default function RecruitmentAgent() {
                   )}
                   {isSimulating && (
                     <div className="flex gap-2 animate-pulse">
-                      <Avatar className="h-7 w-7 bg-blue-500 flex-shrink-0">
+                      <Avatar className="h-7 w-7 bg-[#FFCB00] flex-shrink-0">
                         <AvatarFallback className="text-[10px] font-bold text-white bg-transparent">AI</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 bg-muted/50 rounded-lg p-2 border border-border">
                         <div className="flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" />
-                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          <span className="w-1.5 h-1.5 bg-[#FFCB00] rounded-full animate-bounce" />
+                          <span className="w-1.5 h-1.5 bg-[#FFCB00] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 bg-[#FFCB00] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                         </div>
                       </div>
                     </div>
                   )}
+                  <div ref={agentActivityEndRef} />
                 </div>
               </ScrollArea>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Shortlisted Candidates Dialog */}
+      <Dialog open={showShortlistDialog} onOpenChange={setShowShortlistDialog}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden bg-card border-border text-foreground">
+          <DialogHeader className="border-b border-border pb-4">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                Shortlisted Candidates
+                {displayJobTitle && (
+                  <Badge className="ml-2 bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                    <Briefcase className="h-3 w-3 mr-1" />
+                    {displayJobTitle}
+                  </Badge>
+                )}
+              </DialogTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 mr-6"
+                disabled={isRefreshingShortlist}
+                onClick={async () => {
+                  setIsRefreshingShortlist(true);
+                  await Promise.all([
+                    queryClient.invalidateQueries({ queryKey: candidatesKey }),
+                    queryClient.invalidateQueries({ queryKey: interestChecksKey }),
+                  ]);
+                  setTimeout(() => setIsRefreshingShortlist(false), 800);
+                }}
+                data-testid="button-refresh-shortlisted"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshingShortlist ? 'animate-spin' : ''}`} />
+                {isRefreshingShortlist ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </div>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
+              Top talent ready for interviews and offers
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[65vh] overflow-y-auto overflow-x-hidden pr-2">
+            {(() => {
+              const shortlisted = candidates
+                ?.filter(c => c.stage === "Shortlisted" && (activeJobId ? c.jobId === activeJobId : true))
+                .sort((a, b) => (b.match || 0) - (a.match || 0)) || [];
+
+              if (shortlisted.length === 0) {
+                return (
+                  <div className="text-center py-12 text-gray-500 dark:text-gray-500">
+                    <Star className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <h3 className="text-base font-medium text-foreground mb-1">No shortlisted candidates</h3>
+                    <p className="text-sm">
+                      {activeJobId
+                        ? "No candidates have been shortlisted for this position yet."
+                        : "Shortlist candidates from the top matches to see them here."}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3 py-4 overflow-hidden min-w-0">
+                  {shortlisted.map((candidate) => {
+                    const metadata = candidate.metadata as any;
+                    return (
+                      <div
+                        key={candidate.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/50 hover:border-[#FFCB00]/30 transition-all overflow-hidden w-full min-w-0"
+                      >
+                        <Avatar className="h-11 w-11 bg-[#0A0A0A] flex-shrink-0">
+                          <AvatarFallback className="text-white text-sm font-bold bg-transparent">
+                            {candidate.fullName?.split(' ').map(n => n[0]).join('') || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 max-w-[35%] overflow-hidden shrink-0">
+                          <h4 className="font-semibold truncate">{candidate.fullName}</h4>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{candidate.role || 'No role specified'}</p>
+                          {(candidate.location || metadata?.location) && (
+                            <p className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1 mt-0.5 truncate">
+                              <MapPin className="h-3 w-3 shrink-0" /> {candidate.location || metadata?.location}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-sm font-semibold shrink-0 ${getMatchColor(candidate.match || 0)}`}>
+                            {candidate.match || 0}%
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-border hover:bg-muted h-8 text-xs shrink-0"
+                            onClick={() => {
+                              setShowShortlistDialog(false);
+                              handleCandidateClick(candidate);
+                            }}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            Profile
+                          </Button>
+                          {(() => {
+                            const check = interestChecks?.filter((c: any) => c.candidateId === candidate.id)?.[0];
+                            const status = check?.status;
+                            if (status === "interested") {
+                              return (
+                                <Button
+                                  size="sm"
+                                  className="bg-[#FFCB00] hover:bg-[#E6B800] text-black h-8 text-xs shrink-0"
+                                  data-testid={`ai-interview-${candidate.id}`}
+                                  onClick={() => {
+                                    setInviteCandidate(candidate);
+                                    setInviteOpen(true);
+                                  }}
+                                >
+                                  <Bot className="h-3 w-3 mr-1" />
+                                  AI Interview
+                                </Button>
+                              );
+                            } else if (status === "sent" || status === "pending") {
+                              return (
+                                <Badge className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30 text-xs px-2 py-1 gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Awaiting Response
+                                </Badge>
+                              );
+                            } else {
+                              return (
+                                <Button
+                                  size="sm"
+                                  className="bg-blue-600 hover:bg-blue-500 text-white h-8 text-xs shrink-0"
+                                  data-testid={`interest-check-${candidate.id}`}
+                                  onClick={() => {
+                                    setInterestCheckCandidate(candidate);
+                                    setInterestCheckOpen(true);
+                                  }}
+                                >
+                                  <Send className="h-3 w-3 mr-1" />
+                                  Interest Check
+                                </Button>
+                              );
+                            }
+                          })()}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-300 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 h-8 text-xs shrink-0"
+                            data-testid={`remove-shortlist-${candidate.id}`}
+                            onClick={async () => {
+                              setRemovingId(String(candidate.id));
+                              try {
+                                await updateCandidateMutation.mutateAsync({
+                                  id: String(candidate.id),
+                                  updates: { stage: "Screening" },
+                                });
+                                toast.success(`${candidate.fullName} removed from shortlist`);
+                              } catch {
+                                toast.error("Failed to remove from shortlist");
+                              } finally {
+                                setRemovingId(null);
+                              }
+                            }}
+                            disabled={removingId === String(candidate.id)}
+                          >
+                            {removingId === String(candidate.id) ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <X className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>
@@ -944,16 +1319,21 @@ export default function RecruitmentAgent() {
                 return (
                   <div
                     key={candidate.id}
+                    ref={(el) => {
+                      if (el && selectedCandidate?.id === candidate.id) {
+                        requestAnimationFrame(() => el.scrollIntoView({ behavior: 'instant', block: 'center' }));
+                      }
+                    }}
                     className={`p-4 rounded-lg border transition-all ${
-                      selectedCandidate?.id === candidate.id 
-                        ? 'bg-blue-500/10 border-blue-500/50' 
+                      selectedCandidate?.id === candidate.id
+                        ? 'bg-[#FFCB00]/10 border-[#FFCB00]/50'
                         : 'bg-muted/50 border-border hover:border-border'
                     }`}
                   >
                     <div className="flex items-start gap-4">
                       {/* Avatar & Rank */}
                       <div className="relative flex-shrink-0">
-                        <Avatar className="h-14 w-14 bg-gradient-to-br from-teal-500 to-blue-600">
+                        <Avatar className="h-14 w-14 bg-[#0A0A0A]">
                           <AvatarFallback className="text-white text-lg font-bold bg-transparent">
                             {candidate.fullName?.split(' ').map(n => n[0]).join('') || '?'}
                           </AvatarFallback>
@@ -1028,8 +1408,8 @@ export default function RecruitmentAgent() {
 
                         {/* AI Reasoning */}
                         {metadata?.aiReasoning && (
-                          <div className="mt-3 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                            <p className="text-xs text-blue-600 dark:text-blue-400 mb-1 flex items-center gap-1">
+                          <div className="mt-3 p-3 bg-[#FFCB00]/10 rounded-lg border border-[#FFCB00]/20">
+                            <p className="text-xs text-[#FFCB00] mb-1 flex items-center gap-1">
                               <Brain className="h-3 w-3" /> AI Analysis
                             </p>
                             <p className="text-sm text-gray-700 dark:text-gray-300">{metadata.aiReasoning}</p>
@@ -1047,15 +1427,19 @@ export default function RecruitmentAgent() {
 
                         {/* Actions */}
                         <div className="mt-4 flex gap-2">
-                          <Link href={`/candidates-list?candidateId=${candidate.id}`}>
-                            <Button size="sm" className="bg-blue-600 hover:bg-blue-500">
-                              <Eye className="h-4 w-4 mr-1" />
-                              View Full Profile
-                            </Button>
-                          </Link>
-                          <Button size="sm" variant="outline" className="border-border hover:bg-muted">
-                            <ThumbsUp className="h-4 w-4 mr-1" />
-                            Shortlist
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className={`border-border hover:bg-muted ${candidate.stage === 'Shortlisted' ? 'bg-green-500/20 text-green-600 border-green-500/30' : ''}`}
+                            onClick={() => handleShortlist(candidate)}
+                            disabled={candidate.stage === 'Shortlisted' || shortlistingId === String(candidate.id)}
+                          >
+                            {shortlistingId === String(candidate.id) ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <ThumbsUp className="h-4 w-4 mr-1" />
+                            )}
+                            {candidate.stage === 'Shortlisted' ? 'Shortlisted' : shortlistingId === String(candidate.id) ? 'Shortlisting...' : 'Shortlist'}
                           </Button>
                         </div>
                       </div>
@@ -1067,6 +1451,25 @@ export default function RecruitmentAgent() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Interview Invite Dialog */}
+      <InterviewInviteDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        candidate={inviteCandidate}
+        job={selectedJob}
+      />
+
+      {/* Interest Check Dialog */}
+      <InterestCheckDialog
+        open={interestCheckOpen}
+        onOpenChange={setInterestCheckOpen}
+        candidate={interestCheckCandidate}
+        job={interestCheckCandidate?.jobId ? jobs?.find(j => j.id === interestCheckCandidate.jobId) : selectedJob}
+        onSent={() => {
+          queryClient.invalidateQueries({ queryKey: interestChecksKey });
+        }}
+      />
     </div>
   );
 }

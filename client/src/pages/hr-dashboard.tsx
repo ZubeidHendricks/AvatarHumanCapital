@@ -1,8 +1,8 @@
-import { useState, useRef, lazy, Suspense } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { jobsService, candidateService, api } from "@/lib/api";
+import { jobsService, candidateService, integrityChecksService, integrityDocService, api } from "@/lib/api";
 import { useTenantQueryKey } from "@/hooks/useTenant";
-import { CustomizableDashboard, DataSourceConfig } from "@/components/customizable-dashboard";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { JobCreationChat } from "@/components/job-creation-chat";
 import OfferManagement from "@/pages/offer-management";
 import EmployeeOnboarding from "@/pages/employee-onboarding";
@@ -63,7 +63,11 @@ import {
   Timer,
   RotateCcw,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  Bell,
+  MessageSquare,
+  XCircle
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { motion } from "framer-motion";
@@ -72,21 +76,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 
-// Mock Data as fallback if API fails or for other tabs not yet connected
-const integrityChecks = [
-  { id: 1, candidate: "Sarah Jenkins", type: "Criminal Record", status: "Clear", date: "2024-05-10" },
-  { id: 2, candidate: "Sarah Jenkins", type: "Credit Check", status: "Clear", date: "2024-05-11" },
-  { id: 3, candidate: "Marcus Johnson", type: "Reference Check", status: "Pending", date: "2024-05-12" },
-];
-
-const onboardingTasks = [
-  { id: 1, task: "Send Welcome Letter", assignee: "AI Agent", status: "Completed" },
-  { id: 2, task: "Distribute Employee Handbook", assignee: "AI Agent", status: "Completed" },
-  { id: 3, task: "Procure Tax Forms", assignee: "AI Agent", status: "In Progress" },
-  { id: 4, task: "IT Equipment Setup", assignee: "IT Dept", status: "Pending" },
-];
+// Format stage names: "offer_pending" → "Offer Pending", "integrity_checks" → "Integrity Checks"
+const formatStageName = (stage: string) =>
+  stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
 // Fallback data in case of API error
 const MOCK_CANDIDATES = [
@@ -97,7 +92,17 @@ const MOCK_CANDIDATES = [
 ];
 
 export default function HRDashboard() {
-  const [activeTab, setActiveTab] = useState("recruitment");
+  const [, navigate] = useLocation();
+  const [activeTab, setActiveTabState] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || "jobs";
+  });
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.replaceState({}, '', url.toString());
+  };
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
   const [showArchivedJobs, setShowArchivedJobs] = useState(false);
@@ -122,6 +127,7 @@ export default function HRDashboard() {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isJobDetailOpen, setIsJobDetailOpen] = useState(false);
+  const [pipelineStageFilter, setPipelineStageFilter] = useState<string>("all");
 
   const createJobMutation = useMutation({
     mutationFn: jobsService.create,
@@ -159,13 +165,195 @@ export default function HRDashboard() {
     }
   });
 
+  const [verifyingCheckIds, setVerifyingCheckIds] = useState<Set<string>>(new Set());
+  const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
+  const [expandedDocReqs, setExpandedDocReqs] = useState<any[]>([]);
+  const [loadingDocReqs, setLoadingDocReqs] = useState(false);
+  const [verifyingDocId, setVerifyingDocId] = useState<string | null>(null);
+  const [remindingDocId, setRemindingDocId] = useState<string | null>(null);
+  const [uploadingIntegrityDocId, setUploadingIntegrityDocId] = useState<string | null>(null);
+  const [remindingAllCandidateId, setRemindingAllCandidateId] = useState<string | null>(null);
+  const integrityFileInputRef = useRef<HTMLInputElement>(null);
+  const [reviewDoc, setReviewDoc] = useState<any>(null);
+  const [reviewBlob, setReviewBlob] = useState<Blob | null>(null);
+  const [reviewMime, setReviewMime] = useState<string>("");
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const reviewBlobUrl = useMemo(() => reviewBlob ? URL.createObjectURL(reviewBlob) : null, [reviewBlob]);
+
+  const toggleExpandCheck = async (checkId: string, candidateId: string) => {
+    if (expandedCheckId === checkId) {
+      setExpandedCheckId(null);
+      setExpandedDocReqs([]);
+      return;
+    }
+    setExpandedCheckId(checkId);
+    setLoadingDocReqs(true);
+    try {
+      const reqs = await integrityDocService.getByCandidate(candidateId);
+      setExpandedDocReqs(reqs);
+    } catch {
+      setExpandedDocReqs([]);
+    } finally {
+      setLoadingDocReqs(false);
+    }
+  };
+
+  const verifyDocRequirement = async (docId: string, candidateId: string) => {
+    setVerifyingDocId(docId);
+    try {
+      await integrityDocService.verify(docId);
+      // Refresh doc requirements
+      const reqs = await integrityDocService.getByCandidate(candidateId);
+      setExpandedDocReqs(reqs);
+      queryClient.invalidateQueries({ queryKey: integrityChecksKey });
+      queryClient.invalidateQueries({ queryKey: candidatesKey });
+      toast.success("Document verified");
+    } catch {
+      toast.error("Failed to verify document");
+    } finally {
+      setVerifyingDocId(null);
+    }
+  };
+
+  const openReviewDialog = async (doc: any) => {
+    setReviewDoc(doc);
+    setRejectionReason("");
+    setReviewBlob(null);
+    setReviewMime("");
+    const documentId = doc.metadata?.documentId;
+    if (!documentId) return;
+    setReviewLoading(true);
+    try {
+      // First get document metadata to find filePath and mimeType
+      const meta = await api.get(`/documents/${documentId}`);
+      const filePath = meta.data.filePath;
+      const mime = meta.data.mimeType || "";
+      setReviewMime(mime);
+      // Fetch the actual file as a blob via filePath
+      const res = await fetch(`/${filePath}`);
+      const blob = await res.blob();
+      setReviewBlob(blob as any);
+    } catch {
+      toast.error("Failed to load document preview");
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const handleReviewAccept = async () => {
+    if (!reviewDoc) return;
+    setVerifyingDocId(reviewDoc.id);
+    try {
+      await integrityDocService.verify(reviewDoc.id);
+      const reqs = await integrityDocService.getByCandidate(reviewDoc.candidateId);
+      setExpandedDocReqs(reqs);
+      queryClient.invalidateQueries({ queryKey: integrityChecksKey });
+      queryClient.invalidateQueries({ queryKey: candidatesKey });
+      toast.success("Document accepted");
+      setReviewDoc(null);
+    } catch {
+      toast.error("Failed to verify document");
+    } finally {
+      setVerifyingDocId(null);
+    }
+  };
+
+  const handleReviewReject = async () => {
+    if (!reviewDoc) return;
+    try {
+      await integrityDocService.reject(reviewDoc.id, rejectionReason);
+      const reqs = await integrityDocService.getByCandidate(reviewDoc.candidateId);
+      setExpandedDocReqs(reqs);
+      queryClient.invalidateQueries({ queryKey: integrityChecksKey });
+      toast.success("Document rejected");
+      setReviewDoc(null);
+    } catch {
+      toast.error("Failed to reject document");
+    }
+  };
+
+  const remindDocRequirement = async (docId: string, candidateId: string, channel: "email" | "whatsapp" = "whatsapp") => {
+    setRemindingDocId(docId);
+    try {
+      await integrityDocService.sendReminder(docId, channel);
+      toast.success("Reminder sent");
+    } catch {
+      toast.error("Failed to send reminder");
+    } finally {
+      setRemindingDocId(null);
+    }
+  };
+
+  const handleIntegrityUploadClick = (docId: string) => {
+    setUploadingIntegrityDocId(docId);
+    integrityFileInputRef.current?.click();
+  };
+
+  const handleIntegrityFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && uploadingIntegrityDocId) {
+      try {
+        await integrityDocService.upload(uploadingIntegrityDocId, file);
+        // Find the candidateId from current expanded docs
+        const doc = expandedDocReqs.find(d => d.id === uploadingIntegrityDocId);
+        if (doc) {
+          const reqs = await integrityDocService.getByCandidate(doc.candidateId);
+          setExpandedDocReqs(reqs);
+        }
+        queryClient.invalidateQueries({ queryKey: integrityChecksKey });
+        toast.success("Document uploaded");
+      } catch {
+        toast.error("Failed to upload document");
+      } finally {
+        setUploadingIntegrityDocId(null);
+      }
+    }
+    e.target.value = "";
+  };
+
+  const remindAllIntegrityDocs = async (candidateId: string, channel: "email" | "whatsapp") => {
+    setRemindingAllCandidateId(candidateId);
+    try {
+      const result = await integrityDocService.remindAll(candidateId, channel);
+      toast.success(result.message || `Sent via ${channel}`);
+      // Refresh doc list so status updates from "pending" to "requested"
+      const reqs = await integrityDocService.getByCandidate(candidateId);
+      setExpandedDocReqs(reqs);
+    } catch {
+      toast.error("Failed to send");
+    } finally {
+      setRemindingAllCandidateId(null);
+    }
+  };
+
+  const verifyIntegrityCheck = async (checkId: string, candidateId: string) => {
+    setVerifyingCheckIds(prev => new Set(prev).add(checkId));
+    try {
+      // Mark the check as Completed/Clear
+      await integrityChecksService.update(checkId, { status: "Completed" as any, result: "Clear" as any });
+      // Auto-advance pipeline if all checks are done
+      await api.post(`/pipeline/candidates/${candidateId}/check-integrity`);
+      // Wait for queries to refetch so UI reflects the new status before clearing loading
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: integrityChecksKey }),
+        queryClient.invalidateQueries({ queryKey: candidatesKey }),
+      ]);
+      toast.success("Verification marked as clear");
+    } catch {
+      toast.error("Failed to verify check");
+    } finally {
+      setVerifyingCheckIds(prev => { const next = new Set(prev); next.delete(checkId); return next; });
+    }
+  };
+
   const PIPELINE_STAGES = [
     { key: "sourcing", name: "Sourcing" },
     { key: "screening", name: "Screening" },
     { key: "shortlisted", name: "Shortlisted" },
     { key: "interviewing", name: "Interviewing" },
     { key: "offer_pending", name: "Offer Pending" },
-    { key: "offer_accepted", name: "Offer Accepted" },
+    { key: "offer_declined", name: "Offer Declined" },
     { key: "integrity_checks", name: "Integrity Checks" },
     { key: "integrity_passed", name: "Checks Passed" },
     { key: "onboarding", name: "Onboarding" },
@@ -209,7 +397,7 @@ export default function HRDashboard() {
     }
 
     try {
-      const response = await api.post(`/api/pipeline/candidates/${candidate.id}/transition`, {
+      const response = await api.post(`/pipeline/candidates/${candidate.id}/transition`, {
         toStage: nextStage
       });
       
@@ -239,7 +427,7 @@ export default function HRDashboard() {
     }
     setSelectedCandidate(candidate);
     setEmailSubject(`Regarding Your Application - ${candidate.role || 'Position'}`);
-    setEmailMessage(`Dear ${candidate.fullName || candidate.name},\n\nThank you for your interest in the ${candidate.role || 'position'} role at Avatar Human Capital.\n\nBest regards,\nHR Team`);
+    setEmailMessage(`Dear ${candidate.fullName || candidate.name},\n\nThank you for your interest in the ${candidate.role || 'position'} role at AHC - Human Capital.\n\nBest regards,\nHR Team`);
     setIsEmailOpen(true);
   };
 
@@ -388,10 +576,10 @@ BENEFITS:
   };
 
   // Fetch real data from backend
-  const { 
-    data: jobs, 
-    isLoading: loadingJobs, 
-    isError: jobsError 
+  const {
+    data: jobs,
+    isLoading: loadingJobs,
+    isError: jobsError
   } = useQuery({
     queryKey: jobsKey,
     queryFn: async () => {
@@ -403,7 +591,6 @@ BENEFITS:
       }
     },
     retry: 1,
-    placeholderData: [] 
   });
 
   const archivedJobsKey = useTenantQueryKey("archivedJobs");
@@ -444,7 +631,7 @@ BENEFITS:
 
   // Fetch integrity checks for all candidates
   const integrityChecksKey = useTenantQueryKey(['integrity-checks']);
-  const { data: allIntegrityChecks = [] } = useQuery({
+  const { data: allIntegrityChecks = [], isLoading: loadingIntegrityChecks } = useQuery({
     queryKey: integrityChecksKey,
     queryFn: async () => {
       try {
@@ -465,7 +652,7 @@ BENEFITS:
     queryKey: socialScreeningsKey,
     queryFn: async () => {
       try {
-        const res = await fetch('/api/social-screenings');
+        const res = await fetch('/api/social-screening/findings');
         if (!res.ok) throw new Error('Failed to fetch social screenings');
         return res.json();
       } catch (e) {
@@ -478,7 +665,7 @@ BENEFITS:
 
   // Get risk data for a specific candidate
   const getCandidateRiskData = (candidateId: string) => {
-    const integrityCheck = allIntegrityChecks.find((check: any) => check.candidateId === candidateId);
+    const integrityCheck = allIntegrityChecks.find((check: any) => check.candidateId === candidateId && check.riskScore != null);
     const socialScreening = allSocialScreenings.find((screening: any) => screening.candidateId === candidateId);
     
     let overallRiskScore = 0;
@@ -511,6 +698,22 @@ BENEFITS:
       riskLevel
     };
   };
+
+  // Sort candidates for Risk Assessment: integrity_checks first, then integrity_passed, then others
+  const sortedRiskCandidates = useMemo(() => {
+    if (!candidates || candidates.length === 0) return [];
+    const stagePriority: Record<string, number> = {
+      integrity_checks: 0,
+      integrity_passed: 1,
+    };
+    return [...candidates].sort((a: any, b: any) => {
+      const aPriority = stagePriority[a.stage] ?? 2;
+      const bPriority = stagePriority[b.stage] ?? 2;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      // Within same group, newest first
+      return new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime();
+    }).slice(0, 20);
+  }, [candidates]);
 
   interface JobSpecDocument {
     id: string;
@@ -676,76 +879,152 @@ BENEFITS:
   const displayJobs = jobsError ? [] : (Array.isArray(jobs) ? jobs : []);
   const jobCount = displayJobs.length || 12;
 
-  // Customizable dashboard data sources
-  const chartDataSources: DataSourceConfig[] = [
-    {
-      key: "candidates",
-      label: "Candidates",
-      fields: [
-        { value: "status", label: "Status", type: "categorical" },
-        { value: "stage", label: "Stage", type: "categorical" },
-        { value: "source", label: "Source", type: "categorical" },
-        { value: "role", label: "Role", type: "categorical" },
-        { value: "location", label: "Location", type: "categorical" },
-        { value: "match", label: "Match Score", type: "numeric" },
-      ]
-    },
-    {
-      key: "jobs",
-      label: "Jobs",
-      fields: [
-        { value: "status", label: "Status", type: "categorical" },
-        { value: "department", label: "Department", type: "categorical" },
-        { value: "location", label: "Location", type: "categorical" },
-        { value: "employmentType", label: "Employment Type", type: "categorical" },
-        { value: "salaryMin", label: "Minimum Salary (R)", type: "numeric" },
-        { value: "salaryMax", label: "Maximum Salary (R)", type: "numeric" },
-      ]
-    },
-    {
-      key: "employees",
-      label: "Employees",
-      fields: [
-        { value: "department", label: "Department", type: "categorical" },
-        { value: "team", label: "Team", type: "categorical" },
-        { value: "jobTitle", label: "Job Title", type: "categorical" },
-        { value: "employmentType", label: "Employment Type", type: "categorical" },
-        { value: "basicSalary", label: "Basic Salary (R)", type: "numeric" },
-      ]
-    },
-    {
-      key: "financialMetrics",
-      label: "Financial Metrics",
-      fields: [
-        { value: "category", label: "Quarter", type: "categorical" },
-        { value: "revenue", label: "Revenue (R)", type: "numeric" },
-        { value: "expenses", label: "Expenses (R)", type: "numeric" },
-        { value: "profit", label: "Profit (R)", type: "numeric" },
-      ]
-    }
-  ];
-
-  // Sample financial metrics data
-  const financialMetricsData = [
-    { category: "Q1", revenue: 450000, expenses: 280000, profit: 170000 },
-    { category: "Q2", revenue: 520000, expenses: 310000, profit: 210000 },
-    { category: "Q3", revenue: 480000, expenses: 295000, profit: 185000 },
-    { category: "Q4", revenue: 610000, expenses: 340000, profit: 270000 },
-  ];
-
-  const getChartData = (sourceKey: string) => {
-    switch (sourceKey) {
-      case "candidates": return displayCandidates;
-      case "jobs": return displayJobs;
-      case "employees": return employees || [];
-      case "financialMetrics": return financialMetricsData;
-      default: return [];
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      
+      <input
+        type="file"
+        ref={integrityFileInputRef}
+        className="hidden"
+        accept=".pdf,.jpg,.jpeg,.png,.docx"
+        onChange={handleIntegrityFileChange}
+      />
+
+      {/* Document Review Dialog */}
+      <Dialog open={!!reviewDoc} onOpenChange={() => setReviewDoc(null)}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-4 w-4" />
+              Review: {reviewDoc?.description || reviewDoc?.documentType}
+            </DialogTitle>
+          </DialogHeader>
+          {reviewDoc && (
+            <div className="space-y-4 overflow-y-auto">
+              {/* Document preview */}
+              <div className="rounded-lg border overflow-auto bg-muted/30 h-[400px]">
+                {reviewLoading ? (
+                  <div className="flex flex-col items-center justify-center p-8 gap-2">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Loading document...</p>
+                  </div>
+                ) : reviewBlobUrl ? (
+                  (() => {
+                    if (reviewMime.startsWith("image/")) {
+                      return (
+                        <div className="flex justify-center p-4 max-h-[400px] overflow-auto">
+                          <img src={reviewBlobUrl} alt={reviewDoc.description || reviewDoc.documentType} className="max-w-full max-h-[380px] object-contain rounded" />
+                        </div>
+                      );
+                    }
+                    if (reviewMime === "application/pdf") {
+                      return <iframe src={reviewBlobUrl} className="w-full h-[400px]" title={reviewDoc.description || reviewDoc.documentType} />;
+                    }
+                    if (reviewMime.includes("wordprocessingml") || reviewMime.includes("msword")) {
+                      return (
+                        <div
+                          ref={(node) => {
+                            if (node && reviewBlob && !node.dataset.rendered) {
+                              node.dataset.rendered = "true";
+                              node.innerHTML = '<p class="text-center text-muted-foreground py-8">Rendering document...</p>';
+                              import("docx-preview").then(({ renderAsync }) => {
+                                renderAsync(reviewBlob, node, undefined, {
+                                  className: "docx-preview",
+                                  inWrapper: true,
+                                  ignoreWidth: true,
+                                  ignoreHeight: false,
+                                  ignoreFonts: false,
+                                  breakPages: true,
+                                }).catch(() => {
+                                  node.innerHTML = '<p class="text-center text-muted-foreground py-8">Failed to render document.</p>';
+                                });
+                              });
+                            }
+                          }}
+                        />
+                      );
+                    }
+                    // Fallback: download link
+                    return (
+                      <div className="flex flex-col items-center justify-center p-8 gap-3">
+                        <FileText className="w-10 h-10 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Preview not available for this file type</p>
+                        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                          const a = document.createElement("a");
+                          a.href = reviewBlobUrl;
+                          a.download = reviewDoc.description || reviewDoc.documentType;
+                          a.click();
+                        }}>
+                          <Download className="h-3 w-3" />Download to review
+                        </Button>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 gap-2">
+                    <FileText className="h-6 w-6 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">No document uploaded yet</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Info row */}
+              <div className="flex gap-3 text-xs shrink-0">
+                <div className="flex-1 bg-muted/30 rounded-lg p-2.5 border">
+                  <p className="text-muted-foreground mb-0.5">Type</p>
+                  <p className="font-medium">{reviewDoc.description || reviewDoc.documentType}</p>
+                </div>
+                <div className="flex-1 bg-muted/30 rounded-lg p-2.5 border">
+                  <p className="text-muted-foreground mb-0.5">Received</p>
+                  <p className="font-medium">{reviewDoc.receivedAt ? new Date(reviewDoc.receivedAt).toLocaleDateString() : "N/A"}</p>
+                </div>
+              </div>
+
+              {/* Rejection reason */}
+              <div className="shrink-0">
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Rejection reason (only required if rejecting)
+                </label>
+                <Textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="e.g. Document is expired, image is blurry..."
+                  rows={2}
+                  className="text-sm resize-none"
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex justify-end gap-2 pt-1 shrink-0">
+                <Button type="button" variant="outline" size="sm" onClick={() => setReviewDoc(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  disabled={verifyingDocId === reviewDoc?.id || !!rejectionReason.trim()}
+                  onClick={handleReviewAccept}
+                >
+                  {verifyingDocId === reviewDoc?.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+                  Accept
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-500/30 dark:hover:bg-red-500/10 dark:text-red-400"
+                  disabled={!rejectionReason.trim()}
+                  onClick={handleReviewReject}
+                >
+                  <AlertCircle className="h-3 w-3 mr-1" />Reject
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <main className="pt-24 pb-12 px-6 container mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
@@ -753,12 +1032,7 @@ BENEFITS:
             <p className="text-foreground font-semibold">AI-Driven Human Capital Management</p>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/workflow-showcase">
-              <Button className="bg-teal-600 hover:bg-teal-700 text-white font-semibold" data-testid="button-start-workflow">
-                <ArrowRight className="w-4 h-4 mr-2" /> Start Workflow
-              </Button>
-            </Link>
-            <Badge variant="outline" className="bg-teal-50 dark:bg-teal-950 text-primary border-teal-200 dark:border-teal-700 px-3 py-1">
+            <Badge variant="outline" className="bg-muted dark:bg-muted text-primary border-border px-3 py-1">
               <BrainCircuit className="w-3 h-3 mr-2" /> AI Agents Active
             </Badge>
           </div>
@@ -775,15 +1049,15 @@ BENEFITS:
           </Alert>
         )}
 
-        <Tabs defaultValue="jobs" className="space-y-6" onValueChange={setActiveTab}>
+        <Tabs value={activeTab} className="space-y-6" onValueChange={setActiveTab}>
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Main 5 Tabs */}
-            <TabsList className="grid grid-cols-2 md:grid-cols-5 lg:w-[600px] bg-white dark:bg-gray-800 border-2 border-teal-200 dark:border-teal-700">
-              <TabsTrigger value="jobs" className="data-[state=active]:bg-teal-600 data-[state=active]:text-white font-semibold">Jobs</TabsTrigger>
-              <TabsTrigger value="recruitment" className="data-[state=active]:bg-teal-600 data-[state=active]:text-white font-semibold">Recruitment</TabsTrigger>
-              <TabsTrigger value="integrity" className="data-[state=active]:bg-teal-600 data-[state=active]:text-white font-semibold">Integrity</TabsTrigger>
-              <TabsTrigger value="offer" className="data-[state=active]:bg-teal-600 data-[state=active]:text-white font-semibold">Offer</TabsTrigger>
-              <TabsTrigger value="onboarding" className="data-[state=active]:bg-teal-600 data-[state=active]:text-white font-semibold">Onboarding</TabsTrigger>
+            {/* Main Tabs */}
+            <TabsList className="grid grid-cols-2 md:grid-cols-5 lg:w-[600px] bg-white dark:bg-background border-2 border-border">
+              <TabsTrigger value="jobs" className="data-[state=active]:bg-muted data-[state=active]:text-white dark:data-[state=active]:border dark:data-[state=active]:border-[#FFCB00] dark:data-[state=active]:text-[#FFCB00] dark:data-[state=active]:bg-[#FFCB00]/10 font-semibold">Jobs</TabsTrigger>
+              <TabsTrigger value="recruitment" className="data-[state=active]:bg-muted data-[state=active]:text-white dark:data-[state=active]:border dark:data-[state=active]:border-[#FFCB00] dark:data-[state=active]:text-[#FFCB00] dark:data-[state=active]:bg-[#FFCB00]/10 font-semibold">Recruitment</TabsTrigger>
+              <TabsTrigger value="offer" className="data-[state=active]:bg-muted data-[state=active]:text-white dark:data-[state=active]:border dark:data-[state=active]:border-[#FFCB00] dark:data-[state=active]:text-[#FFCB00] dark:data-[state=active]:bg-[#FFCB00]/10 font-semibold">Offer</TabsTrigger>
+              <TabsTrigger value="integrity" className="data-[state=active]:bg-muted data-[state=active]:text-white dark:data-[state=active]:border dark:data-[state=active]:border-[#FFCB00] dark:data-[state=active]:text-[#FFCB00] dark:data-[state=active]:bg-[#FFCB00]/10 font-semibold">Integrity</TabsTrigger>
+              <TabsTrigger value="onboarding" className="data-[state=active]:bg-muted data-[state=active]:text-white dark:data-[state=active]:border dark:data-[state=active]:border-[#FFCB00] dark:data-[state=active]:text-[#FFCB00] dark:data-[state=active]:bg-[#FFCB00]/10 font-semibold">Onboarding</TabsTrigger>
             </TabsList>
           </div>
 
@@ -792,7 +1066,7 @@ BENEFITS:
             
             {/* Quick Action Banners */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="rounded-lg bg-teal-50 dark:bg-teal-900 border-2 border-teal-200 dark:border-teal-700 p-6 flex items-center justify-between">
+              <div className="rounded-lg bg-muted dark:bg-muted border-2 border-border p-6 flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
                     <Sparkles className="w-5 h-5 text-primary" />
@@ -803,16 +1077,16 @@ BENEFITS:
                   </p>
                 </div>
                 <Link href="/recruitment-agent">
-                  <Button className="bg-teal-600 hover:bg-teal-700 text-white font-semibold">
+                  <Button className="bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold">
                     Launch AI Recruiter
                   </Button>
                 </Link>
               </div>
 
-              <div className="rounded-lg bg-blue-50 dark:bg-blue-900 border-2 border-blue-200 dark:border-blue-700 p-6 flex items-center justify-between">
+              <div className="rounded-lg bg-[#FFCB00]/5 dark:bg-[#FFCB00]/10 border-2 border-[#FFCB00]/20 dark:border-[#FFCB00]/30 p-6 flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                    <LayoutList className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <LayoutList className="w-5 h-5 text-[#FFCB00]" />
                     Track candidate progress
                   </h3>
                   <p className="text-foreground font-semibold text-sm mt-1">
@@ -820,7 +1094,7 @@ BENEFITS:
                   </p>
                 </div>
                 <Link href="/candidate-pipeline">
-                  <Button variant="outline" className="border-blue-500/30 hover:bg-blue-500/10 shadow-lg shadow-blue-500/10">
+                  <Button variant="outline" className="border-[#FFCB00]/30 hover:bg-[#FFCB00]/10 shadow-lg shadow-[#FFCB00]/10">
                     View Pipeline
                   </Button>
                 </Link>
@@ -830,7 +1104,7 @@ BENEFITS:
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="bg-card border-border">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-foreground font-bold text-sm font-medium text-foreground font-semibold">Open Roles</CardTitle>
+                  <CardTitle className="text-foreground font-bold text-sm">Open Roles</CardTitle>
                   <div className="text-2xl font-bold">
                     {loadingJobs ? <Loader2 className="w-6 h-6 animate-spin" /> : jobCount}
                   </div>
@@ -838,7 +1112,7 @@ BENEFITS:
               </Card>
               <Card className="bg-card border-border">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-foreground font-bold text-sm font-medium text-foreground font-semibold">Candidates in Pipeline</CardTitle>
+                  <CardTitle className="text-foreground font-bold text-sm">Candidates in Pipeline</CardTitle>
                   <div className="text-2xl font-bold">
                     {loadingCandidates ? <Loader2 className="w-6 h-6 animate-spin" /> : displayCandidates.length}
                   </div>
@@ -846,7 +1120,7 @@ BENEFITS:
               </Card>
               <Card className="bg-card border-border">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-foreground font-bold text-sm font-medium text-foreground font-semibold">Time to Hire (Avg)</CardTitle>
+                  <CardTitle className="text-foreground font-bold text-sm">Time to Hire (Avg)</CardTitle>
                   <div className="text-2xl font-bold">18 Days</div>
                 </CardHeader>
               </Card>
@@ -857,8 +1131,8 @@ BENEFITS:
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-foreground font-bold text-foreground font-bold">Open Roles</CardTitle>
-                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">
+                    <CardTitle className="text-foreground font-bold">Open Roles</CardTitle>
+                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">
                       {loadingJobs ? "Loading positions..." : "Active job requisitions and hiring pipelines"}
                     </CardDescription>
                   </div>
@@ -874,7 +1148,7 @@ BENEFITS:
                     </Button>
                     <Dialog open={isCreateJobOpen} onOpenChange={setIsCreateJobOpen}>
                       <DialogTrigger asChild>
-                        <Button variant="outline" className="gap-2 border-teal-200 dark:border-teal-700 bg-teal-50 dark:bg-teal-950 hover:bg-teal-50 dark:bg-teal-950">
+                        <Button variant="outline" className="gap-2 border-border bg-muted dark:bg-muted hover:bg-muted dark:bg-muted">
                           <Plus className="h-4 w-4" />
                           New Role
                         </Button>
@@ -885,7 +1159,7 @@ BENEFITS:
               </CardHeader>
               <CardContent>
                 <div className="rounded-md border border-border overflow-hidden">
-                  <div className="bg-white/5 px-4 py-3 grid grid-cols-12 text-sm font-medium text-foreground font-semibold">
+                  <div className="bg-white/5 px-4 py-3 grid grid-cols-12 text-sm text-foreground font-semibold">
                     <div className="col-span-4">Job Title</div>
                     <div className="col-span-2">Department</div>
                     <div className="col-span-2">Candidates</div>
@@ -922,12 +1196,12 @@ BENEFITS:
                             </div>
                             <div className="col-span-2 text-right flex justify-end gap-2">
                               <Link href={`/recruitment-agent?jobId=${job.id}`}>
-                                <Button variant="outline" size="sm" className="gap-2 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400" data-testid={`button-start-search-${job.id}`}>
+                                <Button variant="outline" size="sm" className="gap-2 border-[#FFCB00]/30 bg-[#FFCB00]/10 hover:bg-[#FFCB00]/20 text-[#FFCB00]" data-testid={`button-start-search-${job.id}`}>
                                   <Search className="h-4 w-4" />
                                   Start Search
                                 </Button>
                               </Link>
-                              <Link href={`/candidates-list?jobId=${job.id}`}>
+                              <Link href={`/recruitment-agent?jobId=${job.id}`}>
                                 <Button variant="outline" size="sm" className="gap-2 border-border hover:bg-white/5" data-testid={`button-view-candidates-${job.id}`}>
                                   <Eye className="h-4 w-4" />
                                   View
@@ -1011,7 +1285,7 @@ BENEFITS:
                         <FileArchive className="h-5 w-5 text-gray-400" />
                         Archived Roles
                       </CardTitle>
-                      <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">
+                      <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">
                         {loadingArchivedJobs ? "Loading archived positions..." : `${archivedJobs.length} archived job${archivedJobs.length !== 1 ? 's' : ''}`}
                       </CardDescription>
                     </div>
@@ -1019,7 +1293,7 @@ BENEFITS:
                 </CardHeader>
                 <CardContent>
                   <div className="rounded-md border border-border overflow-hidden">
-                    <div className="bg-white/5 px-4 py-3 grid grid-cols-12 text-sm font-medium text-foreground font-semibold">
+                    <div className="bg-white/5 px-4 py-3 grid grid-cols-12 text-sm text-foreground font-semibold">
                       <div className="col-span-4">Job Title</div>
                       <div className="col-span-3">Department</div>
                       <div className="col-span-3">Archived On</div>
@@ -1088,7 +1362,7 @@ BENEFITS:
                       <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400 fill-yellow-400" />
                       Shortlisted Candidates
                     </CardTitle>
-                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">
+                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">
                       {loadingCandidates ? "Loading..." : "Top talent ready for interviews and offers"}
                     </CardDescription>
                   </div>
@@ -1123,7 +1397,7 @@ BENEFITS:
                                     {candidate.photoUrl && (
                                       <AvatarImage src={candidate.photoUrl} alt={candidate.fullName} />
                                     )}
-                                    <AvatarFallback className="bg-teal-600 text-white text-xs font-semibold">
+                                    <AvatarFallback className="bg-[#0A0A0A] text-white text-xs font-semibold">
                                       {candidate.fullName?.split(' ')?.map((n: string) => n[0])?.join('')?.toUpperCase() || '?'}
                                     </AvatarFallback>
                                   </Avatar>
@@ -1164,8 +1438,8 @@ BENEFITS:
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-foreground font-bold text-foreground font-bold">Candidate Pipeline</CardTitle>
-                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">
+                    <CardTitle className="text-foreground font-bold">Candidate Pipeline</CardTitle>
+                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">
                       {loadingCandidates ? "Fetching data from backend..." : "AI-ranked candidates matched to hiring needs"}
                     </CardDescription>
                   </div>
@@ -1184,7 +1458,7 @@ BENEFITS:
 
                     <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
                       <DialogTrigger asChild>
-                        <Button variant="outline" className="gap-2 border-teal-200 dark:border-teal-700 bg-teal-50 dark:bg-teal-950 hover:bg-teal-50 dark:bg-teal-950">
+                        <Button variant="outline" className="gap-2 border-border bg-muted dark:bg-muted hover:bg-muted dark:bg-muted">
                           <UploadCloud className="h-4 w-4" />
                           Upload CVs
                         </Button>
@@ -1218,7 +1492,7 @@ BENEFITS:
                                 </div>
                             ) : (
                                 <>
-                                    <div className="p-3 rounded-full bg-teal-50 dark:bg-teal-950">
+                                    <div className="p-3 rounded-full bg-muted dark:bg-muted">
                                       <UploadCloud className="h-8 w-8 text-primary" />
                                     </div>
                                     <h3 className="font-medium mt-2">Drop files here or click to upload</h3>
@@ -1293,13 +1567,50 @@ BENEFITS:
                       </DialogContent>
                     </Dialog>
 
-                    <Button variant="outline" size="icon"><Filter className="h-4 w-4" /></Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant={pipelineStageFilter !== "all" ? "default" : "outline"} size="icon">
+                          <Filter className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuLabel>Filter by Stage</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className={`cursor-pointer ${pipelineStageFilter === "all" ? "font-bold" : ""}`}
+                          onClick={() => setPipelineStageFilter("all")}
+                        >
+                          All Stages
+                        </DropdownMenuItem>
+                        {(() => {
+                          const stages = [...new Set(displayCandidates.map((c: any) => c.stage || "New"))];
+                          return stages.map((stage: string) => (
+                            <DropdownMenuItem
+                              key={stage}
+                              className={`cursor-pointer ${pipelineStageFilter === stage ? "font-bold" : ""}`}
+                              onClick={() => setPipelineStageFilter(pipelineStageFilter === stage ? "all" : stage)}
+                            >
+                              {formatStageName(stage)} ({displayCandidates.filter((c: any) => (c.stage || "New") === stage).length})
+                            </DropdownMenuItem>
+                          ));
+                        })()}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
+                {pipelineStageFilter !== "all" && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm text-muted-foreground">Filtering:</span>
+                    <Badge variant="secondary" className="gap-1">
+                      {formatStageName(pipelineStageFilter)}
+                      <button onClick={() => setPipelineStageFilter("all")} className="ml-1 hover:text-destructive">&times;</button>
+                    </Badge>
+                  </div>
+                )}
                 <div className="rounded-md border border-border overflow-hidden">
-                  <div className="bg-white/5 px-4 py-3 grid grid-cols-12 text-sm font-medium text-foreground font-semibold">
+                  <div className="bg-white/5 px-4 py-3 grid grid-cols-12 text-sm text-foreground font-semibold">
                     <div className="col-span-3">Candidate</div>
                     <div className="col-span-3">Role Applied</div>
                     <div className="col-span-2">AI Match Score</div>
@@ -1312,9 +1623,15 @@ BENEFITS:
                          <Loader2 className="w-6 h-6 animate-spin" />
                          <p>Syncing with DigitalOcean Backend...</p>
                        </div>
+                    ) : displayCandidates.filter((c: any) => pipelineStageFilter === "all" || (c.stage || "New") === pipelineStageFilter).length === 0 ? (
+                       <div className="flex flex-col items-center justify-center h-32 gap-2 text-muted-foreground">
+                         <Filter className="w-6 h-6 opacity-50" />
+                         <p>No candidates at "{formatStageName(pipelineStageFilter)}" stage</p>
+                         <Button variant="link" size="sm" onClick={() => setPipelineStageFilter("all")}>Clear filter</Button>
+                       </div>
                     ) : (
-                      // Use explicit array mapping
-                      displayCandidates.map((candidate: any) => (
+                      // Use explicit array mapping with stage filter
+                      displayCandidates.filter((c: any) => pipelineStageFilter === "all" || (c.stage || "New") === pipelineStageFilter).map((candidate: any) => (
                         <div key={candidate.id || Math.random()} className="px-4 py-3 grid grid-cols-12 items-center border-t border-border hover:bg-white/5 transition-colors">
                           <div className="col-span-3 font-medium">{candidate.fullName || candidate.name || "Unknown Candidate"}</div>
                           <div className="col-span-3 text-sm text-foreground font-semibold">{candidate.role || "General Application"}</div>
@@ -1323,7 +1640,7 @@ BENEFITS:
                               {candidate.match || candidate.overall_score || 0}% Match
                             </Badge>
                           </div>
-                          <div className="col-span-2 text-sm">{candidate.stage || candidate.status || "New"}</div>
+                          <div className="col-span-2 text-sm">{formatStageName(candidate.stage || candidate.status || "New")}</div>
                           <div className="col-span-2 text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -1343,13 +1660,13 @@ BENEFITS:
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild className="cursor-pointer">
-                                  <Link href="/interview-voice">
+                                  <Link href="/interview/voice">
                                     <Mic className="mr-2 h-4 w-4" />
                                     Start Voice Interview
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild className="cursor-pointer">
-                                  <Link href="/interview-video">
+                                  <Link href="/interview/video">
                                     <Video className="mr-2 h-4 w-4" />
                                     Start Video Interview
                                   </Link>
@@ -1410,11 +1727,11 @@ BENEFITS:
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-foreground font-bold text-lg text-foreground font-bold flex items-center gap-2">
-                      <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <CardTitle className="text-foreground font-bold text-lg flex items-center gap-2">
+                      <Briefcase className="h-5 w-5 text-[#FFCB00]" />
                       Job Specifications Library
                     </CardTitle>
-                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">Extracted job requirements from uploaded specifications</CardDescription>
+                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">Extracted job requirements from uploaded specifications</CardDescription>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex items-center bg-gray-200 dark:bg-zinc-800 rounded-lg p-1">
@@ -1422,7 +1739,7 @@ BENEFITS:
                         variant={jobSpecViewMode === "grid" ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setJobSpecViewMode("grid")}
-                        className={jobSpecViewMode === "grid" ? "bg-blue-500/20 text-blue-600 dark:text-blue-400" : "text-zinc-400"}
+                        className={jobSpecViewMode === "grid" ? "bg-[#FFCB00]/20 text-[#FFCB00]" : "text-zinc-400"}
                         data-testid="button-jobs-grid-view"
                       >
                         <Grid3X3 className="h-4 w-4" />
@@ -1431,7 +1748,7 @@ BENEFITS:
                         variant={jobSpecViewMode === "list" ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setJobSpecViewMode("list")}
-                        className={jobSpecViewMode === "list" ? "bg-blue-500/20 text-blue-600 dark:text-blue-400" : "text-zinc-400"}
+                        className={jobSpecViewMode === "list" ? "bg-[#FFCB00]/20 text-[#FFCB00]" : "text-zinc-400"}
                         data-testid="button-jobs-list-view"
                       >
                         <List className="h-4 w-4" />
@@ -1441,7 +1758,7 @@ BENEFITS:
                       {displayJobs.length + jobSpecDocuments.length} Jobs
                     </Badge>
                     <Link href="/recruitment-agent">
-                      <Button variant="outline" size="sm" className="border-blue-500/50 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10">
+                      <Button variant="outline" size="sm" className="border-[#FFCB00]/50 text-[#FFCB00] hover:bg-[#FFCB00]/10">
                         <Briefcase className="h-4 w-4 mr-2" />
                         View Recruitment
                         <ArrowRight className="h-4 w-4 ml-2" />
@@ -1449,12 +1766,12 @@ BENEFITS:
                     </Link>
                     <Dialog open={isCreateJobOpen} onOpenChange={setIsCreateJobOpen}>
                       <DialogTrigger asChild>
-                        <Button data-testid="button-create-job-dialog" className="bg-teal-600 hover:bg-teal-700 text-white font-semibold">
+                        <Button data-testid="button-create-job-dialog" className="bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold">
                           <Plus className="h-4 w-4 mr-2" />
                           Create New Job
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-[700px] max-h-[90vh] bg-card border-border p-0">
+                      <DialogContent className="sm:max-w-[95vw] w-[95vw] max-h-[90vh] bg-card border-border p-0">
                         <JobCreationChat 
                           onJobCreated={() => {
                             setIsCreateJobOpen(false);
@@ -1469,9 +1786,9 @@ BENEFITS:
                 </div>
               </CardHeader>
               <CardContent>
-                {loadingJobs && loadingJobSpecs ? (
+                {loadingJobs || loadingJobSpecs ? (
                   <div className="text-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto" />
+                    <Loader2 className="h-8 w-8 animate-spin text-[#FFCB00] mx-auto" />
                   </div>
                 ) : displayJobs.length === 0 && jobSpecDocuments.length === 0 ? (
                   <div className="text-center py-12">
@@ -1481,7 +1798,7 @@ BENEFITS:
                     <div className="flex gap-3 justify-center">
                       <Button 
                         onClick={() => setIsCreateJobOpen(true)}
-                        className="bg-teal-600 hover:bg-teal-700 text-white font-semibold"
+                        className="bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold"
                       >
                         <Sparkles className="h-4 w-4 mr-2" />
                         Create with AI
@@ -1489,7 +1806,7 @@ BENEFITS:
                       <Link href="/document-automation">
                         <Button 
                           variant="outline" 
-                          className="border-blue-500/50 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+                          className="border-[#FFCB00]/50 text-[#FFCB00] hover:bg-[#FFCB00]/10"
                         >
                           <UploadCloud className="h-4 w-4 mr-2" />
                           Upload Job Specs
@@ -1509,12 +1826,12 @@ BENEFITS:
                           onClick={() => { setSelectedJob(job); setIsJobDetailOpen(true); }}
                         >
                           <div className="flex items-start gap-3 mb-3">
-                            <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded-lg bg-[#0A0A0A] flex items-center justify-center">
                               <Briefcase className="h-6 w-6 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <h3 className="font-semibold text-foreground truncate">{job.title}</h3>
-                              <p className="text-blue-600 dark:text-blue-400 text-sm truncate flex items-center gap-1">
+                              <p className="text-[#FFCB00] text-sm truncate flex items-center gap-1">
                                 <Building2 className="h-3 w-3" />
                                 {job.department || 'General'}
                               </p>
@@ -1547,14 +1864,14 @@ BENEFITS:
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                className="w-full border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+                                className="w-full border-[#FFCB00]/30 text-[#FFCB00] hover:bg-[#FFCB00]/10"
                                 data-testid={`button-start-search-grid-${job.id}`}
                               >
                                 <Search className="h-3 w-3 mr-1" />
                                 Start Search
                               </Button>
                             </Link>
-                            <Link href={`/candidates-list?jobId=${job.id}`}>
+                            <Link href={`/recruitment-agent?jobId=${job.id}`}>
                               <Button 
                                 variant="ghost" 
                                 size="sm"
@@ -1574,11 +1891,11 @@ BENEFITS:
                         return (
                           <div 
                             key={doc.id}
-                            className="p-4 rounded-xl bg-card hover:bg-accent transition-all border-2 border-border hover:border-blue-500 group"
+                            className="p-4 rounded-xl bg-card hover:bg-accent transition-all border-2 border-border hover:border-[#FFCB00] group"
                             data-testid={`card-job-spec-${doc.id}`}
                           >
                             <div className="flex items-start gap-3 mb-3">
-                              <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center">
+                              <div className="w-12 h-12 rounded-lg bg-[#0A0A0A] flex items-center justify-center">
                                 <FileText className="h-6 w-6 text-white" />
                               </div>
                               <div className="flex-1 min-w-0">
@@ -1586,7 +1903,7 @@ BENEFITS:
                                   {extracted?.title || extracted?.jobTitle || doc.originalFilename}
                                 </h3>
                                 {extracted?.company && (
-                                  <p className="text-blue-600 dark:text-blue-400 text-sm truncate flex items-center gap-1">
+                                  <p className="text-[#FFCB00] text-sm truncate flex items-center gap-1">
                                     <Building2 className="h-3 w-3" />
                                     {extracted.company}
                                   </p>
@@ -1616,7 +1933,7 @@ BENEFITS:
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                className="flex-1 border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+                                className="flex-1 border-[#FFCB00]/30 text-[#FFCB00] hover:bg-[#FFCB00]/10"
                                 onClick={() => setSelectedJobSpec(doc)}
                                 data-testid={`button-view-spec-${doc.id}`}
                               >
@@ -1649,7 +1966,7 @@ BENEFITS:
                             <tr key={job.id} className="hover:bg-gray-200 dark:bg-zinc-800/30 transition-colors" data-testid={`row-job-${job.id}`}>
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
+                                  <div className="w-8 h-8 rounded-lg bg-[#0A0A0A] flex items-center justify-center flex-shrink-0">
                                     <Briefcase className="h-4 w-4 text-white" />
                                   </div>
                                   <span className="font-medium text-foreground truncate max-w-[200px]">{job.title}</span>
@@ -1674,12 +1991,12 @@ BENEFITS:
                               <td className="px-4 py-3 text-right">
                                 <div className="flex items-center justify-end gap-1">
                                   <Link href={`/recruitment-agent?jobId=${job.id}`}>
-                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-blue-600 dark:text-blue-400">
+                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-[#FFCB00]">
                                       <Search className="h-3.5 w-3.5 mr-1" />
                                       Search
                                     </Button>
                                   </Link>
-                                  <Link href={`/candidates-list?jobId=${job.id}`}>
+                                  <Link href={`/recruitment-agent?jobId=${job.id}`}>
                                     <Button variant="ghost" size="sm" className="h-7 px-2 text-zinc-400">
                                       <Eye className="h-3.5 w-3.5" />
                                     </Button>
@@ -1696,7 +2013,7 @@ BENEFITS:
                               <tr key={doc.id} className="hover:bg-gray-200 dark:bg-zinc-800/30 transition-colors" data-testid={`row-job-spec-${doc.id}`}>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
+                                    <div className="w-8 h-8 rounded-lg bg-[#0A0A0A] flex items-center justify-center flex-shrink-0">
                                       <FileText className="h-4 w-4 text-white" />
                                     </div>
                                     <span className="font-medium text-foreground truncate max-w-[200px]">
@@ -1744,10 +2061,10 @@ BENEFITS:
           <TabsContent value="integrity" className="space-y-6">
             
             {/* AI Integrity Banner */}
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-900 border-2 border-blue-200 dark:border-blue-700 p-6 flex items-center justify-between">
+            <div className="rounded-lg bg-[#FFCB00]/5 dark:bg-[#FFCB00]/10 border-2 border-[#FFCB00]/20 dark:border-[#FFCB00]/30 p-6 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                  <ShieldCheck className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                  <ShieldCheck className="w-5 h-5 text-foreground" />
                   Perform automated background checks?
                 </h3>
                 <p className="text-foreground font-semibold text-sm mt-1">
@@ -1755,7 +2072,7 @@ BENEFITS:
                 </p>
               </div>
               <Link href="/integrity-agent">
-                <Button className="bg-cyan-500 text-cyan-950 hover:bg-cyan-400 shadow-lg shadow-cyan-500/20">
+                <Button className="bg-[#FFCB00] hover:bg-[#E6B800] text-black">
                   Start Integrity Check
                 </Button>
               </Link>
@@ -1765,23 +2082,269 @@ BENEFITS:
               <Card className="border-border bg-card">
                 <CardHeader>
                   <CardTitle className="text-foreground font-bold flex items-center gap-2">
-                    <FileCheck className="w-5 h-5 text-primary" /> 
+                    <FileCheck className="w-5 h-5 text-[#FFCB00]" />
                     Pending Verifications
                   </CardTitle>
+                  <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">Background check results and verification status</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {integrityChecks.map((check) => (
-                      <div key={check.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-border">
-                        <div>
-                          <p className="font-medium">{check.type}</p>
-                          <p className="text-sm text-foreground font-semibold">Candidate: {check.candidate}</p>
-                        </div>
-                        <Badge variant={check.status === "Clear" ? "default" : "secondary"} className={check.status === "Clear" ? "bg-green-500/20 text-green-600 dark:text-green-400" : "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"}>
-                          {check.status}
-                        </Badge>
+                  <div className="space-y-3">
+                    <p className="text-sm text-foreground font-semibold mb-3">Recent integrity checks across all candidates:</p>
+                    <ScrollArea className="h-[300px]">
+                      <div className="space-y-2">
+                        {loadingIntegrityChecks ? (
+                          <div className="flex flex-col items-center justify-center py-12 gap-3">
+                            <Loader2 className="w-6 h-6 animate-spin text-[#FFCB00]" />
+                            <p className="text-sm text-muted-foreground">Loading verifications...</p>
+                          </div>
+                        ) : allIntegrityChecks.length === 0 ? (
+                          <div className="text-center text-foreground font-semibold py-8">
+                            <FileCheck className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No integrity checks pending</p>
+                            <p className="text-xs text-muted-foreground mt-1">Start a check from the button above</p>
+                          </div>
+                        ) : (
+                          allIntegrityChecks.map((check: any) => {
+                            const candidateName = check.candidateName || "Unknown Candidate";
+                            const isComprehensive = check.checkType === "Comprehensive" || check.checkType === "comprehensive";
+                            const isDocsRequired = check.status === "Documents Required";
+                            const isExpanded = expandedCheckId === check.id;
+
+                            // Status badge style helper
+                            const getStatusBadge = (status: string) => {
+                              const isComplete = status === "Clear" || status === "completed" || status === "Completed";
+                              const isDocsReq = status === "Documents Required";
+                              return (
+                                <Badge
+                                  variant={isComplete ? "default" : "secondary"}
+                                  className={
+                                    isComplete ? "bg-green-500/20 text-green-600 dark:text-green-400" :
+                                    isDocsReq ? "bg-amber-500/20 text-amber-600 dark:text-amber-400" :
+                                    "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+                                  }
+                                >
+                                  {status}
+                                </Badge>
+                              );
+                            };
+
+                            if (isComprehensive) {
+                              return (
+                                <Collapsible key={check.id} open={isExpanded} onOpenChange={() => toggleExpandCheck(check.id, check.candidateId)}>
+                                  <CollapsibleTrigger asChild>
+                                    <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-border cursor-pointer hover:bg-white/10 transition-colors">
+                                      <div className="flex items-center gap-3">
+                                        <Avatar className="h-8 w-8">
+                                          <AvatarFallback className="bg-[#0A0A0A] text-white text-xs">
+                                            {candidateName.substring(0, 2).toUpperCase()}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                          <p className="font-medium text-sm">{candidateName}</p>
+                                          <p className="text-xs text-foreground font-semibold">AI Integrity Check</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {check.status === "Pending" && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-7 text-xs gap-1 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
+                                            onClick={(e) => { e.stopPropagation(); navigate(`/integrity-agent?candidateId=${check.candidateId}&autoStart=true`); }}
+                                          >
+                                            <ShieldCheck className="h-3 w-3" /> Start
+                                          </Button>
+                                        )}
+                                        {check.status === "In Progress" && <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />}
+                                        {getStatusBadge(check.status)}
+                                        {isDocsRequired && (
+                                          <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                        )}
+                                      </div>
+                                    </div>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    {isExpanded && (
+                                      <div className="ml-11 mt-1 mb-2 p-3 rounded-lg bg-white/3 border border-border/50 space-y-2">
+                                        {loadingDocReqs ? (
+                                          <div className="flex items-center justify-center py-4">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span className="ml-2 text-xs text-muted-foreground">Loading documents...</span>
+                                          </div>
+                                        ) : expandedDocReqs.length === 0 ? (
+                                          <p className="text-xs text-muted-foreground text-center py-3">No document requirements found</p>
+                                        ) : (
+                                          <>
+                                            <div className="flex items-center justify-between mb-1">
+                                              <p className="text-xs font-semibold text-foreground">Required Documents ({expandedDocReqs.length})</p>
+                                              {expandedDocReqs.some((d: any) => d.status === "pending" || d.status === "requested") && (
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                      size="sm"
+                                                      variant="outline"
+                                                      className="h-6 text-[10px] px-2 text-amber-600 border-amber-300"
+                                                      disabled={remindingAllCandidateId === check.candidateId}
+                                                      onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                      {remindingAllCandidateId === check.candidateId ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Bell className="h-3 w-3 mr-1" />{expandedDocReqs.some((d: any) => d.status === "pending") ? "Request All" : "Remind All"}<ChevronDown className="h-2.5 w-2.5 ml-0.5" /></>}
+                                                    </Button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => remindAllIntegrityDocs(check.candidateId, "email")}>
+                                                      <Mail className="h-3.5 w-3.5 mr-2" />Send via Email
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => remindAllIntegrityDocs(check.candidateId, "whatsapp")}>
+                                                      <MessageSquare className="h-3.5 w-3.5 mr-2" />Send via WhatsApp
+                                                    </DropdownMenuItem>
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
+                                              )}
+                                            </div>
+                                            {expandedDocReqs.map((doc: any) => (
+                                              <div key={doc.id} className="flex items-center justify-between px-2 py-1.5 rounded bg-white/50 dark:bg-zinc-900/50 text-xs gap-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                  <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                                                  <span className="truncate">{doc.description || doc.documentType}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                  <Badge
+                                                    variant="secondary"
+                                                    className={
+                                                      doc.status === "verified" ? "bg-green-500/20 text-green-600 dark:text-green-400 text-[10px]" :
+                                                      doc.status === "received" ? "bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px]" :
+                                                      doc.status === "rejected" ? "bg-red-500/20 text-red-600 dark:text-red-400 text-[10px]" :
+                                                      "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 text-[10px]"
+                                                    }
+                                                  >
+                                                    {doc.status}
+                                                  </Badge>
+                                                  {(doc.status === "pending" || doc.status === "requested") && (
+                                                    <>
+                                                      <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-5 text-[10px] px-1.5"
+                                                        disabled={uploadingIntegrityDocId === doc.id}
+                                                        onClick={(e) => { e.stopPropagation(); handleIntegrityUploadClick(doc.id); }}
+                                                      >
+                                                        {uploadingIntegrityDocId === doc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Upload className="h-3 w-3 mr-0.5" />Upload</>}
+                                                      </Button>
+                                                      <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                          <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-5 text-[10px] px-1.5 text-amber-600"
+                                                            disabled={remindingDocId === doc.id}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                          >
+                                                            {remindingDocId === doc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Bell className="h-3 w-3 mr-0.5" />Remind<ChevronDown className="h-2 w-2 ml-0.5" /></>}
+                                                          </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                          <DropdownMenuItem onClick={() => remindDocRequirement(doc.id, check.candidateId, "email")}>
+                                                            <Mail className="h-3.5 w-3.5 mr-2" />Send via Email
+                                                          </DropdownMenuItem>
+                                                          <DropdownMenuItem onClick={() => remindDocRequirement(doc.id, check.candidateId, "whatsapp")}>
+                                                            <MessageSquare className="h-3.5 w-3.5 mr-2" />Send via WhatsApp
+                                                          </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                      </DropdownMenu>
+                                                    </>
+                                                  )}
+                                                  {doc.status === "received" && (
+                                                    <Button
+                                                      size="sm"
+                                                      variant="ghost"
+                                                      className="h-5 text-[10px] px-1.5 text-blue-600"
+                                                      onClick={(e) => { e.stopPropagation(); openReviewDialog(doc); }}
+                                                    >
+                                                      <Eye className="h-3 w-3 mr-0.5" />Review
+                                                    </Button>
+                                                  )}
+                                                  {doc.status === "rejected" && (
+                                                    <>
+                                                      <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                          <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-5 text-[10px] px-1.5 text-amber-600"
+                                                            disabled={remindingDocId === doc.id}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                          >
+                                                            {remindingDocId === doc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Bell className="h-3 w-3 mr-0.5" />Remind<ChevronDown className="h-2 w-2 ml-0.5" /></>}
+                                                          </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                          <DropdownMenuItem onClick={() => remindDocRequirement(doc.id, check.candidateId, "email")}>
+                                                            <Mail className="h-3.5 w-3.5 mr-2" />Send via Email
+                                                          </DropdownMenuItem>
+                                                          <DropdownMenuItem onClick={() => remindDocRequirement(doc.id, check.candidateId, "whatsapp")}>
+                                                            <MessageSquare className="h-3.5 w-3.5 mr-2" />Send via WhatsApp
+                                                          </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                      </DropdownMenu>
+                                                    </>
+                                                  )}
+                                                  {doc.status === "verified" && (
+                                                    <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                                  )}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </>
+                                        )}
+                                      </div>
+                                    )}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              );
+                            }
+
+                            // Non-comprehensive checks (Criminal Record, ID Verification, Reference Check)
+                            return (
+                              <div
+                                key={check.id}
+                                className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-border"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarFallback className="bg-[#0A0A0A] text-white text-xs">
+                                      {candidateName.substring(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium text-sm">{candidateName}</p>
+                                    <p className="text-xs text-foreground font-semibold">{check.checkType || "Verification"}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {(check.status === "Pending" || check.status === "In Progress") && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs gap-1 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950"
+                                      disabled={verifyingCheckIds.has(check.id)}
+                                      onClick={() => verifyIntegrityCheck(check.id, check.candidateId)}
+                                    >
+                                      {verifyingCheckIds.has(check.id) ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <CheckCircle2 className="h-3 w-3" />
+                                      )}
+                                      Verify
+                                    </Button>
+                                  )}
+                                  {getStatusBadge(check.status)}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
-                    ))}
+                    </ScrollArea>
                   </div>
                 </CardContent>
               </Card>
@@ -1789,21 +2352,27 @@ BENEFITS:
               <Card className="border-border bg-card">
                 <CardHeader>
                   <CardTitle className="text-foreground font-bold flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                    <ShieldCheck className="w-5 h-5 text-[#FFCB00]" />
                     Risk Assessment Overview
                   </CardTitle>
-                  <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">AI-generated risk profiles based on background data</CardDescription>
+                  <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">AI-generated risk profiles based on background data</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {!selectedRiskCandidate ? (
                     <div className="space-y-3">
                       <p className="text-sm text-foreground font-semibold mb-3">Select a candidate to view risk analysis:</p>
-                      <ScrollArea className="h-[180px]">
+                      <ScrollArea className="h-[300px]">
                         <div className="space-y-2">
-                          {candidates && candidates.length > 0 ? candidates.slice(0, 8).map((candidate: any) => {
+                          {(loadingCandidates || loadingIntegrityChecks) ? (
+                            <div className="flex flex-col items-center justify-center py-12 gap-3">
+                              <Loader2 className="w-6 h-6 animate-spin text-[#FFCB00]" />
+                              <p className="text-sm text-muted-foreground">Loading risk assessments...</p>
+                            </div>
+                          ) : sortedRiskCandidates.length > 0 ? sortedRiskCandidates.map((candidate: any) => {
                             const riskData = getCandidateRiskData(candidate.id);
+                            const isIntegrityStage = candidate.stage === "integrity_checks";
                             return (
-                              <div 
+                              <div
                                 key={candidate.id}
                                 onClick={() => setSelectedRiskCandidate(candidate)}
                                 className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-border cursor-pointer hover:bg-white/10 transition-colors"
@@ -1811,7 +2380,7 @@ BENEFITS:
                               >
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-8 w-8">
-                                    <AvatarFallback className="bg-teal-100 dark:bg-teal-900 text-primary text-xs">
+                                    <AvatarFallback className="bg-[#0A0A0A] text-white text-xs">
                                       {(candidate.fullName || candidate.name || 'U').substring(0, 2).toUpperCase()}
                                     </AvatarFallback>
                                   </Avatar>
@@ -1820,21 +2389,42 @@ BENEFITS:
                                     <p className="text-xs text-foreground font-semibold">{candidate.role || 'Candidate'}</p>
                                   </div>
                                 </div>
-                                {riskData.hasData ? (
-                                  <Badge 
-                                    data-testid={`badge-risk-level-${candidate.id}`}
-                                    className={
-                                      riskData.riskLevel === 'low' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
-                                      riskData.riskLevel === 'medium' ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' :
-                                      riskData.riskLevel === 'high' ? 'bg-teal-500/20 text-teal-600 dark:text-teal-400' :
-                                      'bg-red-500/20 text-red-600 dark:text-red-400'
-                                    }
-                                  >
-                                    {riskData.riskLevel.charAt(0).toUpperCase() + riskData.riskLevel.slice(1)}
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-foreground font-semibold" data-testid={`badge-no-data-${candidate.id}`}>No Data</Badge>
-                                )}
+                                <div className="flex items-center gap-2">
+                                  {(candidate.stage === "onboarding" || candidate.stage === "integrity_passed") && (
+                                    <Button
+                                      size="sm"
+                                      className="h-7 text-xs bg-[#FFCB00] text-black font-semibold hover:bg-[#E6B800] gap-1"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveTab("onboarding");
+                                        setTimeout(() => {
+                                          window.dispatchEvent(new CustomEvent('onboarding-select-candidate', { detail: { candidateId: candidate.id } }));
+                                        }, 300);
+                                      }}
+                                      data-testid={`button-go-to-onboarding-${candidate.id}`}
+                                    >
+                                      <Building2 className="w-3 h-3" />
+                                      Go to Onboarding
+                                    </Button>
+                                  )}
+                                  {riskData.hasData ? (
+                                    <Badge
+                                      data-testid={`badge-risk-level-${candidate.id}`}
+                                      className={
+                                        riskData.riskLevel === 'low' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
+                                        riskData.riskLevel === 'medium' ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' :
+                                        riskData.riskLevel === 'high' ? 'bg-muted/20 text-foreground' :
+                                        'bg-red-500/20 text-red-600 dark:text-red-400'
+                                      }
+                                    >
+                                      {riskData.riskLevel.charAt(0).toUpperCase() + riskData.riskLevel.slice(1)}
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-foreground font-semibold" data-testid={`badge-no-data-${candidate.id}`}>
+                                      {isIntegrityStage ? "Pending" : "No Data"}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                             );
                           }) : (
@@ -1851,7 +2441,7 @@ BENEFITS:
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10">
-                            <AvatarFallback className="bg-teal-100 dark:bg-teal-900 text-primary">
+                            <AvatarFallback className="bg-[#0A0A0A] text-white">
                               {(selectedRiskCandidate.fullName || selectedRiskCandidate.name || 'U').substring(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -1879,7 +2469,7 @@ BENEFITS:
                               <p className="text-sm">No risk assessment data available</p>
                               <p className="text-xs mt-1">Run an integrity check or social screening first</p>
                               <div className="flex gap-2 justify-center mt-3">
-                                <Link href="/integrity-agent">
+                                <Link href={`/integrity-agent?candidateId=${selectedRiskCandidate.id}&autoStart=true`}>
                                   <Button size="sm" variant="outline">
                                     <ShieldCheck className="w-4 h-4 mr-1" /> Start Integrity Check
                                   </Button>
@@ -1896,21 +2486,26 @@ BENEFITS:
                         
                         return (
                           <div className="space-y-3" data-testid="risk-detail-view">
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900 border-2 border-blue-200 dark:border-blue-700">
+                            <div className="flex items-center justify-between p-3 rounded-lg bg-[#FFCB00]/5 dark:bg-[#FFCB00]/10 border-2 border-[#FFCB00]/20 dark:border-[#FFCB00]/30">
                               <span className="text-sm font-medium">Overall Risk Score</span>
                               <div className="flex items-center gap-2">
                                 <span className="text-2xl font-bold" data-testid="text-risk-score">{riskData.overallRiskScore}%</span>
-                                <Badge 
+                                <Badge
                                   data-testid="badge-detail-risk-level"
                                   className={
                                     riskData.riskLevel === 'low' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
                                     riskData.riskLevel === 'medium' ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' :
-                                    riskData.riskLevel === 'high' ? 'bg-teal-500/20 text-teal-600 dark:text-teal-400' :
+                                    riskData.riskLevel === 'high' ? 'bg-muted/20 text-foreground' :
                                     'bg-red-500/20 text-red-600 dark:text-red-400'
                                   }
                                 >
                                   {riskData.riskLevel.charAt(0).toUpperCase() + riskData.riskLevel.slice(1)} Risk
                                 </Badge>
+                                <Link href={`/integrity-agent?candidateId=${selectedRiskCandidate.id}&readOnly=true`}>
+                                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                                    <FileCheck className="w-3 h-3" /> View Report
+                                  </Button>
+                                </Link>
                               </div>
                             </div>
                             
@@ -1918,7 +2513,7 @@ BENEFITS:
                               <div className="p-3 rounded-lg bg-white/5 border border-border" data-testid="section-integrity-check">
                                 <div className="flex items-center justify-between mb-2">
                                   <span className="text-sm font-medium flex items-center gap-2">
-                                    <FileCheck className="w-4 h-4 text-cyan-600 dark:text-cyan-400" /> Integrity Check
+                                    <FileCheck className="w-4 h-4 text-foreground" /> Integrity Check
                                   </span>
                                   <Badge variant="outline" data-testid="badge-integrity-status">{riskData.integrityCheck.status}</Badge>
                                 </div>
@@ -1955,7 +2550,7 @@ BENEFITS:
                               <div className="p-3 rounded-lg bg-white/5 border border-border" data-testid="section-social-screening">
                                 <div className="flex items-center justify-between mb-2">
                                   <span className="text-sm font-medium flex items-center gap-2">
-                                    <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Social Screening
+                                    <Users className="w-4 h-4 text-[#FFCB00]" /> Social Screening
                                   </span>
                                   <Badge variant="outline" data-testid="badge-social-status">{riskData.socialScreening.status}</Badge>
                                 </div>
@@ -1988,18 +2583,18 @@ BENEFITS:
             </div>
 
             {/* Social Screening Section */}
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-900 border-2 border-blue-200 dark:border-blue-700 p-6 flex items-center justify-between">
+            <div className="rounded-lg bg-[#FFCB00]/5 dark:bg-[#FFCB00]/10 border-2 border-[#FFCB00]/20 dark:border-[#FFCB00]/30 p-6 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                  <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <Users className="w-5 h-5 text-[#FFCB00]" />
                   Social Intelligence Screening
                 </h3>
                 <p className="text-foreground font-semibold text-sm mt-1">
-                  AI-powered culture fit assessment via social media analysis (Facebook, X, Reddit) with POPIA compliance.
+                  AI-powered culture fit assessment via social media analysis (LinkedIn, Facebook, X, Instagram) with POPIA compliance.
                 </p>
               </div>
               <Link href="/social-screening">
-                <Button className="bg-blue-500 text-blue-950 hover:bg-blue-400 shadow-lg shadow-blue-500/20">
+                <Button className="bg-[#FFCB00] text-black hover:bg-[#E6B800] shadow-lg shadow-[#FFCB00]/20">
                   <Search className="w-4 h-4 mr-2" />
                   View Social Screening
                 </Button>
@@ -2010,7 +2605,7 @@ BENEFITS:
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card className="border-border bg-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-foreground font-bold text-sm font-medium text-foreground font-semibold">Consent Status</CardTitle>
+                  <CardTitle className="text-foreground font-bold text-sm">Consent Status</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -2032,7 +2627,7 @@ BENEFITS:
 
               <Card className="border-border bg-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-foreground font-bold text-sm font-medium text-foreground font-semibold">Screening Progress</CardTitle>
+                  <CardTitle className="text-foreground font-bold text-sm">Screening Progress</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -2054,7 +2649,7 @@ BENEFITS:
 
               <Card className="border-border bg-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-foreground font-bold text-sm font-medium text-foreground font-semibold">Risk Distribution</CardTitle>
+                  <CardTitle className="text-foreground font-bold text-sm">Risk Distribution</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -2072,7 +2667,7 @@ BENEFITS:
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-teal-600"></span> High
+                        <span className="w-2 h-2 rounded-full bg-foreground"></span> High
                       </span>
                       <span>{socialStats?.riskDistribution?.high || 0}</span>
                     </div>
@@ -2090,10 +2685,10 @@ BENEFITS:
               <Card className="border-border bg-card lg:col-span-3">
                 <CardHeader>
                   <CardTitle className="text-foreground font-bold flex items-center gap-2">
-                    <Eye className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <Eye className="w-5 h-5 text-[#FFCB00]" />
                     Pending Human Reviews
                   </CardTitle>
-                  <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">Social screening findings requiring HR review</CardDescription>
+                  <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">Social screening findings requiring HR review</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {socialPendingReviews.length === 0 ? (
@@ -2109,10 +2704,10 @@ BENEFITS:
                             <div className={`w-3 h-3 rounded-full ${
                               finding.riskLevel === 'low' ? 'bg-green-500' :
                               finding.riskLevel === 'medium' ? 'bg-yellow-500' :
-                              finding.riskLevel === 'high' ? 'bg-teal-600' : 'bg-red-500'
+                              finding.riskLevel === 'high' ? 'bg-foreground' : 'bg-destructive'
                             }`}></div>
                             <div>
-                              <p className="font-medium">Candidate #{finding.candidateId?.slice(-6)}</p>
+                              <p className="font-medium">{finding.candidateName || 'Unknown Candidate'}</p>
                               <p className="text-sm text-foreground font-semibold">
                                 Culture Fit: {finding.cultureFitScore || 'N/A'}% | 
                                 Risk: {finding.riskLevel || 'Unknown'}
@@ -2123,12 +2718,12 @@ BENEFITS:
                             <Badge className={
                               finding.aiRecommendation === 'proceed' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
                               finding.aiRecommendation === 'review' ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' :
-                              finding.aiRecommendation === 'caution' ? 'bg-teal-500/20 text-teal-600 dark:text-teal-400' :
+                              finding.aiRecommendation === 'caution' ? 'bg-muted/20 text-foreground' :
                               'bg-red-500/20 text-red-600 dark:text-red-400'
                             }>
                               AI: {finding.aiRecommendation || 'Pending'}
                             </Badge>
-                            <Link href={`/social-screening/${finding.id}`}>
+                            <Link href="/social-screening?tab=reviews">
                               <Button size="sm" variant="outline">
                                 Review
                               </Button>
@@ -2174,7 +2769,7 @@ BENEFITS:
                   </Button>
                 </Link>
                 <Link href="/kpi-hr-dashboard">
-                  <Button className="bg-teal-600 hover:bg-teal-700 text-white font-semibold" data-testid="link-kpi-dashboard">
+                  <Button className="bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold" data-testid="link-kpi-dashboard">
                     <BarChart3 className="w-4 h-4 mr-2" />
                     Full KPI Dashboard
                   </Button>
@@ -2188,16 +2783,16 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">Active KPI Cycles</p>
+                      <p className="text-sm text-foreground font-semibold">Active KPI Cycles</p>
                       <h3 className="text-2xl font-bold mt-2" data-testid="metric-active-cycles">
                         {activeReviewCycles.length}
                       </h3>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      <p className="text-xs text-[#FFCB00] mt-1">
                         {reviewCycles.length} total cycles
                       </p>
                     </div>
-                    <div className="p-3 rounded-lg bg-blue-500/10">
-                      <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <div className="p-3 rounded-lg bg-[#FFCB00]/10">
+                      <Calendar className="w-6 h-6 text-[#FFCB00]" />
                     </div>
                   </div>
                 </CardContent>
@@ -2207,7 +2802,7 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">Avg Performance</p>
+                      <p className="text-sm text-foreground font-semibold">Avg Performance</p>
                       <h3 className="text-2xl font-bold mt-2" data-testid="metric-avg-performance">
                         {avgScore}<span className="text-lg text-foreground font-semibold">/5.0</span>
                       </h3>
@@ -2226,7 +2821,7 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">Pending Reviews</p>
+                      <p className="text-sm text-foreground font-semibold">Pending Reviews</p>
                       <h3 className="text-2xl font-bold mt-2" data-testid="metric-pending-reviews">
                         {pendingSubmissions.length}
                       </h3>
@@ -2245,16 +2840,16 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">KPI Completion</p>
+                      <p className="text-sm text-foreground font-semibold">KPI Completion</p>
                       <h3 className="text-2xl font-bold mt-2" data-testid="metric-kpi-achievement">
                         {completionRate}%
                       </h3>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      <p className="text-xs text-[#FFCB00] mt-1">
                         {completedAssignments.length}/{totalAssignments} completed
                       </p>
                     </div>
-                    <div className="p-3 rounded-lg bg-blue-500/10">
-                      <Target className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <div className="p-3 rounded-lg bg-[#FFCB00]/10">
+                      <Target className="w-6 h-6 text-[#FFCB00]" />
                     </div>
                   </div>
                 </CardContent>
@@ -2270,10 +2865,10 @@ BENEFITS:
                       <Calendar className="w-5 h-5 text-primary" />
                       Active Review Cycles
                     </CardTitle>
-                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">Current KPI review periods</CardDescription>
+                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">Current KPI review periods</CardDescription>
                   </div>
                   <Link href="/kpi-management?tab=cycles&action=new-cycle">
-                    <Button className="bg-teal-600 hover:bg-teal-700 text-white font-semibold" data-testid="button-new-cycle">
+                    <Button className="bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold" data-testid="button-new-cycle">
                       <Plus className="w-4 h-4 mr-2" />
                       New Cycle
                     </Button>
@@ -2286,7 +2881,7 @@ BENEFITS:
                     activeReviewCycles.map((cycle: any) => (
                       <div key={cycle.id} className="flex items-center justify-between p-4 rounded-lg border border-border bg-white/5 hover:bg-white/10 transition-colors" data-testid={`cycle-item-${cycle.id}`}>
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="p-2 rounded-lg bg-teal-50 dark:bg-teal-950">
+                          <div className="p-2 rounded-lg bg-muted dark:bg-muted">
                             <Target className="w-5 h-5 text-primary" />
                           </div>
                           <div className="flex-1">
@@ -2332,7 +2927,7 @@ BENEFITS:
                       <FileCheck className="w-5 h-5 text-primary" />
                       Recent Submissions
                     </CardTitle>
-                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">Employee KPI review submissions</CardDescription>
+                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">Employee KPI review submissions</CardDescription>
                   </div>
                   <Link href="/kpi-hr-dashboard">
                     <Button variant="outline" className="border-border" data-testid="button-view-all-submissions">
@@ -2349,7 +2944,7 @@ BENEFITS:
                       <div key={submission.id} className="flex items-center justify-between p-4 rounded-lg border border-border bg-white/5 hover:bg-white/10 transition-colors" data-testid={`submission-item-${submission.id}`}>
                         <div className="flex items-center gap-4 flex-1">
                           <Avatar className="h-10 w-10">
-                            <AvatarFallback className="bg-teal-100 dark:bg-teal-900 text-primary">
+                            <AvatarFallback className="bg-[#0A0A0A] text-white">
                               {getEmployeeName(submission.employeeId).slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -2368,7 +2963,7 @@ BENEFITS:
                           <Badge 
                             className={
                               submission.status === 'completed' ? "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30" :
-                              submission.status === 'in_progress' ? "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30" :
+                              submission.status === 'in_progress' ? "bg-[#FFCB00]/20 text-[#FFCB00] border-[#FFCB00]/30" :
                               "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30"
                             }
                           >
@@ -2402,7 +2997,7 @@ BENEFITS:
                       <Target className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                       KPI Assignments
                     </CardTitle>
-                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">Current quarter performance objectives</CardDescription>
+                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">Current quarter performance objectives</CardDescription>
                   </div>
                   <Link href="/kpi-management">
                     <Button variant="outline" className="border-border" data-testid="button-manage-assignments">
@@ -2420,7 +3015,7 @@ BENEFITS:
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
-                              <AvatarFallback className="bg-teal-100 dark:bg-teal-900 text-primary text-xs">
+                              <AvatarFallback className="bg-[#0A0A0A] text-white text-xs">
                                 {getEmployeeName(assignment.employeeId).slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
@@ -2432,7 +3027,7 @@ BENEFITS:
                           <Badge 
                             className={
                               assignment.status === 'completed' ? "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30" :
-                              assignment.status === 'in_progress' ? "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30" :
+                              assignment.status === 'in_progress' ? "bg-[#FFCB00]/20 text-[#FFCB00] border-[#FFCB00]/30" :
                               "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30"
                             }
                           >
@@ -2448,7 +3043,7 @@ BENEFITS:
                             <div 
                               className={`h-full transition-all ${
                                 assignment.status === 'completed' ? "bg-green-500" :
-                                assignment.status === 'in_progress' ? "bg-blue-500" :
+                                assignment.status === 'in_progress' ? "bg-[#FFCB00]" :
                                 "bg-amber-500"
                               }`}
                               style={{ width: assignment.status === 'completed' ? '100%' : assignment.status === 'in_progress' ? '50%' : '0%' }}
@@ -2479,12 +3074,12 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">Active Courses</p>
+                      <p className="text-sm text-foreground font-semibold">Active Courses</p>
                       <h3 className="text-2xl font-bold mt-2">{lmsCourses.filter((c: any) => c.status === "published").length}</h3>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Published courses</p>
+                      <p className="text-xs text-[#FFCB00] mt-1">Published courses</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-blue-500/10">
-                      <BookOpen className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <div className="p-3 rounded-lg bg-[#FFCB00]/10">
+                      <BookOpen className="w-6 h-6 text-[#FFCB00]" />
                     </div>
                   </div>
                 </CardContent>
@@ -2494,7 +3089,7 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">Total Courses</p>
+                      <p className="text-sm text-foreground font-semibold">Total Courses</p>
                       <h3 className="text-2xl font-bold mt-2">{lmsCourses.length}</h3>
                       <p className="text-xs text-green-600 dark:text-green-400 mt-1">All courses</p>
                     </div>
@@ -2509,7 +3104,7 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">Categories</p>
+                      <p className="text-sm text-foreground font-semibold">Categories</p>
                       <h3 className="text-2xl font-bold mt-2">{new Set(lmsCourses.map((c: any) => c.category)).size}</h3>
                       <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Course categories</p>
                     </div>
@@ -2524,12 +3119,12 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">Total Duration</p>
+                      <p className="text-sm text-foreground font-semibold">Total Duration</p>
                       <h3 className="text-2xl font-bold mt-2">{Math.round(lmsCourses.reduce((sum: number, c: any) => sum + (c.duration || 0), 0) / 60)}h</h3>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Learning content</p>
+                      <p className="text-xs text-[#FFCB00] mt-1">Learning content</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-blue-500/10">
-                      <Award className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <div className="p-3 rounded-lg bg-[#FFCB00]/10">
+                      <Award className="w-6 h-6 text-[#FFCB00]" />
                     </div>
                   </div>
                 </CardContent>
@@ -2545,10 +3140,10 @@ BENEFITS:
                       <BookOpen className="w-5 h-5 text-primary" />
                       Active Training Courses
                     </CardTitle>
-                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">Current learning programs and progress</CardDescription>
+                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">Current learning programs and progress</CardDescription>
                   </div>
                   <Link href="/learning-management">
-                    <Button className="bg-teal-600 hover:bg-teal-700 text-white font-semibold" data-testid="button-create-course-lms">
+                    <Button className="bg-[#FFCB00] hover:bg-[#E6B800] text-black font-semibold" data-testid="button-create-course-lms">
                       <Plus className="w-4 h-4 mr-2" />
                       Create Course
                     </Button>
@@ -2568,7 +3163,7 @@ BENEFITS:
                   ) : lmsCourses.map((course: any, idx: number) => (
                     <div key={idx} className="flex items-center justify-between p-4 rounded-lg border border-border bg-white/5 hover:bg-white/10 transition-colors">
                       <div className="flex items-center gap-4 flex-1">
-                        <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-900">
+                        <div className="p-2 rounded-lg bg-muted dark:bg-muted">
                           <BookOpen className="w-5 h-5 text-primary" />
                         </div>
                         <div className="flex-1">
@@ -2606,7 +3201,7 @@ BENEFITS:
                   <GraduationCap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                   Employee Learning Progress
                 </CardTitle>
-                <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">Individual training completion status</CardDescription>
+                <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">Individual training completion status</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -2619,7 +3214,7 @@ BENEFITS:
                     <div key={idx} className="flex items-center justify-between p-4 rounded-lg border border-border bg-white/5">
                       <div className="flex items-center gap-4">
                         <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-teal-100 dark:bg-teal-900 text-primary">
+                          <AvatarFallback className="bg-[#0A0A0A] text-white">
                             {emp.employee.split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
@@ -2638,7 +3233,7 @@ BENEFITS:
                           <p className="text-xs text-foreground font-semibold">In Progress</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{emp.certificates}</p>
+                          <p className="text-2xl font-bold text-[#FFCB00]">{emp.certificates}</p>
                           <p className="text-xs text-foreground font-semibold">Certificates</p>
                         </div>
                       </div>
@@ -2657,7 +3252,7 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">Present Today</p>
+                      <p className="text-sm text-foreground font-semibold">Present Today</p>
                       <h3 className="text-2xl font-bold mt-2">142</h3>
                       <p className="text-xs text-green-600 dark:text-green-400 mt-1">92% attendance rate</p>
                     </div>
@@ -2672,12 +3267,12 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">On Leave</p>
+                      <p className="text-sm text-foreground font-semibold">On Leave</p>
                       <h3 className="text-2xl font-bold mt-2">8</h3>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Approved leave</p>
+                      <p className="text-xs text-[#FFCB00] mt-1">Approved leave</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-blue-500/10">
-                      <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <div className="p-3 rounded-lg bg-[#FFCB00]/10">
+                      <Calendar className="w-6 h-6 text-[#FFCB00]" />
                     </div>
                   </div>
                 </CardContent>
@@ -2687,7 +3282,7 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">Late Arrivals</p>
+                      <p className="text-sm text-foreground font-semibold">Late Arrivals</p>
                       <h3 className="text-2xl font-bold mt-2">5</h3>
                       <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Today</p>
                     </div>
@@ -2702,12 +3297,12 @@ BENEFITS:
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground font-semibold">Overtime Hours</p>
+                      <p className="text-sm text-foreground font-semibold">Overtime Hours</p>
                       <h3 className="text-2xl font-bold mt-2">48</h3>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">This week</p>
+                      <p className="text-xs text-[#FFCB00] mt-1">This week</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-blue-500/10">
-                      <Timer className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <div className="p-3 rounded-lg bg-[#FFCB00]/10">
+                      <Timer className="w-6 h-6 text-[#FFCB00]" />
                     </div>
                   </div>
                 </CardContent>
@@ -2723,7 +3318,7 @@ BENEFITS:
                       <Timer className="w-5 h-5 text-primary" />
                       Today's Attendance
                     </CardTitle>
-                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">Real-time employee attendance tracking</CardDescription>
+                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">Real-time employee attendance tracking</CardDescription>
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" className="border-border">
@@ -2745,7 +3340,7 @@ BENEFITS:
                     <div key={idx} className="flex items-center justify-between p-4 rounded-lg border border-border bg-white/5 hover:bg-white/10 transition-colors">
                       <div className="flex items-center gap-4 flex-1">
                         <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-teal-100 dark:bg-teal-900 text-primary">
+                          <AvatarFallback className="bg-[#0A0A0A] text-white">
                             {record.employee.split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
@@ -2769,7 +3364,7 @@ BENEFITS:
                           className={
                             record.status === "Present" ? "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30" :
                             record.status === "Late" ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30" :
-                            record.status === "On Leave" ? "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30" :
+                            record.status === "On Leave" ? "bg-[#FFCB00]/20 text-[#FFCB00] border-[#FFCB00]/30" :
                             "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
                           }
                         >
@@ -2788,10 +3383,10 @@ BENEFITS:
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-foreground font-bold flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <Calendar className="w-5 h-5 text-[#FFCB00]" />
                       Pending Leave Requests
                     </CardTitle>
-                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium text-gray-700 dark:text-gray-300 font-medium">Approve or reject employee leave requests</CardDescription>
+                    <CardDescription className="text-gray-700 dark:text-gray-300 font-medium">Approve or reject employee leave requests</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -2805,7 +3400,7 @@ BENEFITS:
                     <div key={idx} className="flex items-center justify-between p-4 rounded-lg border border-border bg-white/5">
                       <div className="flex items-center gap-4 flex-1">
                         <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-teal-100 dark:bg-teal-900 text-primary">
+                          <AvatarFallback className="bg-[#0A0A0A] text-white">
                             {leave.employee.split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
@@ -2848,7 +3443,7 @@ BENEFITS:
         <DialogContent className="max-w-3xl bg-gray-100 dark:bg-zinc-900 border-gray-300 dark:border-zinc-700 max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <Briefcase className="h-5 w-5 text-[#FFCB00]" />
               {selectedJobSpec?.originalFilename}
             </DialogTitle>
             <DialogDescription>
@@ -2895,7 +3490,7 @@ BENEFITS:
                         {/* Job Information */}
                         <div className="space-y-3">
                           <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                            <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            <Briefcase className="h-5 w-5 text-[#FFCB00]" />
                             Job Information
                           </h3>
                           <div className="grid grid-cols-2 gap-4 p-4 bg-gray-200 dark:bg-zinc-800/30 rounded-lg">
@@ -2905,7 +3500,7 @@ BENEFITS:
                             </div>
                             <div>
                               <p className="text-xs text-zinc-500 mb-1">Company</p>
-                              <p className="text-blue-600 dark:text-blue-400">{data.company || "N/A"}</p>
+                              <p className="text-[#FFCB00]">{data.company || "N/A"}</p>
                             </div>
                             <div>
                               <p className="text-xs text-zinc-500 mb-1">Department</p>
@@ -2930,7 +3525,7 @@ BENEFITS:
                         {data.experienceRequired && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              <Clock className="h-5 w-5 text-[#FFCB00]" />
                               Experience Required
                             </h3>
                             <p className="text-zinc-300 text-sm leading-relaxed p-4 bg-gray-200 dark:bg-zinc-800/30 rounded-lg">
@@ -2956,7 +3551,7 @@ BENEFITS:
                         {data.requiredSkills && data.requiredSkills.length > 0 && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <Award className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              <Award className="h-5 w-5 text-[#FFCB00]" />
                               Required Skills ({data.requiredSkills.length})
                             </h3>
                             <div className="flex flex-wrap gap-2 p-4 bg-gray-200 dark:bg-zinc-800/30 rounded-lg">
@@ -2993,14 +3588,14 @@ BENEFITS:
                         {data.qualifications && data.qualifications.length > 0 && (
                           <div className="space-y-3">
                             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                              <GraduationCap className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                              <GraduationCap className="h-5 w-5 text-foreground dark:text-foreground" />
                               Qualifications ({data.qualifications.length})
                             </h3>
                             <div className="p-4 bg-gray-200 dark:bg-zinc-800/30 rounded-lg">
                               <ul className="space-y-2">
                                 {data.qualifications.map((qual: string, i: number) => (
                                   <li key={i} className="flex items-start gap-2 text-sm text-zinc-300">
-                                    <span className="text-teal-600 dark:text-teal-400 mt-1">•</span>
+                                    <span className="text-foreground dark:text-foreground mt-1">•</span>
                                     {qual}
                                   </li>
                                 ))}
@@ -3056,7 +3651,7 @@ BENEFITS:
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-foreground flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <Briefcase className="h-5 w-5 text-[#FFCB00]" />
               {selectedJob?.title || 'Job Details'}
             </DialogTitle>
             <DialogDescription>
@@ -3122,7 +3717,7 @@ BENEFITS:
               {/* Introduction */}
               {selectedJob.introduction && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-blue-600 dark:text-blue-400">Introduction</h3>
+                  <h3 className="text-sm font-semibold text-[#FFCB00]">Introduction</h3>
                   <p className="text-sm text-muted-foreground bg-gray-200 dark:bg-zinc-800/30 rounded-lg p-3">
                     {selectedJob.introduction}
                   </p>
@@ -3132,7 +3727,7 @@ BENEFITS:
               {/* Description */}
               {selectedJob.description && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-blue-600 dark:text-blue-400">Description</h3>
+                  <h3 className="text-sm font-semibold text-[#FFCB00]">Description</h3>
                   <p className="text-sm text-muted-foreground bg-gray-200 dark:bg-zinc-800/30 rounded-lg p-3">
                     {selectedJob.description}
                   </p>
@@ -3142,11 +3737,11 @@ BENEFITS:
               {/* Duties */}
               {selectedJob.duties && selectedJob.duties.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-blue-600 dark:text-blue-400">Duties & Responsibilities</h3>
+                  <h3 className="text-sm font-semibold text-[#FFCB00]">Duties & Responsibilities</h3>
                   <ul className="space-y-1 bg-gray-200 dark:bg-zinc-800/30 rounded-lg p-3">
                     {selectedJob.duties.map((duty: string, i: number) => (
                       <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                        <span className="text-blue-600 dark:text-blue-400 mt-1">•</span>
+                        <span className="text-[#FFCB00] mt-1">•</span>
                         {duty}
                       </li>
                     ))}
@@ -3187,7 +3782,7 @@ BENEFITS:
               {/* Ethics */}
               {selectedJob.ethics && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-blue-600 dark:text-blue-400">Ethics & Values</h3>
+                  <h3 className="text-sm font-semibold text-[#FFCB00]">Ethics & Values</h3>
                   <p className="text-sm text-muted-foreground bg-gray-200 dark:bg-zinc-800/30 rounded-lg p-3">
                     {selectedJob.ethics}
                   </p>
@@ -3197,11 +3792,11 @@ BENEFITS:
               {/* Requirements */}
               {selectedJob.requirements && selectedJob.requirements.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-cyan-600 dark:text-cyan-400">Requirements</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Requirements</h3>
                   <ul className="space-y-1 bg-gray-200 dark:bg-zinc-800/30 rounded-lg p-3">
                     {selectedJob.requirements.map((req: string, i: number) => (
                       <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                        <span className="text-cyan-600 dark:text-cyan-400 mt-1">•</span>
+                        <span className="text-foreground mt-1">•</span>
                         {req}
                       </li>
                     ))}
@@ -3226,7 +3821,7 @@ BENEFITS:
               {/* Action Buttons */}
               <div className="flex gap-3 pt-4 border-t border-border">
                 <Link href={`/recruitment-agent?jobId=${selectedJob.id}`} className="flex-1">
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                  <Button className="w-full bg-[#FFCB00] hover:bg-[#E6B800]">
                     <Search className="h-4 w-4 mr-2" />
                     Start Candidate Search
                   </Button>
@@ -3243,25 +3838,6 @@ BENEFITS:
         </DialogContent>
       </Dialog>
 
-      {/* Customizable Charts Section */}
-      <div className="mt-8 px-6 pb-12 container mx-auto">
-        <Card className="bg-card/30 border-border dark:border-white/10 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-xl">Custom Analytics</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Build your own charts by selecting data sources and fields
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CustomizableDashboard
-              dataSources={chartDataSources}
-              getData={getChartData}
-              storageKey="hr-dashboard-charts"
-              columns={2}
-            />
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

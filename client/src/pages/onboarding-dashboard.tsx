@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { CustomizableDashboard, DataSourceConfig } from "@/components/customizable-dashboard";
@@ -43,6 +44,8 @@ import {
   Zap,
   BrainCircuit,
   Loader2,
+  Eye,
+  Download,
 } from "lucide-react";
 
 interface OnboardingWorkflow {
@@ -88,6 +91,8 @@ interface DocumentRequest {
   maxReminders: number;
   receivedAt: string | null;
   verifiedAt: string | null;
+  receivedDocumentId: string | null;
+  metadata: Record<string, any> | null;
 }
 
 interface Candidate {
@@ -101,34 +106,34 @@ interface Candidate {
 
 const statusConfig: Record<string, { bg: string; text: string; icon: any; border: string }> = {
   pending: { bg: "bg-slate-500/20", text: "text-slate-300", icon: Clock, border: "border-slate-500/30" },
-  requested: { bg: "bg-blue-500/20", text: "text-blue-300", icon: Send, border: "border-blue-500/30" },
-  received: { bg: "bg-amber-500/20", text: "text-amber-300", icon: FileCheck, border: "border-amber-500/30" },
-  verified: { bg: "bg-emerald-500/20", text: "text-emerald-300", icon: CheckCircle2, border: "border-emerald-500/30" },
-  rejected: { bg: "bg-red-500/20", text: "text-red-300", icon: XCircle, border: "border-red-500/30" },
-  overdue: { bg: "bg-red-500/20", text: "text-red-300", icon: AlertTriangle, border: "border-red-500/30" },
+  requested: { bg: "bg-muted/20", text: "text-foreground", icon: Send, border: "border-border/30" },
+  received: { bg: "bg-muted/20", text: "text-foreground", icon: FileCheck, border: "border-border/30" },
+  verified: { bg: "bg-muted/20", text: "text-foreground", icon: CheckCircle2, border: "border-border/30" },
+  rejected: { bg: "bg-destructive/20", text: "text-destructive", icon: XCircle, border: "border-destructive/30" },
+  overdue: { bg: "bg-destructive/20", text: "text-destructive", icon: AlertTriangle, border: "border-destructive/30" },
 };
 
 const priorityConfig: Record<string, { bg: string; text: string; border: string }> = {
   low: { bg: "bg-slate-500/20", text: "text-slate-300", border: "border-slate-500/30" },
-  normal: { bg: "bg-blue-500/20", text: "text-blue-300", border: "border-blue-500/30" },
-  high: { bg: "bg-teal-600/20", text: "text-teal-300", border: "border-teal-600/30" },
-  urgent: { bg: "bg-red-500/20", text: "text-red-300", border: "border-red-500/30" },
+  normal: { bg: "bg-muted/20", text: "text-foreground", border: "border-border/30" },
+  high: { bg: "bg-muted/20", text: "text-foreground", border: "border-border/30" },
+  urgent: { bg: "bg-destructive/20", text: "text-destructive", border: "border-destructive/30" },
 };
 
 const channelConfig: Record<string, { icon: any; color: string }> = {
-  whatsapp: { icon: MessageSquare, color: "text-green-600 dark:text-green-400" },
-  email: { icon: Mail, color: "text-blue-600 dark:text-blue-400" },
-  system: { icon: Bot, color: "text-blue-600 dark:text-blue-400" },
+  whatsapp: { icon: MessageSquare, color: "text-foreground" },
+  email: { icon: Mail, color: "text-foreground dark:text-foreground" },
+  system: { icon: Bot, color: "text-foreground dark:text-foreground" },
   manual: { icon: User, color: "text-slate-400" },
 };
 
 const agentColors: Record<string, string> = {
-  onboarding_coordinator: "from-blue-500/30 to-blue-600/30 border-blue-500/30",
-  welcome_agent: "from-green-500/30 to-green-600/30 border-green-500/30",
-  contract_agent: "from-blue-500/30 to-blue-600/30 border-blue-500/30",
-  document_collector: "from-amber-500/30 to-amber-600/30 border-amber-500/30",
-  reminder: "from-teal-600/30 to-teal-700/30 border-teal-600/30",
-  escalation: "from-red-500/30 to-red-600/30 border-red-500/30",
+  onboarding_coordinator: "from-muted/30 to-background/30 border-border/30",
+  welcome_agent: "from-muted/30 to-background/30 border-border/30",
+  contract_agent: "from-muted/30 to-background/30 border-border/30",
+  document_collector: "from-muted/30 to-background/30 border-border/30",
+  reminder: "from-muted/30 to-background/30 border-border/30",
+  escalation: "from-destructive/30 to-background/30 border-destructive/30",
 };
 
 export default function OnboardingDashboard() {
@@ -137,14 +142,17 @@ export default function OnboardingDashboard() {
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [interventionDialog, setInterventionDialog] = useState<AgentLog | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState("");
+  const [reviewDoc, setReviewDoc] = useState<DocumentRequest | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const { data: workflows = [], isLoading: loadingWorkflows } = useQuery<OnboardingWorkflow[]>({
     queryKey: ["/api/onboarding/workflows"],
   });
 
-  const { data: candidates = [] } = useQuery<Candidate[]>({
+  const { data: candidatesRaw } = useQuery<{ data: Candidate[] }>({
     queryKey: ["/api/candidates"],
   });
+  const candidates = candidatesRaw?.data ?? [];
 
   const { data: interventionQueue = [] } = useQuery<AgentLog[]>({
     queryKey: ["/api/onboarding/human-intervention-queue"],
@@ -158,6 +166,11 @@ export default function OnboardingDashboard() {
   const { data: documentRequests = [] } = useQuery<DocumentRequest[]>({
     queryKey: ["/api/onboarding/document-requests", selectedWorkflow],
     enabled: !!selectedWorkflow,
+  });
+
+  const { data: reviewDocumentDetails } = useQuery<{ id: string; filePath: string; fileUrl: string; fileName: string; mimeType: string }>({
+    queryKey: ["/api/documents", reviewDoc?.receivedDocumentId],
+    enabled: !!reviewDoc?.receivedDocumentId,
   });
 
   const processRemindersMutation = useMutation({
@@ -214,6 +227,23 @@ export default function OnboardingDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      if (selectedWorkflow) {
+        queryClient.invalidateQueries({ queryKey: ["/api/onboarding/document-requests", selectedWorkflow] });
+        queryClient.invalidateQueries({ queryKey: ["/api/onboarding/agent-logs", selectedWorkflow] });
+      }
+    },
+  });
+
+  const rejectDocumentMutation = useMutation({
+    mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) => {
+      const response = await fetch(`/api/onboarding/document-requests/${requestId}/rejected`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
       });
       return response.json();
     },
@@ -356,31 +386,31 @@ export default function OnboardingDashboard() {
             </CardHeader>
             <CardContent className="pt-0">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <TrendingUp className="w-3 h-3 text-green-600 dark:text-green-400" />
+                <TrendingUp className="w-3 h-3 text-foreground" />
                 Employees onboarding
               </p>
             </CardContent>
           </Card>
 
-          <Card className={`border-border dark:border-white/10 backdrop-blur-sm ${interventionQueue.length > 0 ? "bg-red-500/10 border-red-500/20" : "bg-emerald-500/10 border-emerald-500/20"}`} data-testid="stat-interventions">
+          <Card className={`border-border dark:border-white/10 backdrop-blur-sm ${interventionQueue.length > 0 ? "bg-destructive/10 border-destructive/20" : "bg-muted/10 border-border/20"}`} data-testid="stat-interventions">
             <CardHeader className="pb-2">
-              <CardTitle className={`text-sm font-medium flex items-center gap-2 ${interventionQueue.length > 0 ? "text-red-300" : "text-emerald-300"}`}>
+              <CardTitle className={`text-sm font-medium flex items-center gap-2 ${interventionQueue.length > 0 ? "text-destructive" : "text-foreground"}`}>
                 {interventionQueue.length > 0 ? <AlertCircle className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
                 {interventionQueue.length > 0 ? "Needs Attention" : "All Clear"}
               </CardTitle>
               <div className="text-3xl font-bold">{interventionQueue.length}</div>
             </CardHeader>
             <CardContent className="pt-0">
-              <p className={`text-xs flex items-center gap-1 ${interventionQueue.length > 0 ? "text-red-300/80" : "text-emerald-300/80"}`}>
+              <p className={`text-xs flex items-center gap-1 ${interventionQueue.length > 0 ? "text-destructive/80" : "text-foreground/80"}`}>
                 <Activity className="w-3 h-3" />
                 {interventionQueue.length > 0 ? "Requires HR review" : "No issues detected"}
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-amber-500/10 border-amber-500/20 backdrop-blur-sm" data-testid="stat-pending-docs">
+          <Card className="bg-muted/10 border-border/20 backdrop-blur-sm" data-testid="stat-pending-docs">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-amber-300 flex items-center gap-2">
+              <CardTitle className="text-sm font-medium text-foreground flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Awaiting Documents
               </CardTitle>
@@ -389,16 +419,16 @@ export default function OnboardingDashboard() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <p className="text-xs text-amber-300/80 flex items-center gap-1">
+              <p className="text-xs text-foreground/80 flex items-center gap-1">
                 <Bell className="w-3 h-3" />
                 Pending submission
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-emerald-500/10 border-emerald-500/20 backdrop-blur-sm" data-testid="stat-completed">
+          <Card className="bg-muted/10 border-border/20 backdrop-blur-sm" data-testid="stat-completed">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-emerald-300 flex items-center gap-2">
+              <CardTitle className="text-sm font-medium text-foreground flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 Completed
               </CardTitle>
@@ -407,7 +437,7 @@ export default function OnboardingDashboard() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <p className="text-xs text-emerald-300/80 flex items-center gap-1">
+              <p className="text-xs text-foreground/80 flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
                 Successfully onboarded
               </p>
@@ -417,15 +447,15 @@ export default function OnboardingDashboard() {
 
         {/* Intervention Queue Alert */}
         {interventionQueue.length > 0 && (
-          <Card className="mb-8 bg-red-500/10 border-red-500/20" data-testid="intervention-queue">
+          <Card className="mb-8 bg-destructive/10 border-destructive/20" data-testid="intervention-queue">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-500/20 rounded-lg">
-                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                <div className="p-2 bg-destructive/20 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-destructive" />
                 </div>
                 <div>
-                  <CardTitle className="text-red-300">Human Intervention Required</CardTitle>
-                  <CardDescription className="text-red-300/70">
+                  <CardTitle className="text-destructive">Human Intervention Required</CardTitle>
+                  <CardDescription className="text-destructive/70">
                     {interventionQueue.length} case{interventionQueue.length > 1 ? "s" : ""} need your attention
                   </CardDescription>
                 </div>
@@ -436,11 +466,11 @@ export default function OnboardingDashboard() {
                 {interventionQueue.map(log => (
                   <div
                     key={log.id}
-                    className="flex items-center justify-between p-4 bg-card/50 rounded-lg border border-red-500/20"
+                    className="flex items-center justify-between p-4 bg-card/50 rounded-lg border border-destructive/20"
                     data-testid={`intervention-item-${log.id}`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500/30 to-rose-500/30 border border-red-500/30 flex items-center justify-center text-red-300 font-bold text-lg">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-destructive/30 to-background/30 border border-destructive/30 flex items-center justify-center text-destructive font-bold text-lg">
                         {getInitials(getCandidateName(log.candidateId || ""))}
                       </div>
                       <div>
@@ -450,7 +480,7 @@ export default function OnboardingDashboard() {
                         <p className="text-sm text-muted-foreground capitalize">
                           {log.action.replace(/_/g, " ")}
                         </p>
-                        <Badge variant="outline" className="mt-1 text-xs bg-red-500/20 text-red-300 border-red-500/30">
+                        <Badge variant="outline" className="mt-1 text-xs bg-destructive/20 text-destructive border-destructive/30">
                           {(log.details as any)?.reason || "Requires manual review"}
                         </Badge>
                       </div>
@@ -458,7 +488,7 @@ export default function OnboardingDashboard() {
                     <Button
                       onClick={() => setInterventionDialog(log)}
                       variant="outline"
-                      className="border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-300"
+                      className="border-destructive/30 bg-destructive/10 hover:bg-destructive/20 text-destructive"
                       data-testid={`button-resolve-${log.id}`}
                     >
                       Resolve Now
@@ -525,10 +555,10 @@ export default function OnboardingDashboard() {
                           <div className="mt-3">
                             <Badge className={`text-xs ${
                               workflow.status === "completed" 
-                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                ? "bg-muted/20 text-foreground border-border/30"
                                 : workflow.status.includes("document")
-                                  ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                                  : "bg-blue-500/20 text-blue-300 border-blue-500/30"
+                                  ? "bg-muted/20 text-foreground border-border/30"
+                                  : "bg-muted/20 text-foreground border-border/30"
                             }`}>
                               {workflow.status.replace(/_/g, " ")}
                             </Badge>
@@ -548,7 +578,7 @@ export default function OnboardingDashboard() {
               <div className="space-y-6">
                 <Card className="border-border dark:border-white/10 bg-card/20 overflow-hidden">
                   {/* Candidate Header */}
-                  <div className="bg-gradient-to-r from-primary/20 to-blue-500/20 border-b border-border dark:border-white/10 p-6">
+                  <div className="bg-gradient-to-r from-primary/20 to-background/20 border-b border-border dark:border-white/10 p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white font-bold text-xl">
@@ -626,10 +656,10 @@ export default function OnboardingDashboard() {
                                         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                                           <span className="flex items-center gap-1">
                                             <Calendar className="w-3 h-3" />
-                                            Due: {new Date(doc.dueDate).toLocaleDateString()}
+                                            Due: {format(new Date(doc.dueDate), "dd MMM yyyy")}
                                           </span>
                                           {doc.reminderCount > 0 && (
-                                            <span className="flex items-center gap-1 text-teal-700 dark:text-teal-400">
+                                            <span className="flex items-center gap-1 text-foreground dark:text-foreground">
                                               <Bell className="w-3 h-3" />
                                               {doc.reminderCount} reminder{doc.reminderCount > 1 ? "s" : ""} sent
                                             </span>
@@ -659,7 +689,7 @@ export default function OnboardingDashboard() {
                                           onClick={() => markReceivedMutation.mutate(doc.id)}
                                           disabled={markReceivedMutation.isPending}
                                           variant="outline"
-                                          className="border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300"
+                                          className="border-border/30 bg-muted/10 hover:bg-muted/20 text-foreground"
                                           data-testid={`button-received-${doc.id}`}
                                         >
                                           Mark Received
@@ -669,14 +699,13 @@ export default function OnboardingDashboard() {
                                     {doc.status === "received" && (
                                       <Button
                                         size="sm"
-                                        onClick={() => markVerifiedMutation.mutate(doc.id)}
-                                        disabled={markVerifiedMutation.isPending}
+                                        onClick={() => { setReviewDoc(doc); setRejectionReason(""); }}
                                         variant="outline"
-                                        className="gap-1 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300"
-                                        data-testid={`button-verify-${doc.id}`}
+                                        className="gap-1 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300"
+                                        data-testid={`button-review-${doc.id}`}
                                       >
-                                        <CheckCircle2 className="w-4 h-4" />
-                                        Verify
+                                        <Eye className="w-4 h-4" />
+                                        Review
                                       </Button>
                                     )}
                                   </div>
@@ -712,7 +741,7 @@ export default function OnboardingDashboard() {
                                         <ChannelIcon className="w-3.5 h-3.5 text-white" />
                                       </div>
                                       <div className={`bg-card/30 border border-border dark:border-white/10 rounded-lg p-4 ${
-                                        log.status === "requires_intervention" ? "border-red-500/30" : ""
+                                        log.status === "requires_intervention" ? "border-destructive/30" : ""
                                       }`}>
                                         <div className="flex items-center justify-between mb-2">
                                           <div className="flex items-center gap-2 flex-wrap">
@@ -743,7 +772,7 @@ export default function OnboardingDashboard() {
                                           </div>
                                         )}
                                         {log.requiresHumanReview === 1 && !log.reviewedAt && (
-                                          <Badge className="mt-3 bg-red-500/20 text-red-300 border-red-500/30">
+                                          <Badge className="mt-3 bg-destructive/20 text-destructive border-destructive/30">
                                             <AlertCircle className="w-3 h-3 mr-1" />
                                             Requires Review
                                           </Badge>
@@ -782,8 +811,8 @@ export default function OnboardingDashboard() {
         <DialogContent className="sm:max-w-lg bg-card border-border dark:border-white/10">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-500/20 rounded-lg">
-                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              <div className="p-2 bg-destructive/20 rounded-lg">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
               </div>
               <div>
                 <DialogTitle>Resolve Escalation</DialogTitle>
@@ -795,9 +824,9 @@ export default function OnboardingDashboard() {
           </DialogHeader>
           {interventionDialog && (
             <div className="space-y-4 py-4">
-              <div className="bg-red-500/10 rounded-lg p-4 border border-red-500/20">
+              <div className="bg-destructive/10 rounded-lg p-4 border border-destructive/20">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500/30 to-rose-500/30 border border-red-500/30 flex items-center justify-center text-red-300 font-bold">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-destructive/30 to-background/30 border border-destructive/30 flex items-center justify-center text-destructive font-bold">
                     {getInitials(getCandidateName(interventionDialog.candidateId || ""))}
                   </div>
                   <div>
@@ -810,7 +839,7 @@ export default function OnboardingDashboard() {
                   </div>
                 </div>
                 <div className="bg-card/50 rounded-lg p-3 border border-border dark:border-white/5">
-                  <p className="text-sm text-red-300 font-medium">
+                  <p className="text-sm text-destructive font-medium">
                     Issue: {(interventionDialog.details as any)?.reason || "Manual review required"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -841,10 +870,129 @@ export default function OnboardingDashboard() {
                 notes: resolutionNotes,
               })}
               disabled={resolveInterventionMutation.isPending || !resolutionNotes}
-              className="bg-emerald-500/20 border-emerald-500/30 hover:bg-emerald-500/30 text-emerald-300"
+              className="bg-muted/20 border-border/30 hover:bg-muted/30 text-foreground"
               data-testid="button-confirm-resolve"
             >
               {resolveInterventionMutation.isPending ? "Resolving..." : "Mark Resolved"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Review Dialog */}
+      <Dialog open={!!reviewDoc} onOpenChange={() => setReviewDoc(null)}>
+        <DialogContent className="sm:max-w-2xl bg-card border-border dark:border-white/10">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <FileCheck className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <DialogTitle>Review Document</DialogTitle>
+                <DialogDescription>
+                  {reviewDoc?.documentName} — uploaded by candidate
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          {reviewDoc && (
+            <div className="space-y-4 py-2">
+              {/* Document preview area */}
+              <div className="rounded-lg border border-border dark:border-white/10 overflow-hidden bg-black/20">
+                {(reviewDocumentDetails?.filePath || reviewDocumentDetails?.fileUrl) ? (
+                  (() => {
+                    const mime = reviewDocumentDetails.mimeType || "";
+                    const url = `/${reviewDocumentDetails.filePath || reviewDocumentDetails.fileUrl}`;
+                    if (mime.startsWith("image/")) {
+                      return (
+                        <div className="flex justify-center p-4 max-h-[400px] overflow-auto">
+                          <img src={url} alt={reviewDoc.documentName} className="max-w-full max-h-[380px] object-contain rounded" />
+                        </div>
+                      );
+                    }
+                    if (mime === "application/pdf") {
+                      return (
+                        <iframe src={url} className="w-full h-[400px]" title={reviewDoc.documentName} />
+                      );
+                    }
+                    return (
+                      <div className="flex flex-col items-center justify-center p-8 gap-3">
+                        <FileText className="w-12 h-12 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Preview not available for this file type</p>
+                        <a href={url} target="_blank" rel="noopener noreferrer">
+                          <Button size="sm" variant="outline" className="gap-2">
+                            <Download className="w-4 h-4" />
+                            Download to review
+                          </Button>
+                        </a>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 gap-2">
+                    <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
+                    <p className="text-sm text-muted-foreground">Loading document...</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Document info */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-card/50 rounded-lg p-3 border border-border dark:border-white/5">
+                  <p className="text-muted-foreground text-xs mb-1">Document Type</p>
+                  <p className="font-medium text-foreground">{reviewDoc.documentName}</p>
+                </div>
+                <div className="bg-card/50 rounded-lg p-3 border border-border dark:border-white/5">
+                  <p className="text-muted-foreground text-xs mb-1">Received</p>
+                  <p className="font-medium text-foreground">{reviewDoc.receivedAt ? format(new Date(reviewDoc.receivedAt), "dd MMM yyyy 'at' HH:mm") : "N/A"}</p>
+                </div>
+              </div>
+
+              {/* Rejection reason input (shown inline) */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
+                  Rejection reason (required only if rejecting)
+                </label>
+                <Textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="e.g. Document is expired, image is blurry, wrong document type..."
+                  rows={2}
+                  className="resize-none bg-card/50 border-border dark:border-white/10"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setReviewDoc(null)} className="border-border dark:border-white/10">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (reviewDoc && rejectionReason.trim()) {
+                  rejectDocumentMutation.mutate({ requestId: reviewDoc.id, reason: rejectionReason.trim() });
+                  setReviewDoc(null);
+                }
+              }}
+              disabled={!rejectionReason.trim() || rejectDocumentMutation.isPending}
+              variant="outline"
+              className="gap-1 border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-300"
+            >
+              <XCircle className="w-4 h-4" />
+              Reject
+            </Button>
+            <Button
+              onClick={() => {
+                if (reviewDoc) {
+                  markVerifiedMutation.mutate(reviewDoc.id);
+                  setReviewDoc(null);
+                }
+              }}
+              disabled={markVerifiedMutation.isPending}
+              className="gap-1 bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/30 text-emerald-300"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Accept
             </Button>
           </DialogFooter>
         </DialogContent>

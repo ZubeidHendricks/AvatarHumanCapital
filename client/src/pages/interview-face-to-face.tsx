@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { 
-  Users, 
+import {
+  Users,
   Calendar,
   Clock,
   MapPin,
@@ -17,9 +17,12 @@ import {
   XCircle,
   Send,
   Plus,
-  Building2
+  Building2,
+  Upload,
+  Loader2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { recordingService } from "@/lib/api";
 
 interface Interview {
   id: string;
@@ -33,30 +36,117 @@ interface Interview {
   notes?: string;
 }
 
-export default function InterviewFaceToFace() {
+interface InterviewFaceToFaceProps {
+  embedded?: boolean;
+  candidateId?: string;
+  candidateName?: string;
+  sessionId?: string;
+  jobTitle?: string;
+  f2fStatus?: string | null;
+  f2fScheduledDate?: string | null;
+  f2fScheduledTime?: string | null;
+  f2fLocation?: string | null;
+  f2fInterviewer?: string | null;
+  onMarkComplete?: () => void;
+  onScheduled?: () => void;
+}
+
+const interviewers = [
+  { id: "1", name: "Sarah Manager" },
+  { id: "2", name: "John Director" },
+  { id: "3", name: "Lisa HR" },
+  { id: "4", name: "Tom Lead" },
+];
+
+export default function InterviewFaceToFace(props: InterviewFaceToFaceProps & Record<string, any> = {}) {
+  const {
+    embedded,
+    candidateId,
+    candidateName,
+    sessionId,
+    jobTitle,
+    f2fStatus: initialF2fStatus,
+    f2fScheduledDate: initialDate,
+    f2fScheduledTime: initialTime,
+    f2fLocation: initialLocation,
+    f2fInterviewer: initialInterviewer,
+    onMarkComplete,
+    onScheduled,
+  } = props;
+
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState("");
+  const [selectedCandidate, setSelectedCandidate] = useState(candidateId || candidateName || "");
   const [interviewDate, setInterviewDate] = useState("");
   const [interviewTime, setInterviewTime] = useState("");
   const [location, setLocation] = useState("");
   const [interviewer, setInterviewer] = useState("");
   const [notes, setNotes] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadTargetRef = useRef<string | null>(null);
 
+  // Local state for scheduled meeting (used after scheduling via API)
+  const [localMeeting, setLocalMeeting] = useState<{
+    date: string;
+    time: string;
+    location: string;
+    interviewer: string;
+    status: string;
+  } | null>(null);
+
+  // Sync local meeting state from server props when they change
+  useEffect(() => {
+    if (initialF2fStatus && initialF2fStatus !== "null") {
+      setLocalMeeting({
+        date: initialDate || "",
+        time: initialTime || "",
+        location: initialLocation || "",
+        interviewer: initialInterviewer || "",
+        status: initialF2fStatus,
+      });
+    }
+  }, [initialF2fStatus, initialDate, initialTime, initialLocation, initialInterviewer]);
+
+  const handleUploadRecording = async (interviewId: string, file: File) => {
+    setUploadingId(interviewId);
+    try {
+      const blob = new Blob([file], { type: file.type });
+      await recordingService.uploadRecording(interviewId, blob, {
+        sourceType: "upload",
+      });
+      toast({
+        title: "Recording Uploaded",
+        description: "The recording has been saved and transcription will begin automatically.",
+      });
+    } catch (err) {
+      console.error("Failed to upload recording:", err);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload the recording. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  // Mock data for standalone page only
   const interviews: Interview[] = [
-    { 
-      id: "1", 
-      candidateName: "John Smith", 
-      position: "Senior Developer", 
+    {
+      id: "1",
+      candidateName: "John Smith",
+      position: "Senior Developer",
       date: "2024-02-15",
       time: "10:00",
       location: "Conference Room A",
       interviewer: "Sarah Manager",
       status: "scheduled"
     },
-    { 
-      id: "2", 
-      candidateName: "Emily Brown", 
-      position: "Project Manager", 
+    {
+      id: "2",
+      candidateName: "Emily Brown",
+      position: "Project Manager",
       date: "2024-02-14",
       time: "14:00",
       location: "Main Office",
@@ -64,10 +154,10 @@ export default function InterviewFaceToFace() {
       status: "completed",
       notes: "Strong candidate, good communication skills"
     },
-    { 
-      id: "3", 
-      candidateName: "Mike Wilson", 
-      position: "Data Analyst", 
+    {
+      id: "3",
+      candidateName: "Mike Wilson",
+      position: "Data Analyst",
       date: "2024-02-12",
       time: "11:00",
       location: "Meeting Room B",
@@ -83,15 +173,8 @@ export default function InterviewFaceToFace() {
     { id: "4", name: "Emily Brown", position: "HR Coordinator" },
   ];
 
-  const interviewers = [
-    { id: "1", name: "Sarah Manager" },
-    { id: "2", name: "John Director" },
-    { id: "3", name: "Lisa HR" },
-    { id: "4", name: "Tom Lead" },
-  ];
-
-  const handleScheduleInterview = () => {
-    if (!selectedCandidate || !interviewDate || !interviewTime || !location || !interviewer) {
+  const handleScheduleInterview = async () => {
+    if (!interviewDate || !interviewTime || !location || !interviewer) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -100,13 +183,51 @@ export default function InterviewFaceToFace() {
       return;
     }
 
-    toast({
-      title: "Interview Scheduled",
-      description: "The face-to-face interview has been scheduled successfully.",
-    });
-    
+    // If embedded with a sessionId, persist to server
+    if (embedded && sessionId) {
+      setScheduling(true);
+      try {
+        const interviewerName = interviewers.find(i => i.id === interviewer)?.name || interviewer;
+        await fetch(`/api/interviews/${sessionId}/schedule-f2f`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: interviewDate,
+            time: interviewTime,
+            location,
+            interviewer: interviewerName,
+            notes: notes || undefined,
+          }),
+        });
+        setLocalMeeting({
+          date: interviewDate,
+          time: interviewTime,
+          location,
+          interviewer: interviewerName,
+          status: "scheduled",
+        });
+        toast({
+          title: "Interview Scheduled",
+          description: `Face-to-face interview scheduled for ${candidateName || "candidate"}.`,
+        });
+        onScheduled?.();
+      } catch {
+        toast({
+          title: "Scheduling Failed",
+          description: "Failed to schedule the interview. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setScheduling(false);
+      }
+    } else {
+      toast({
+        title: "Interview Scheduled",
+        description: "The face-to-face interview has been scheduled successfully.",
+      });
+    }
+
     setScheduleDialogOpen(false);
-    setSelectedCandidate("");
     setInterviewDate("");
     setInterviewTime("");
     setLocation("");
@@ -117,16 +238,186 @@ export default function InterviewFaceToFace() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "scheduled":
-        return <Badge className="bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">Scheduled</Badge>;
+        return <Badge className="bg-muted/20 text-foreground dark:text-foreground border-border/30">Scheduled</Badge>;
       case "completed":
-        return <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">Completed</Badge>;
+        return <Badge className="bg-muted/20 text-foreground border-border/30">Completed</Badge>;
       case "cancelled":
-        return <Badge className="bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">Cancelled</Badge>;
+        return <Badge className="bg-destructive/20 text-destructive border-destructive/30">Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
+  if (embedded) {
+    const meetingStatus = localMeeting?.status || null;
+    const isScheduled = meetingStatus === "scheduled";
+    const isCompleted = meetingStatus === "completed";
+    const hasMeeting = isScheduled || isCompleted;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold">Face-to-Face Interview</h3>
+            {candidateName && (
+              <Badge variant="outline" className="text-xs">{candidateName}</Badge>
+            )}
+          </div>
+          {!hasMeeting && (
+            <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <Plus className="w-3 h-3 mr-1" />
+                  Schedule
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Schedule Face-to-Face Interview</DialogTitle>
+                  <DialogDescription>
+                    Set up an in-person interview with {candidateName || 'the candidate'}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Candidate</Label>
+                    <Input value={candidateName || ''} disabled className="bg-muted border-border" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Date</Label>
+                      <Input type="date" value={interviewDate} onChange={(e) => setInterviewDate(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Time</Label>
+                      <Input type="time" value={interviewTime} onChange={(e) => setInterviewTime(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Location</Label>
+                    <Input placeholder="e.g., Conference Room A" value={location} onChange={(e) => setLocation(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Interviewer</Label>
+                    <Select value={interviewer} onValueChange={setInterviewer}>
+                      <SelectTrigger><SelectValue placeholder="Select an interviewer" /></SelectTrigger>
+                      <SelectContent>
+                        {interviewers.map((int) => (
+                          <SelectItem key={int.id} value={int.id}>{int.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notes (optional)</Label>
+                    <Textarea placeholder="Any additional notes..." value={notes} onChange={(e) => setNotes(e.target.value)} />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleScheduleInterview} disabled={scheduling} className="bg-[#FFCB00] hover:bg-[#E6B800] text-black">
+                    {scheduling && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    <Send className="w-4 h-4 mr-2" />
+                    Schedule
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+
+        {/* Show the candidate's F2F meeting or empty state */}
+        <div className="space-y-2">
+          {hasMeeting && localMeeting ? (
+            <div className="flex items-center justify-between p-3 rounded-lg border border-border text-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Users className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <span className="font-medium">{candidateName || "Candidate"}</span>
+                  {jobTitle && (
+                    <span className="text-xs text-muted-foreground ml-2">({jobTitle})</span>
+                  )}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {localMeeting.date && (
+                      <><Calendar className="w-3 h-3" />{localMeeting.date}</>
+                    )}
+                    {localMeeting.time && (
+                      <><Clock className="w-3 h-3 ml-1" />{localMeeting.time}</>
+                    )}
+                    {localMeeting.location && (
+                      <><MapPin className="w-3 h-3 ml-1" />{localMeeting.location}</>
+                    )}
+                    {localMeeting.interviewer && (
+                      <><UserPlus className="w-3 h-3 ml-1" />{localMeeting.interviewer}</>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {getStatusBadge(localMeeting.status)}
+                {isScheduled && onMarkComplete && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      onMarkComplete();
+                      setLocalMeeting(prev => prev ? { ...prev, status: "completed" } : null);
+                    }}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-black h-7 text-xs"
+                  >
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Mark Complete
+                  </Button>
+                )}
+                {isCompleted && sessionId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={uploadingId === sessionId}
+                    onClick={() => {
+                      uploadTargetRef.current = sessionId;
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    {uploadingId === sessionId ? (
+                      <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Uploading...</>
+                    ) : (
+                      <><Upload className="w-3 h-3 mr-1" />Upload</>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-muted-foreground text-sm">
+              <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p>No face-to-face interview scheduled for {candidateName || "this candidate"}</p>
+              <p className="text-xs mt-1">Click "Schedule" to set one up</p>
+            </div>
+          )}
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*,video/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file && uploadTargetRef.current) {
+              handleUploadRecording(uploadTargetRef.current, file);
+            }
+            e.target.value = "";
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Standalone page (not embedded) - keep existing mock data view
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
       <div className="flex items-center justify-between mb-8">
@@ -172,8 +463,8 @@ export default function InterviewFaceToFace() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Date</Label>
-                  <Input 
-                    type="date" 
+                  <Input
+                    type="date"
                     value={interviewDate}
                     onChange={(e) => setInterviewDate(e.target.value)}
                     data-testid="input-interview-date"
@@ -181,8 +472,8 @@ export default function InterviewFaceToFace() {
                 </div>
                 <div className="space-y-2">
                   <Label>Time</Label>
-                  <Input 
-                    type="time" 
+                  <Input
+                    type="time"
                     value={interviewTime}
                     onChange={(e) => setInterviewTime(e.target.value)}
                     data-testid="input-interview-time"
@@ -191,7 +482,7 @@ export default function InterviewFaceToFace() {
               </div>
               <div className="space-y-2">
                 <Label>Location</Label>
-                <Input 
+                <Input
                   placeholder="e.g., Conference Room A, Main Office"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
@@ -215,7 +506,7 @@ export default function InterviewFaceToFace() {
               </div>
               <div className="space-y-2">
                 <Label>Notes (optional)</Label>
-                <Textarea 
+                <Textarea
                   placeholder="Any additional notes or requirements..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -237,32 +528,32 @@ export default function InterviewFaceToFace() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <Card className="border-blue-200 dark:border-blue-700">
+        <Card className="border-border dark:border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Scheduled</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-500">
+            <div className="text-3xl font-bold text-foreground">
               {interviews.filter(i => i.status === "scheduled").length}
             </div>
           </CardContent>
         </Card>
-        <Card className="border-green-200 dark:border-green-700">
+        <Card className="border-border dark:border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-500">
+            <div className="text-3xl font-bold text-foreground">
               {interviews.filter(i => i.status === "completed").length}
             </div>
           </CardContent>
         </Card>
-        <Card className="border-red-200 dark:border-red-700">
+        <Card className="border-destructive dark:border-destructive">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Cancelled</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-500">
+            <div className="text-3xl font-bold text-destructive">
               {interviews.filter(i => i.status === "cancelled").length}
             </div>
           </CardContent>
@@ -277,8 +568,8 @@ export default function InterviewFaceToFace() {
         <CardContent>
           <div className="space-y-4">
             {interviews.map((interview) => (
-              <div 
-                key={interview.id} 
+              <div
+                key={interview.id}
                 className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors"
                 data-testid={`interview-${interview.id}`}
               >
@@ -309,12 +600,49 @@ export default function InterviewFaceToFace() {
                     <span>{interview.interviewer}</span>
                   </div>
                   {getStatusBadge(interview.status)}
+                  {interview.status === "completed" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingId === interview.id}
+                      onClick={() => {
+                        uploadTargetRef.current = interview.id;
+                        fileInputRef.current?.click();
+                      }}
+                    >
+                      {uploadingId === interview.id ? (
+                        <>
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3 h-3 mr-1" />
+                          Upload Recording
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*,video/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && uploadTargetRef.current) {
+            handleUploadRecording(uploadTargetRef.current, file);
+          }
+          e.target.value = "";
+        }}
+      />
     </div>
   );
 }

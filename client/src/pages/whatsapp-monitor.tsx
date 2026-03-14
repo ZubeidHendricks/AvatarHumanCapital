@@ -303,7 +303,8 @@ export default function WhatsAppMonitor() {
     queryKey: conversationsKey,
     queryFn: async () => {
       const response = await api.get('/whatsapp/conversations');
-      return response.data;
+      const body = response.data;
+      return Array.isArray(body) ? body : body.data ?? [];
     },
     refetchInterval: 10000,
   });
@@ -322,7 +323,8 @@ export default function WhatsAppMonitor() {
     queryKey: useTenantQueryKey(['candidates']),
     queryFn: async () => {
       const response = await api.get('/candidates');
-      return response.data;
+      const body = response.data;
+      return Array.isArray(body) ? body : body.data ?? [];
     },
   });
 
@@ -562,7 +564,7 @@ export default function WhatsAppMonitor() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_320px] gap-6 h-[calc(100vh-200px)]">
-          <Card className="bg-card/50 border-border dark:border-white/10 flex flex-col" data-testid="conversation-list-panel">
+          <Card className="bg-card/50 border-border dark:border-white/10 flex flex-col overflow-hidden" data-testid="conversation-list-panel">
             <CardHeader className="border-b border-border dark:border-white/10 pb-4">
               <div className="flex items-center gap-2 mb-4">
                 <div className="relative flex-1">
@@ -654,7 +656,7 @@ export default function WhatsAppMonitor() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card/50 border-border dark:border-white/10 flex flex-col" data-testid="message-thread-panel">
+          <Card className="bg-card/50 border-border dark:border-white/10 flex flex-col overflow-hidden" data-testid="message-thread-panel">
             {selectedConversationId && conversationDetail ? (
               <>
                 <CardHeader className="border-b border-border dark:border-white/10 pb-4">
@@ -749,12 +751,12 @@ export default function WhatsAppMonitor() {
                             data-testid={`message-${message.id}`}
                           >
                             <div
-                              className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                              className={`max-w-[80%] rounded-2xl px-4 py-2 text-[#F8FAFC] ${
                                 message.direction === 'outbound'
                                   ? message.senderType === 'ai'
-                                    ? 'bg-blue-500/20 text-blue-200'
-                                    : 'bg-primary text-primary-foreground'
-                                  : 'bg-white/10 text-foreground'
+                                    ? 'bg-blue-500/20'
+                                    : 'bg-primary'
+                                  : 'bg-white/10'
                               }`}
                             >
                               {message.senderType === 'ai' && message.direction === 'outbound' && (
@@ -774,11 +776,7 @@ export default function WhatsAppMonitor() {
                                   </a>
                                 </div>
                               )}
-                              <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
-                                message.direction === 'outbound' && message.senderType !== 'ai'
-                                  ? 'text-blue-100'
-                                  : 'text-gray-500'
-                              }`}>
+                              <div className={`flex items-center justify-end gap-1 mt-1 text-xs text-[#F8FAFC]/60`}>
                                 <span>
                                   {format(new Date(message.createdAt), 'HH:mm')}
                                 </span>
@@ -826,7 +824,7 @@ export default function WhatsAppMonitor() {
             )}
           </Card>
 
-          <Card className="bg-card/50 border-border dark:border-white/10" data-testid="details-panel">
+          <Card className="bg-card/50 border-border dark:border-white/10 flex flex-col overflow-hidden" data-testid="details-panel">
             {selectedConversationId && conversationDetail ? (
               <Tabs defaultValue="info" className="h-full flex flex-col">
                 <TabsList className="w-full justify-start border-b border-border dark:border-white/10 rounded-none bg-transparent">

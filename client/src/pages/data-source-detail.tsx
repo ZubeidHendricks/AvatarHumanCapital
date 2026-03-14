@@ -129,10 +129,10 @@ export default function DataSourceDetailPage() {
 
   const getStatusBadge = (status: string) => {
     const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: any; color: string }> = {
-      active: { variant: "default", icon: CheckCircle, color: "text-green-600 dark:text-green-400" },
-      pending: { variant: "secondary", icon: Clock, color: "text-yellow-600 dark:text-yellow-400" },
-      error: { variant: "destructive", icon: XCircle, color: "text-red-600 dark:text-red-400" },
-      inactive: { variant: "outline", icon: AlertCircle, color: "text-gray-400" },
+      active: { variant: "default", icon: CheckCircle, color: "text-foreground" },
+      pending: { variant: "secondary", icon: Clock, color: "text-foreground" },
+      error: { variant: "destructive", icon: XCircle, color: "text-destructive" },
+      inactive: { variant: "outline", icon: AlertCircle, color: "text-muted-foreground" },
     };
     const { variant, icon: Icon, color } = config[status] || config.inactive;
     return (
@@ -145,10 +145,10 @@ export default function DataSourceDetailPage() {
 
   const getSyncStatusBadge = (status: string) => {
     const config: Record<string, { color: string; icon: any }> = {
-      success: { color: "text-green-600 dark:text-green-400 bg-green-500/10", icon: CheckCircle },
-      failed: { color: "text-red-600 dark:text-red-400 bg-red-500/10", icon: XCircle },
-      running: { color: "text-blue-600 dark:text-blue-400 bg-blue-500/10", icon: Loader2 },
-      partial: { color: "text-yellow-600 dark:text-yellow-400 bg-yellow-500/10", icon: AlertCircle },
+      success: { color: "text-foreground bg-muted/10", icon: CheckCircle },
+      failed: { color: "text-destructive bg-destructive/10", icon: XCircle },
+      running: { color: "text-foreground dark:text-foreground bg-muted/10", icon: Loader2 },
+      partial: { color: "text-foreground bg-muted/10", icon: AlertCircle },
     };
     const { color, icon: Icon } = config[status] || config.running;
     return (
@@ -163,7 +163,7 @@ export default function DataSourceDetailPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
         <div className="flex items-center justify-center py-24">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-foreground" />
         </div>
       </div>
     );
@@ -177,9 +177,9 @@ export default function DataSourceDetailPage() {
             <CardContent className="py-12 text-center">
               <Database className="h-12 w-12 text-gray-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">Data Source Not Found</h3>
-              <p className="text-gray-400 mb-4">The requested data source could not be found.</p>
+              <p className="text-muted-foreground mb-4">The requested data source could not be found.</p>
               <Link href="/data-sources">
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="bg-muted hover:bg-muted">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Data Sources
                 </Button>
@@ -197,19 +197,19 @@ export default function DataSourceDetailPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/data-sources">
-              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-white">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
             </Link>
             <div>
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-3" data-testid="page-title">
-                <div className="p-2 bg-blue-500/10 rounded-lg">
-                  <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <div className="p-2 bg-muted/10 rounded-lg">
+                  <Database className="h-6 w-6 text-foreground dark:text-foreground" />
                 </div>
                 {source.name}
               </h1>
-              <p className="text-gray-400 mt-1 capitalize">{source.type.replace(/_/g, " ")} Data Source</p>
+              <p className="text-muted-foreground mt-1 capitalize">{source.type.replace(/_/g, " ")} Data Source</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -218,7 +218,7 @@ export default function DataSourceDetailPage() {
               variant="outline"
               onClick={() => testConnectionMutation.mutate()}
               disabled={testingConnection}
-              className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              className="border-gray-700 text-muted-foreground hover:bg-gray-800"
               data-testid="button-test-connection"
             >
               {testingConnection ? (
@@ -231,7 +231,7 @@ export default function DataSourceDetailPage() {
             <Button
               onClick={() => syncMutation.mutate()}
               disabled={syncing || source.status !== "active"}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-muted hover:bg-muted"
               data-testid="button-sync"
             >
               {syncing ? (
@@ -249,11 +249,11 @@ export default function DataSourceDetailPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm">Health Score</p>
+                  <p className="text-muted-foreground text-sm">Health Score</p>
                   <p className="text-2xl font-bold text-foreground" data-testid="stat-health">{source.healthScore || 0}%</p>
                 </div>
-                <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <Activity className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <div className="p-3 bg-muted/10 rounded-lg">
+                  <Activity className="h-6 w-6 text-foreground dark:text-foreground" />
                 </div>
               </div>
               <Progress value={source.healthScore || 0} className="mt-2 h-2" />
@@ -264,15 +264,15 @@ export default function DataSourceDetailPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm">Last Sync</p>
+                  <p className="text-muted-foreground text-sm">Last Sync</p>
                   <p className="text-lg font-medium text-foreground" data-testid="stat-last-sync">
                     {source.lastSyncAt
                       ? formatDistanceToNow(new Date(source.lastSyncAt), { addSuffix: true })
                       : "Never"}
                   </p>
                 </div>
-                <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <div className="p-3 bg-muted/10 rounded-lg">
+                  <Calendar className="h-6 w-6 text-foreground dark:text-foreground" />
                 </div>
               </div>
             </CardContent>
@@ -282,13 +282,13 @@ export default function DataSourceDetailPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm">Sync Frequency</p>
+                  <p className="text-muted-foreground text-sm">Sync Frequency</p>
                   <p className="text-lg font-medium text-foreground capitalize" data-testid="stat-frequency">
                     {source.refreshSchedule || "Manual"}
                   </p>
                 </div>
-                <div className="p-3 bg-green-500/10 rounded-lg">
-                  <RefreshCw className="h-6 w-6 text-green-600 dark:text-green-400" />
+                <div className="p-3 bg-muted/10 rounded-lg">
+                  <RefreshCw className="h-6 w-6 text-foreground" />
                 </div>
               </div>
             </CardContent>
@@ -298,11 +298,11 @@ export default function DataSourceDetailPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm">Linked KPIs</p>
+                  <p className="text-muted-foreground text-sm">Linked KPIs</p>
                   <p className="text-2xl font-bold text-foreground" data-testid="stat-kpis">{linkedKpis.length}</p>
                 </div>
-                <div className="p-3 bg-teal-600/10 rounded-lg">
-                  <Target className="h-6 w-6 text-teal-700 dark:text-teal-400" />
+                <div className="p-3 bg-muted/10 rounded-lg">
+                  <Target className="h-6 w-6 text-foreground dark:text-foreground" />
                 </div>
               </div>
             </CardContent>
@@ -311,25 +311,25 @@ export default function DataSourceDetailPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="bg-gray-900/50 border border-gray-800">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-muted">
               <BarChart3 className="h-4 w-4 mr-2" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="history" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="history" className="data-[state=active]:bg-muted">
               <History className="h-4 w-4 mr-2" />
               Sync History
             </TabsTrigger>
-            <TabsTrigger value="kpis" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="kpis" className="data-[state=active]:bg-muted">
               <Target className="h-4 w-4 mr-2" />
               Linked KPIs
             </TabsTrigger>
             {source.type === "manual" && (
-              <TabsTrigger value="entry" className="data-[state=active]:bg-blue-600">
+              <TabsTrigger value="entry" className="data-[state=active]:bg-muted">
                 <Edit2 className="h-4 w-4 mr-2" />
                 Data Entry
               </TabsTrigger>
             )}
-            <TabsTrigger value="settings" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="settings" className="data-[state=active]:bg-muted">
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </TabsTrigger>
@@ -340,37 +340,37 @@ export default function DataSourceDetailPage() {
               <Card className="bg-gray-900/50 border-gray-800">
                 <CardHeader>
                   <CardTitle className="text-foreground flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <FileText className="h-5 w-5 text-foreground dark:text-foreground" />
                     Source Details
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {source.description && (
                     <div>
-                      <p className="text-gray-400 text-sm">Description</p>
+                      <p className="text-muted-foreground text-sm">Description</p>
                       <p className="text-foreground">{source.description}</p>
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-gray-400 text-sm">Type</p>
+                      <p className="text-muted-foreground text-sm">Type</p>
                       <p className="text-foreground capitalize">{source.type.replace(/_/g, " ")}</p>
                     </div>
                     <div>
-                      <p className="text-gray-400 text-sm">Category</p>
+                      <p className="text-muted-foreground text-sm">Category</p>
                       <p className="text-foreground">{source.category || "General"}</p>
                     </div>
                     <div>
-                      <p className="text-gray-400 text-sm">Connection Type</p>
+                      <p className="text-muted-foreground text-sm">Connection Type</p>
                       <p className="text-foreground capitalize">{source.connectionType || "N/A"}</p>
                     </div>
                     <div>
-                      <p className="text-gray-400 text-sm">Auth Type</p>
+                      <p className="text-muted-foreground text-sm">Auth Type</p>
                       <p className="text-foreground capitalize">{source.authType?.replace(/_/g, " ") || "N/A"}</p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-sm">Created</p>
+                    <p className="text-muted-foreground text-sm">Created</p>
                     <p className="text-foreground">{format(new Date(source.createdAt), "MMMM d, yyyy 'at' h:mm a")}</p>
                   </div>
                 </CardContent>
@@ -379,7 +379,7 @@ export default function DataSourceDetailPage() {
               <Card className="bg-gray-900/50 border-gray-800">
                 <CardHeader>
                   <CardTitle className="text-foreground flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <Activity className="h-5 w-5 text-foreground" />
                     Last Sync Status
                   </CardTitle>
                 </CardHeader>
@@ -387,16 +387,16 @@ export default function DataSourceDetailPage() {
                   {source.lastSyncAt ? (
                     <>
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-400">Status</span>
+                        <span className="text-muted-foreground">Status</span>
                         {source.lastSyncStatus && getSyncStatusBadge(source.lastSyncStatus)}
                       </div>
                       <div>
-                        <p className="text-gray-400 text-sm">Time</p>
+                        <p className="text-muted-foreground text-sm">Time</p>
                         <p className="text-foreground">{format(new Date(source.lastSyncAt), "MMMM d, yyyy 'at' h:mm a")}</p>
                       </div>
                       {source.lastSyncMessage && (
                         <div>
-                          <p className="text-gray-400 text-sm">Message</p>
+                          <p className="text-muted-foreground text-sm">Message</p>
                           <p className="text-foreground">{source.lastSyncMessage}</p>
                         </div>
                       )}
@@ -404,11 +404,11 @@ export default function DataSourceDetailPage() {
                   ) : (
                     <div className="text-center py-8">
                       <Clock className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                      <p className="text-gray-400">No sync has been performed yet</p>
+                      <p className="text-muted-foreground">No sync has been performed yet</p>
                       <Button
                         onClick={() => syncMutation.mutate()}
                         disabled={syncing || source.status !== "active"}
-                        className="mt-4 bg-blue-600 hover:bg-blue-700"
+                        className="mt-4 bg-muted hover:bg-muted"
                       >
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Run First Sync
@@ -424,10 +424,10 @@ export default function DataSourceDetailPage() {
             <Card className="bg-gray-900/50 border-gray-800">
               <CardHeader>
                 <CardTitle className="text-foreground flex items-center gap-2">
-                  <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <History className="h-5 w-5 text-foreground dark:text-foreground" />
                   Sync History
                 </CardTitle>
-                <CardDescription className="text-gray-400">
+                <CardDescription className="text-muted-foreground">
                   Recent synchronization attempts and their results
                 </CardDescription>
               </CardHeader>
@@ -435,7 +435,7 @@ export default function DataSourceDetailPage() {
                 {syncHistory.length === 0 ? (
                   <div className="text-center py-12">
                     <History className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400">No sync history available</p>
+                    <p className="text-muted-foreground">No sync history available</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -453,26 +453,26 @@ export default function DataSourceDetailPage() {
                             </span>
                           </div>
                           {entry.completedAt && (
-                            <span className="text-gray-400 text-sm">
+                            <span className="text-muted-foreground text-sm">
                               Duration: {Math.round((new Date(entry.completedAt).getTime() - new Date(entry.startedAt).getTime()) / 1000)}s
                             </span>
                           )}
                         </div>
                         {(entry.recordsProcessed || entry.recordsCreated || entry.recordsUpdated) && (
                           <div className="mt-3 flex gap-6 text-sm">
-                            <span className="text-gray-400">
+                            <span className="text-muted-foreground">
                               Processed: <span className="text-foreground">{entry.recordsProcessed || 0}</span>
                             </span>
-                            <span className="text-gray-400">
-                              Created: <span className="text-green-600 dark:text-green-400">{entry.recordsCreated || 0}</span>
+                            <span className="text-muted-foreground">
+                              Created: <span className="text-foreground">{entry.recordsCreated || 0}</span>
                             </span>
-                            <span className="text-gray-400">
-                              Updated: <span className="text-blue-600 dark:text-blue-400">{entry.recordsUpdated || 0}</span>
+                            <span className="text-muted-foreground">
+                              Updated: <span className="text-foreground dark:text-foreground">{entry.recordsUpdated || 0}</span>
                             </span>
                           </div>
                         )}
                         {entry.errorMessage && (
-                          <p className="mt-2 text-red-600 dark:text-red-400 text-sm">{entry.errorMessage}</p>
+                          <p className="mt-2 text-destructive text-sm">{entry.errorMessage}</p>
                         )}
                       </div>
                     ))}
@@ -486,10 +486,10 @@ export default function DataSourceDetailPage() {
             <Card className="bg-gray-900/50 border-gray-800">
               <CardHeader>
                 <CardTitle className="text-foreground flex items-center gap-2">
-                  <Target className="h-5 w-5 text-teal-700 dark:text-teal-400" />
+                  <Target className="h-5 w-5 text-foreground dark:text-foreground" />
                   Linked KPI Templates
                 </CardTitle>
-                <CardDescription className="text-gray-400">
+                <CardDescription className="text-muted-foreground">
                   KPIs that collect data from this source
                 </CardDescription>
               </CardHeader>
@@ -497,9 +497,9 @@ export default function DataSourceDetailPage() {
                 {linkedKpis.length === 0 ? (
                   <div className="text-center py-12">
                     <Target className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400 mb-4">No KPIs are linked to this data source</p>
+                    <p className="text-muted-foreground mb-4">No KPIs are linked to this data source</p>
                     <Link href="/kpi-management">
-                      <Button className="bg-blue-600 hover:bg-blue-700">
+                      <Button className="bg-muted hover:bg-muted">
                         <LinkIcon className="h-4 w-4 mr-2" />
                         Go to KPI Management
                       </Button>
@@ -516,7 +516,7 @@ export default function DataSourceDetailPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <h4 className="text-foreground font-medium">{kpi.name}</h4>
-                            <p className="text-gray-400 text-sm">{kpi.description}</p>
+                            <p className="text-muted-foreground text-sm">{kpi.description}</p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary">{kpi.category}</Badge>
@@ -527,11 +527,11 @@ export default function DataSourceDetailPage() {
                         </div>
                         {kpi.sourceFieldMapping && (
                           <div className="mt-3 flex items-center gap-4 text-sm">
-                            <span className="text-gray-400">
+                            <span className="text-muted-foreground">
                               Field: <span className="text-foreground font-mono">{kpi.sourceFieldMapping}</span>
                             </span>
                             {kpi.aggregationMethod && (
-                              <span className="text-gray-400">
+                              <span className="text-muted-foreground">
                                 Aggregation: <span className="text-foreground capitalize">{kpi.aggregationMethod}</span>
                               </span>
                             )}
@@ -550,10 +550,10 @@ export default function DataSourceDetailPage() {
               <Card className="bg-gray-900/50 border-gray-800">
                 <CardHeader>
                   <CardTitle className="text-foreground flex items-center gap-2">
-                    <Edit2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <Edit2 className="h-5 w-5 text-foreground dark:text-foreground" />
                     Manual Data Entry
                   </CardTitle>
-                  <CardDescription className="text-gray-400">
+                  <CardDescription className="text-muted-foreground">
                     Enter values for KPIs linked to this manual data source
                   </CardDescription>
                 </CardHeader>
@@ -561,12 +561,12 @@ export default function DataSourceDetailPage() {
                   {linkedKpis.length === 0 ? (
                     <div className="text-center py-8">
                       <Target className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                      <p className="text-gray-400 mb-2">No KPIs linked to this data source</p>
-                      <p className="text-gray-500 text-sm mb-4">
+                      <p className="text-muted-foreground mb-2">No KPIs linked to this data source</p>
+                      <p className="text-muted-foreground text-sm mb-4">
                         Create a KPI template and select this data source to enable manual data entry
                       </p>
                       <Link href="/kpi-management">
-                        <Button className="bg-blue-600 hover:bg-blue-700">
+                        <Button className="bg-muted hover:bg-muted">
                           <Target className="h-4 w-4 mr-2" />
                           Create KPI Template
                         </Button>
@@ -583,24 +583,24 @@ export default function DataSourceDetailPage() {
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
                                 <Label className="text-foreground font-medium">{kpi.name}</Label>
-                                <p className="text-gray-400 text-sm mt-1">{kpi.description}</p>
+                                <p className="text-muted-foreground text-sm mt-1">{kpi.description}</p>
                                 <div className="flex items-center gap-4 mt-2 text-sm flex-wrap">
-                                  <span className="text-gray-500">
-                                    Type: <span className="text-gray-300 capitalize">{kpi.measurementType || "Value"}</span>
+                                  <span className="text-muted-foreground">
+                                    Type: <span className="text-muted-foreground capitalize">{kpi.measurementType || "Value"}</span>
                                   </span>
                                   {kpi.currentValue !== null && kpi.currentValue !== undefined && (
-                                    <span className="text-gray-500">
-                                      Current: <span className="text-green-600 dark:text-green-400 font-medium">{kpi.currentValue}</span>
+                                    <span className="text-muted-foreground">
+                                      Current: <span className="text-foreground font-medium">{kpi.currentValue}</span>
                                     </span>
                                   )}
                                   {kpi.targetValue !== null && kpi.targetValue !== undefined && (
-                                    <span className="text-gray-500">
-                                      Target: <span className="text-blue-600 dark:text-blue-400">{kpi.targetValue}</span>
+                                    <span className="text-muted-foreground">
+                                      Target: <span className="text-foreground dark:text-foreground">{kpi.targetValue}</span>
                                     </span>
                                   )}
                                   {kpi.lastMeasuredAt && (
-                                    <span className="text-gray-500">
-                                      Last updated: <span className="text-gray-400">{new Date(kpi.lastMeasuredAt).toLocaleString()}</span>
+                                    <span className="text-muted-foreground">
+                                      Last updated: <span className="text-muted-foreground">{new Date(kpi.lastMeasuredAt).toLocaleString()}</span>
                                     </span>
                                   )}
                                 </div>
@@ -625,13 +625,13 @@ export default function DataSourceDetailPage() {
                       </div>
                       
                       <div className="flex items-center justify-between pt-4 border-t border-gray-800">
-                        <p className="text-gray-400 text-sm">
+                        <p className="text-muted-foreground text-sm">
                           {Object.values(manualValues).filter(v => v !== "").length} value(s) ready to save
                         </p>
                         <Button
                           onClick={handleSaveManualValues}
                           disabled={savingValues || Object.values(manualValues).filter(v => v !== "").length === 0}
-                          className="bg-blue-600 hover:bg-blue-700"
+                          className="bg-muted hover:bg-muted"
                           data-testid="button-save-values"
                         >
                           {savingValues ? (
@@ -658,23 +658,23 @@ export default function DataSourceDetailPage() {
             <Card className="bg-gray-900/50 border-gray-800">
               <CardHeader>
                 <CardTitle className="text-foreground flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-gray-400" />
+                  <Settings className="h-5 w-5 text-muted-foreground" />
                   Configuration
                 </CardTitle>
-                <CardDescription className="text-gray-400">
+                <CardDescription className="text-muted-foreground">
                   Data source connection and sync settings
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <p className="text-gray-400 text-sm mb-1">Connection URL</p>
+                    <p className="text-muted-foreground text-sm mb-1">Connection URL</p>
                     <p className="text-white font-mono text-sm bg-gray-800/50 p-2 rounded">
                       {source.connectionUrl || "Not configured"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-sm mb-1">Data Endpoint</p>
+                    <p className="text-muted-foreground text-sm mb-1">Data Endpoint</p>
                     <p className="text-white font-mono text-sm bg-gray-800/50 p-2 rounded">
                       {source.dataEndpoint || "Not configured"}
                     </p>
@@ -683,7 +683,7 @@ export default function DataSourceDetailPage() {
 
                 {source.dataMapping ? (
                   <div>
-                    <p className="text-gray-400 text-sm mb-1">Field Mapping</p>
+                    <p className="text-muted-foreground text-sm mb-1">Field Mapping</p>
                     <pre className="text-white text-sm bg-gray-800/50 p-3 rounded overflow-x-auto">
                       {JSON.stringify(source.dataMapping, null, 2) as string}
                     </pre>
@@ -692,14 +692,14 @@ export default function DataSourceDetailPage() {
 
                 <div className="flex items-center gap-4 pt-4 border-t border-gray-800">
                   <Link href="/data-sources">
-                    <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                    <Button variant="outline" className="border-gray-700 text-muted-foreground hover:bg-gray-800">
                       <ArrowLeft className="h-4 w-4 mr-2" />
                       Back to List
                     </Button>
                   </Link>
                   <Button
                     variant="outline"
-                    className="border-red-700 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                    className="border-destructive text-destructive hover:bg-destructive/10"
                     disabled
                   >
                     Delete Data Source

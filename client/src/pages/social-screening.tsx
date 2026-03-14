@@ -38,6 +38,8 @@ import {
   ExternalLink,
   Facebook,
   Twitter,
+  Linkedin,
+  Instagram,
   Undo2,
   Bot,
   Zap,
@@ -77,26 +79,28 @@ function AgentVisualization({ run, onClose }: { run: OrchestratorRun | null; onC
   
   const getAgentIcon = (agentName: string) => {
     if (agentName.toLowerCase().includes('facebook')) return Facebook;
-    if (agentName.toLowerCase().includes('twitter') || agentName.toLowerCase().includes('x')) return Twitter;
+    if (agentName.toLowerCase().includes('twitter') || agentName.toLowerCase().includes('x ')) return Twitter;
+    if (agentName.toLowerCase().includes('linkedin')) return Linkedin;
+    if (agentName.toLowerCase().includes('instagram')) return Instagram;
     if (agentName.toLowerCase().includes('orchestrator')) return Brain;
     return Bot;
   };
   
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'running': return 'text-blue-600 dark:text-blue-400 animate-pulse';
-      case 'completed': return 'text-green-600 dark:text-green-400';
-      case 'error': return 'text-red-600 dark:text-red-400';
-      default: return 'text-gray-400';
+      case 'running': return 'text-foreground dark:text-foreground animate-pulse';
+      case 'completed': return 'text-foreground';
+      case 'error': return 'text-destructive';
+      default: return 'text-muted-foreground';
     }
   };
   
   const getStatusBg = (status: string) => {
     switch (status) {
-      case 'running': return 'bg-blue-500/20 border-blue-500/30';
-      case 'completed': return 'bg-green-500/20 border-green-500/30';
-      case 'error': return 'bg-red-500/20 border-red-500/30';
-      default: return 'bg-gray-500/20 border-gray-500/30';
+      case 'running': return 'bg-muted/20 border-border/30';
+      case 'completed': return 'bg-muted/20 border-border/30';
+      case 'error': return 'bg-destructive/20 border-destructive/30';
+      default: return 'bg-secondary0/20 border-gray-500/30';
     }
   };
 
@@ -105,8 +109,8 @@ function AgentVisualization({ run, onClose }: { run: OrchestratorRun | null; onC
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-500/20">
-              <Brain className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 rounded-lg bg-muted/20">
+              <Brain className="w-6 h-6 text-foreground dark:text-foreground" />
             </div>
             Social Intelligence Agents
             <Badge variant={run.status === 'completed' ? 'default' : 'outline'} 
@@ -154,13 +158,13 @@ function AgentVisualization({ run, onClose }: { run: OrchestratorRun | null; onC
                         </div>
                       </div>
                       {agent.status === 'running' && (
-                        <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
+                        <Loader2 className="w-4 h-4 animate-spin text-foreground dark:text-foreground" />
                       )}
                       {agent.status === 'completed' && (
-                        <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        <CheckCircle2 className="w-4 h-4 text-foreground" />
                       )}
                       {agent.status === 'error' && (
-                        <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                        <AlertCircle className="w-4 h-4 text-destructive" />
                       )}
                     </div>
                     
@@ -196,7 +200,7 @@ function AgentVisualization({ run, onClose }: { run: OrchestratorRun | null; onC
           
           <div className="border rounded-lg p-4 bg-black/20">
             <div className="flex items-center gap-2 mb-3">
-              <Zap className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+              <Zap className="w-4 h-4 text-foreground" />
               <h4 className="font-medium">Agent Activity Log</h4>
             </div>
             <ScrollArea className="h-40">
@@ -207,16 +211,16 @@ function AgentVisualization({ run, onClose }: { run: OrchestratorRun | null; onC
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     className={`flex gap-2 ${
-                      log.level === 'error' ? 'text-red-600 dark:text-red-400' :
-                      log.level === 'warn' ? 'text-yellow-600 dark:text-yellow-400' :
-                      log.level === 'success' ? 'text-green-600 dark:text-green-400' :
+                      log.level === 'error' ? 'text-destructive' :
+                      log.level === 'warn' ? 'text-foreground' :
+                      log.level === 'success' ? 'text-foreground' :
                       'text-muted-foreground'
                     }`}
                   >
-                    <span className="text-gray-500 shrink-0">
+                    <span className="text-muted-foreground shrink-0">
                       {new Date(log.timestamp).toLocaleTimeString()}
                     </span>
-                    <span className="text-blue-600 dark:text-blue-400 shrink-0">[{log.agent}]</span>
+                    <span className="text-foreground dark:text-foreground shrink-0">[{log.agent}]</span>
                     <span>{log.message}</span>
                   </motion.div>
                 ))}
@@ -228,11 +232,11 @@ function AgentVisualization({ run, onClose }: { run: OrchestratorRun | null; onC
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-4 rounded-lg bg-green-500/10 border border-green-500/30"
+              className="p-4 rounded-lg bg-muted/10 border border-border/30"
             >
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-5 h-5 text-green-600 dark:text-green-400" />
-                <h4 className="font-semibold text-green-600 dark:text-green-400">Analysis Complete</h4>
+                <Sparkles className="w-5 h-5 text-foreground" />
+                <h4 className="font-semibold text-foreground">Analysis Complete</h4>
               </div>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
@@ -241,10 +245,10 @@ function AgentVisualization({ run, onClose }: { run: OrchestratorRun | null; onC
                 </div>
                 <div>
                   <Badge className={
-                    run.result.riskLevel === 'low' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
-                    run.result.riskLevel === 'medium' ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' :
-                    run.result.riskLevel === 'high' ? 'bg-teal-600/20 text-teal-700 dark:text-teal-400' :
-                    'bg-red-500/20 text-red-600 dark:text-red-400'
+                    run.result.riskLevel === 'low' ? 'bg-muted/20 text-foreground' :
+                    run.result.riskLevel === 'medium' ? 'bg-muted/20 text-foreground' :
+                    run.result.riskLevel === 'high' ? 'bg-muted/20 text-foreground dark:text-foreground' :
+                    'bg-destructive/20 text-destructive'
                   }>
                     {run.result.riskLevel || 'Unknown'} Risk
                   </Badge>
@@ -264,7 +268,7 @@ function AgentVisualization({ run, onClose }: { run: OrchestratorRun | null; onC
             Close
           </Button>
           {run.status === 'completed' && (
-            <Button className="bg-blue-500 hover:bg-blue-400">
+            <Button className="bg-muted hover:bg-muted">
               View Full Report
             </Button>
           )}
@@ -304,7 +308,8 @@ interface AgentLog {
 
 export default function SocialScreening() {
   const [, navigate] = useLocation();
-  const [activeTab, setActiveTab] = useState("overview");
+  const urlTab = new URLSearchParams(window.location.search).get('tab');
+  const [activeTab, setActiveTab] = useState(urlTab || "overview");
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [isRequestConsentOpen, setIsRequestConsentOpen] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -414,7 +419,8 @@ export default function SocialScreening() {
     queryFn: async () => {
       const res = await fetch("/api/candidates");
       if (!res.ok) return [];
-      return res.json();
+      const body = await res.json();
+      return Array.isArray(body) ? body : body.data ?? [];
     },
   });
 
@@ -507,13 +513,15 @@ export default function SocialScreening() {
 
   const getRiskBadge = (riskLevel: string) => {
     const styles: Record<string, string> = {
-      low: "bg-green-500/20 text-green-600 dark:text-green-400",
-      medium: "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400",
-      high: "bg-teal-600/20 text-teal-700 dark:text-teal-400",
-      critical: "bg-red-500/20 text-red-600 dark:text-red-400",
+      low: "bg-muted/20 text-foreground",
+      medium: "bg-muted/20 text-foreground",
+      high: "bg-muted/20 text-foreground dark:text-foreground",
+      critical: "bg-destructive/20 text-destructive",
     };
-    return styles[riskLevel] || "bg-gray-500/20 text-gray-400";
+    return styles[riskLevel] || "bg-secondary0/20 text-muted-foreground";
   };
+
+  // candidateName is now included directly in API responses from findings/consents endpoints
 
   const addLog = (agent: string, message: string, level: AgentLog['level'] = 'info') => {
     const newLog: AgentLog = {
@@ -537,70 +545,137 @@ export default function SocialScreening() {
     });
   };
 
-  const simulateWorkflow = async () => {
+  const runRealScreening = async () => {
     const steps: WorkflowStep[] = [
-      { id: 'consent', name: 'Verify Consent', status: 'pending', description: 'Checking POPIA/GDPR consent status', agent: 'ConsentValidator', progress: 0 },
-      { id: 'facebook', name: 'Facebook Analysis', status: 'pending', description: 'Analyzing public Facebook profile', agent: 'FacebookAgent', progress: 0 },
-      { id: 'twitter', name: 'Twitter/X Analysis', status: 'pending', description: 'Analyzing public Twitter posts', agent: 'TwitterAgent', progress: 0 },
-      { id: 'linkedin', name: 'LinkedIn Analysis', status: 'pending', description: 'Analyzing professional profile', agent: 'LinkedInAgent', progress: 0 },
-      { id: 'sentiment', name: 'Sentiment Analysis', status: 'pending', description: 'AI analyzing content sentiment', agent: 'SentimentAgent', progress: 0 },
-      { id: 'culture', name: 'Culture Fit Assessment', status: 'pending', description: 'Evaluating cultural alignment', agent: 'CultureFitAgent', progress: 0 },
-      { id: 'report', name: 'Generate Report', status: 'pending', description: 'Compiling comprehensive analysis', agent: 'ReportGenerator', progress: 0 },
+      { id: 'consent', name: 'Verify Consent', status: 'pending', description: 'Checking POPIA consent status', agent: 'Orchestrator', progress: 0 },
+      { id: 'linkedin', name: 'LinkedIn Analysis', status: 'pending', description: 'Analyzing professional profile', agent: 'LinkedIn Agent', progress: 0 },
+      { id: 'facebook', name: 'Facebook Analysis', status: 'pending', description: 'Analyzing public Facebook profile', agent: 'Facebook Agent', progress: 0 },
+      { id: 'twitter', name: 'X (Twitter) Analysis', status: 'pending', description: 'Analyzing public posts', agent: 'X (Twitter) Agent', progress: 0 },
+      { id: 'instagram', name: 'Instagram Analysis', status: 'pending', description: 'Analyzing public Instagram posts', agent: 'Instagram Agent', progress: 0 },
+      { id: 'report', name: 'Aggregate & Report', status: 'pending', description: 'Compiling comprehensive analysis', agent: 'Orchestrator', progress: 0 },
     ];
-    
+
     setWorkflowSteps(steps);
     workflowStepsRef.current = steps;
 
-    for (let i = 0; i < steps.length; i++) {
-      if (!isRunningRef.current) break;
-      
-      const step = steps[i];
-      updateWorkflowStep(step.id, { status: 'running', progress: 0 });
-      addLog(step.agent, `Starting: ${step.description}`, 'info');
-
-      for (let progress = 0; progress <= 100; progress += 20) {
-        if (!isRunningRef.current) break;
-        await new Promise(r => setTimeout(r, 300));
-        updateWorkflowStep(step.id, { progress });
-        setOverallProgress(Math.round(((i * 100 + progress) / (steps.length * 100)) * 100));
-      }
-
-      if (isRunningRef.current) {
-        const duration = `${(Math.random() * 2 + 1).toFixed(1)}s`;
-        updateWorkflowStep(step.id, { status: 'completed', progress: 100, duration });
-        addLog(step.agent, `Completed: ${step.name}`, 'success');
-      }
-    }
-
-    if (isRunningRef.current) {
-      const selectedCand = candidatesWithConsent.find((c: any) => c.id === modalSelectedCandidateId);
-      setScreeningResult({
-        candidateName: selectedCand?.fullName || 'Unknown Candidate',
-        overallScore: Math.round(70 + Math.random() * 25),
-        riskLevel: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)],
-        sentiment: { positive: 45 + Math.floor(Math.random() * 30), neutral: 20 + Math.floor(Math.random() * 15), negative: 5 + Math.floor(Math.random() * 15) },
-        redFlags: [
-          { type: 'Language', severity: 'low', platform: 'Twitter', description: 'Occasional informal language in professional context' },
-        ],
-        cultureFit: [
-          { category: 'Communication', score: 85, notes: 'Clear and professional communication style' },
-          { category: 'Teamwork', score: 78, notes: 'Shows collaborative tendencies in posts' },
-          { category: 'Values Alignment', score: 82, notes: 'Demonstrates alignment with company values' },
-        ],
-        platformsSummary: [
-          { platform: 'Facebook', postsAnalyzed: 45, riskLevel: 'low' },
-          { platform: 'Twitter', postsAnalyzed: 120, riskLevel: 'low' },
-          { platform: 'LinkedIn', postsAnalyzed: 28, riskLevel: 'low' },
-        ],
-        recommendation: 'Candidate shows strong cultural alignment with minimal concerns. Recommended for further consideration.',
+    try {
+      // Start real orchestrated screening
+      const startRes = await fetch(`/api/social-screening/orchestrator/start/${modalSelectedCandidateId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platforms: ['linkedin', 'facebook', 'twitter', 'instagram'] }),
       });
-      
-      addLog('ReportGenerator', 'Screening completed successfully!', 'success');
+
+      if (!startRes.ok) {
+        const err = await startRes.json().catch(() => ({ message: 'Failed to start screening' }));
+        throw new Error(err.message || 'Failed to start screening');
+      }
+
+      const { runId } = await startRes.json();
+      addLog('Orchestrator', `Screening initiated (run: ${runId.slice(0, 12)}...)`, 'info');
+
+      // Poll for status updates
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`/api/social-screening/orchestrator/status/${runId}`);
+          if (!statusRes.ok) return;
+
+          const run = await statusRes.json();
+
+          // Update workflow steps from agent statuses
+          if (run.agents && run.agents.length > 0) {
+            run.agents.forEach((agent: any) => {
+              const agentId = agent.agentName.toLowerCase()
+                .replace(' agent', '')
+                .replace('x (twitter)', 'twitter')
+                .replace('orchestrator', 'consent');
+
+              const step = workflowStepsRef.current.find(s => s.id === agentId);
+              if (step) {
+                let status: WorkflowStep['status'] = 'pending';
+                if (agent.status === 'running') status = 'running';
+                else if (agent.status === 'completed') status = 'completed';
+                else if (agent.status === 'error') status = 'error';
+
+                updateWorkflowStep(step.id, { status, progress: agent.progress || 0 });
+              }
+            });
+          }
+
+          // Update logs
+          if (run.logs && run.logs.length > logsRef.current.length) {
+            const newLogs = run.logs.slice(logsRef.current.length);
+            newLogs.forEach((log: any) => {
+              addLog(log.agent, log.message, log.level === 'warn' ? 'warning' : log.level);
+            });
+          }
+
+          setOverallProgress(run.progress || 0);
+
+          if (run.status === 'completed') {
+            clearInterval(pollInterval);
+            const selectedCand = candidatesWithConsent.find((c: any) => c.id === modalSelectedCandidateId);
+            const result = run.result || run.orchestratorStatus?.results;
+
+            if (result) {
+              setScreeningResult({
+                candidateName: selectedCand?.fullName || 'Unknown Candidate',
+                overallScore: result.overallScore || 0,
+                riskLevel: result.riskLevel || 'medium',
+                sentiment: result.sentimentAnalysis || { positive: 0, neutral: 100, negative: 0 },
+                redFlags: (result.redFlags || []).map((f: any) => ({
+                  type: f.type, severity: f.severity, platform: f.evidence || '', description: f.description
+                })),
+                cultureFit: [
+                  { category: 'Culture Fit', score: result.cultureFitScore || 0, notes: '' },
+                  { category: 'Professionalism', score: result.professionalismScore || 0, notes: '' },
+                  { category: 'Communication', score: result.communicationScore || 0, notes: '' },
+                ],
+                platformsSummary: (result.platformsAnalyzed || []).map((p: string) => ({
+                  platform: p.charAt(0).toUpperCase() + p.slice(1),
+                  postsAnalyzed: result.totalPostsAnalyzed ? Math.round(result.totalPostsAnalyzed / (result.platformsAnalyzed?.length || 1)) : 0,
+                  riskLevel: result.riskLevel || 'medium'
+                })),
+                recommendation: result.aiSummary || 'Analysis complete.',
+              });
+            }
+
+            updateWorkflowStep('report', { status: 'completed', progress: 100 });
+            setOverallProgress(100);
+            setIsRunningScreening(false);
+            isRunningRef.current = false;
+            toast.success('Social screening completed!');
+            queryClient.invalidateQueries({ queryKey: findingsKey });
+            queryClient.invalidateQueries({ queryKey: statsKey });
+          } else if (run.status === 'failed') {
+            clearInterval(pollInterval);
+            const errorMsg = run.orchestratorStatus?.error || 'Screening failed';
+            addLog('Orchestrator', errorMsg, 'error');
+            setIsRunningScreening(false);
+            isRunningRef.current = false;
+            toast.error(errorMsg);
+          }
+        } catch (err) {
+          console.error('Polling error:', err);
+        }
+      }, 1500);
+
+      // Timeout after 3 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (isRunningRef.current) {
+          setIsRunningScreening(false);
+          isRunningRef.current = false;
+          addLog('Orchestrator', 'Screening timeout - check results manually', 'warning');
+          toast.error('Screening timeout');
+        }
+      }, 180000);
+
+    } catch (error) {
+      addLog('Orchestrator', `Failed: ${(error as Error).message}`, 'error');
       setIsRunningScreening(false);
       isRunningRef.current = false;
-      toast.success('Social screening completed!');
-      queryClient.invalidateQueries({ queryKey: findingsKey });
-      queryClient.invalidateQueries({ queryKey: statsKey });
+      toast.error((error as Error).message);
     }
   };
 
@@ -618,8 +693,8 @@ export default function SocialScreening() {
     setOverallProgress(0);
     
     addLog('Orchestrator', 'Initializing social screening workflow...', 'info');
-    
-    await simulateWorkflow();
+
+    await runRealScreening();
   };
 
   const resetModalState = () => {
@@ -636,19 +711,19 @@ export default function SocialScreening() {
 
   const getLogIcon = (level: string) => {
     switch (level) {
-      case 'success': return <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />;
-      case 'warning': return <AlertCircle className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />;
-      case 'error': return <AlertCircle className="w-3 h-3 text-red-600 dark:text-red-400" />;
-      default: return <Activity className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />;
+      case 'success': return <CheckCircle2 className="w-3 h-3 text-foreground" />;
+      case 'warning': return <AlertCircle className="w-3 h-3 text-foreground" />;
+      case 'error': return <AlertCircle className="w-3 h-3 text-destructive" />;
+      default: return <Activity className="w-3 h-3 text-foreground dark:text-foreground" />;
     }
   };
 
   const getStepStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed': return <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />;
-      case 'running': return <Loader2 className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin" />;
-      case 'error': return <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
-      default: return <Clock className="w-4 h-4 text-gray-400" />;
+      case 'completed': return <CheckCircle2 className="w-4 h-4 text-foreground" />;
+      case 'running': return <Loader2 className="w-4 h-4 text-foreground dark:text-foreground animate-spin" />;
+      case 'error': return <AlertCircle className="w-4 h-4 text-destructive" />;
+      default: return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
@@ -659,15 +734,15 @@ export default function SocialScreening() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <Link href="/hr">
+              <Link href="/hr?tab=integrity">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to HR Dashboard
+                  Back to Integrity
                 </Button>
               </Link>
             </div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              <Users className="w-8 h-8 text-foreground dark:text-foreground" />
               Social Intelligence Screening
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -676,7 +751,7 @@ export default function SocialScreening() {
           </div>
           
           <Button 
-            className="bg-blue-500 hover:bg-blue-400 text-blue-950"
+            className="bg-muted hover:bg-muted text-foreground"
             onClick={() => setIsAIScreeningModalOpen(true)}
             data-testid="button-open-agent"
           >
@@ -698,7 +773,7 @@ export default function SocialScreening() {
           <Card className="border-border dark:border-white/10 bg-card/20" data-testid="stat-granted">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-3xl font-bold text-green-600 dark:text-green-400">{stats?.consentGranted || 0}</p>
+                <p className="text-3xl font-bold text-foreground">{stats?.consentGranted || 0}</p>
                 <p className="text-sm text-muted-foreground">Consent Granted</p>
               </div>
             </CardContent>
@@ -706,7 +781,7 @@ export default function SocialScreening() {
           <Card className="border-border dark:border-white/10 bg-card/20" data-testid="stat-screenings">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats?.totalScreenings || 0}</p>
+                <p className="text-3xl font-bold text-foreground dark:text-foreground">{stats?.totalScreenings || 0}</p>
                 <p className="text-sm text-muted-foreground">Total Screenings</p>
               </div>
             </CardContent>
@@ -714,7 +789,7 @@ export default function SocialScreening() {
           <Card className="border-border dark:border-white/10 bg-card/20" data-testid="stat-pending">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{stats?.pendingHumanReview || 0}</p>
+                <p className="text-3xl font-bold text-foreground">{stats?.pendingHumanReview || 0}</p>
                 <p className="text-sm text-muted-foreground">Pending Review</p>
               </div>
             </CardContent>
@@ -753,9 +828,9 @@ export default function SocialScreening() {
                           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                             <div
                               className={`h-full ${
-                                level === "low" ? "bg-green-500" :
-                                level === "medium" ? "bg-yellow-500" :
-                                level === "high" ? "bg-teal-600" : "bg-red-500"
+                                level === "low" ? "bg-muted" :
+                                level === "medium" ? "bg-muted" :
+                                level === "high" ? "bg-muted" : "bg-destructive"
                               }`}
                               style={{ width: `${percentage}%` }}
                             />
@@ -828,12 +903,12 @@ export default function SocialScreening() {
                       <div key={finding.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-border dark:border-white/5">
                         <div className="flex items-center gap-3">
                           <div className={`w-2 h-2 rounded-full ${
-                            finding.riskLevel === 'low' ? 'bg-green-500' :
-                            finding.riskLevel === 'medium' ? 'bg-yellow-500' :
-                            finding.riskLevel === 'high' ? 'bg-teal-600' : 'bg-red-500'
+                            finding.riskLevel === 'low' ? 'bg-muted' :
+                            finding.riskLevel === 'medium' ? 'bg-muted' :
+                            finding.riskLevel === 'high' ? 'bg-muted' : 'bg-destructive'
                           }`} />
                           <div>
-                            <p className="font-medium">Candidate #{finding.candidateId?.slice(-6)}</p>
+                            <p className="font-medium">{finding.candidateName || 'Unknown Candidate'}</p>
                             <p className="text-sm text-muted-foreground">
                               Score: {finding.cultureFitScore || 'N/A'}% | 
                               {finding.aiRecommendation ? ` AI: ${finding.aiRecommendation}` : ' Pending'}
@@ -855,7 +930,7 @@ export default function SocialScreening() {
             <Card className="border-border dark:border-white/10 bg-card/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <ShieldCheck className="w-5 h-5 text-foreground" />
                   Consent Management
                 </CardTitle>
                 <CardDescription>Track and manage candidate consent requests</CardDescription>
@@ -876,16 +951,16 @@ export default function SocialScreening() {
                       {consents.map((consent: any) => (
                         <div key={consent.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-border dark:border-white/5">
                           <div>
-                            <p className="font-medium">Candidate #{consent.candidateId?.slice(-6)}</p>
+                            <p className="font-medium">{consent.candidateName || 'Unknown Candidate'}</p>
                             <p className="text-sm text-muted-foreground">
                               Requested: {new Date(consent.createdAt).toLocaleDateString()}
                             </p>
                           </div>
                           <div className="flex items-center gap-3">
                             <Badge className={
-                              consent.consentStatus === 'granted' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
-                              consent.consentStatus === 'denied' ? 'bg-red-500/20 text-red-600 dark:text-red-400' :
-                              'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400'
+                              consent.consentStatus === 'granted' ? 'bg-muted/20 text-foreground' :
+                              consent.consentStatus === 'denied' ? 'bg-destructive/20 text-destructive' :
+                              'bg-muted/20 text-foreground'
                             }>
                               {consent.consentStatus || 'pending'}
                             </Badge>
@@ -924,7 +999,7 @@ export default function SocialScreening() {
             <Card className="border-border dark:border-white/10 bg-card/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Search className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <Search className="w-5 h-5 text-foreground dark:text-foreground" />
                   All Screenings
                 </CardTitle>
                 <CardDescription>Complete list of social media screenings</CardDescription>
@@ -952,7 +1027,7 @@ export default function SocialScreening() {
                           <div className="flex items-start justify-between">
                             <div className="space-y-2">
                               <div className="flex items-center gap-3">
-                                <p className="font-medium text-lg">Candidate #{finding.candidateId?.slice(-6)}</p>
+                                <p className="font-medium text-lg">{finding.candidateName || 'Unknown Candidate'}</p>
                                 <Badge className={getRiskBadge(finding.riskLevel)}>
                                   {finding.riskLevel || 'Unknown'} Risk
                                 </Badge>
@@ -982,18 +1057,18 @@ export default function SocialScreening() {
                             
                             <div className="flex flex-col items-end gap-2">
                               <Badge className={
-                                finding.aiRecommendation === 'proceed' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
-                                finding.aiRecommendation === 'review' ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' :
-                                finding.aiRecommendation === 'caution' ? 'bg-teal-600/20 text-teal-700 dark:text-teal-400' :
-                                'bg-red-500/20 text-red-600 dark:text-red-400'
+                                finding.aiRecommendation === 'proceed' ? 'bg-muted/20 text-foreground' :
+                                finding.aiRecommendation === 'review' ? 'bg-muted/20 text-foreground' :
+                                finding.aiRecommendation === 'caution' ? 'bg-muted/20 text-foreground dark:text-foreground' :
+                                'bg-destructive/20 text-destructive'
                               }>
                                 AI: {finding.aiRecommendation || 'Pending'}
                               </Badge>
                               <Badge variant="outline" className={
-                                finding.humanReviewStatus === 'approved' ? 'border-green-500 text-green-600 dark:text-green-400' :
-                                finding.humanReviewStatus === 'rejected' ? 'border-red-500 text-red-600 dark:text-red-400' :
-                                finding.humanReviewStatus === 'modified' ? 'border-blue-500 text-blue-600 dark:text-blue-400' :
-                                'border-yellow-500 text-yellow-600 dark:text-yellow-400'
+                                finding.humanReviewStatus === 'approved' ? 'border-border text-foreground' :
+                                finding.humanReviewStatus === 'rejected' ? 'border-destructive text-destructive' :
+                                finding.humanReviewStatus === 'modified' ? 'border-border text-foreground dark:text-foreground' :
+                                'border-border text-foreground'
                               }>
                                 Review: {finding.humanReviewStatus}
                               </Badge>
@@ -1012,7 +1087,7 @@ export default function SocialScreening() {
             <Card className="border-border dark:border-white/10 bg-card/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Eye className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                  <Eye className="w-5 h-5 text-foreground" />
                   Pending Human Reviews
                 </CardTitle>
                 <CardDescription>Screenings requiring HR approval or modification</CardDescription>
@@ -1033,6 +1108,7 @@ export default function SocialScreening() {
                       <PendingReviewCard
                         key={finding.id}
                         finding={finding}
+                        candidateName={finding.candidateName || 'Unknown Candidate'}
                         onSubmitReview={(decision, notes, adjustedRiskLevel, adjustedScore) => {
                           submitReviewMutation.mutate({
                             findingId: finding.id,
@@ -1064,8 +1140,8 @@ export default function SocialScreening() {
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/20">
-                <Brain className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 rounded-lg bg-muted/20">
+                <Brain className="w-6 h-6 text-foreground dark:text-foreground" />
               </div>
               AI Social Screening Agent
               {isRunningScreening && (
@@ -1075,7 +1151,7 @@ export default function SocialScreening() {
                 </Badge>
               )}
               {screeningResult && (
-                <Badge className="bg-green-500/20 text-green-600 dark:text-green-400">
+                <Badge className="bg-muted/20 text-foreground">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
                   Complete
                 </Badge>
@@ -1111,7 +1187,7 @@ export default function SocialScreening() {
                 <Button
                   onClick={startModalScreening}
                   disabled={!modalSelectedCandidateId || isRunningScreening}
-                  className="bg-blue-500 hover:bg-blue-400 text-blue-950"
+                  className="bg-muted hover:bg-muted text-foreground"
                   data-testid="modal-button-start-screening"
                 >
                   {isRunningScreening ? (
@@ -1143,7 +1219,7 @@ export default function SocialScreening() {
                   <Card className="border-border dark:border-white/10 bg-card/30">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                        <Zap className="w-4 h-4 text-foreground" />
                         Workflow Steps
                       </CardTitle>
                     </CardHeader>
@@ -1154,9 +1230,9 @@ export default function SocialScreening() {
                             <div
                               key={step.id}
                               className={`p-3 rounded-lg border transition-all ${
-                                step.status === 'running' ? 'bg-blue-500/10 border-blue-500/30' :
-                                step.status === 'completed' ? 'bg-green-500/10 border-green-500/30' :
-                                step.status === 'error' ? 'bg-red-500/10 border-red-500/30' :
+                                step.status === 'running' ? 'bg-muted/10 border-border/30' :
+                                step.status === 'completed' ? 'bg-muted/10 border-border/30' :
+                                step.status === 'error' ? 'bg-destructive/10 border-destructive/30' :
                                 'bg-white/5 border-border dark:border-white/10'
                               }`}
                             >
@@ -1183,7 +1259,7 @@ export default function SocialScreening() {
                   <Card className="border-border dark:border-white/10 bg-card/30">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                        <Activity className="w-4 h-4 text-foreground dark:text-foreground" />
                         Agent Logs
                       </CardTitle>
                     </CardHeader>
@@ -1196,7 +1272,7 @@ export default function SocialScreening() {
                                 {getLogIcon(log.level)}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-2">
-                                    <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400">{log.agent}</span>
+                                    <span className="text-[10px] font-medium text-foreground dark:text-foreground">{log.agent}</span>
                                     <span className="text-[9px] text-muted-foreground whitespace-nowrap">
                                       {new Date(log.timestamp).toLocaleTimeString()}
                                     </span>
@@ -1230,19 +1306,19 @@ export default function SocialScreening() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <Card className="border-border dark:border-white/10 bg-card/30">
                     <CardContent className="pt-4 text-center">
-                      <p className="text-3xl font-bold text-green-600 dark:text-green-400">{screeningResult.overallScore}%</p>
+                      <p className="text-3xl font-bold text-foreground">{screeningResult.overallScore}%</p>
                       <p className="text-xs text-muted-foreground">Overall Score</p>
                     </CardContent>
                   </Card>
                   <Card className="border-border dark:border-white/10 bg-card/30">
                     <CardContent className="pt-4 text-center">
-                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{screeningResult.sentiment.positive}%</p>
+                      <p className="text-3xl font-bold text-foreground dark:text-foreground">{screeningResult.sentiment.positive}%</p>
                       <p className="text-xs text-muted-foreground">Positive Sentiment</p>
                     </CardContent>
                   </Card>
                   <Card className="border-border dark:border-white/10 bg-card/30">
                     <CardContent className="pt-4 text-center">
-                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                      <p className="text-3xl font-bold text-foreground dark:text-foreground">
                         {screeningResult.platformsSummary.reduce((sum, p) => sum + p.postsAnalyzed, 0)}
                       </p>
                       <p className="text-xs text-muted-foreground">Posts Analyzed</p>
@@ -1250,7 +1326,7 @@ export default function SocialScreening() {
                   </Card>
                   <Card className="border-border dark:border-white/10 bg-card/30">
                     <CardContent className="pt-4 text-center">
-                      <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{screeningResult.redFlags.length}</p>
+                      <p className="text-3xl font-bold text-foreground">{screeningResult.redFlags.length}</p>
                       <p className="text-xs text-muted-foreground">Red Flags</p>
                     </CardContent>
                   </Card>
@@ -1277,12 +1353,12 @@ export default function SocialScreening() {
                   </CardContent>
                 </Card>
                 
-                <Card className="border-green-500/20 bg-green-500/5">
+                <Card className="border-border/20 bg-muted/5">
                   <CardContent className="pt-4">
                     <div className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
+                      <CheckCircle2 className="w-5 h-5 text-foreground mt-0.5" />
                       <div>
-                        <p className="font-medium text-green-600 dark:text-green-400">Recommendation</p>
+                        <p className="font-medium text-foreground">Recommendation</p>
                         <p className="text-sm text-muted-foreground">{screeningResult.recommendation}</p>
                       </div>
                     </div>
@@ -1301,7 +1377,7 @@ export default function SocialScreening() {
                   Screen Another
                 </Button>
                 <Button 
-                  className="bg-blue-500 hover:bg-blue-400 text-blue-950"
+                  className="bg-muted hover:bg-muted text-foreground"
                   onClick={() => {
                     setIsAIScreeningModalOpen(false);
                     resetModalState();
@@ -1333,12 +1409,14 @@ export default function SocialScreening() {
   );
 }
 
-function PendingReviewCard({ 
-  finding, 
+function PendingReviewCard({
+  finding,
+  candidateName,
   onSubmitReview,
-  isSubmitting 
-}: { 
+  isSubmitting
+}: {
   finding: any;
+  candidateName: string;
   onSubmitReview: (decision: string, notes: string, riskLevel?: string, score?: number) => void;
   isSubmitting: boolean;
 }) {
@@ -1348,12 +1426,12 @@ function PendingReviewCard({
 
   const getRiskBadge = (riskLevel: string) => {
     const styles: Record<string, string> = {
-      low: "bg-green-500/20 text-green-600 dark:text-green-400",
-      medium: "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400",
-      high: "bg-teal-600/20 text-teal-700 dark:text-teal-400",
-      critical: "bg-red-500/20 text-red-600 dark:text-red-400",
+      low: "bg-muted/20 text-foreground",
+      medium: "bg-muted/20 text-foreground",
+      high: "bg-muted/20 text-foreground dark:text-foreground",
+      critical: "bg-destructive/20 text-destructive",
     };
-    return styles[riskLevel] || "bg-gray-500/20 text-gray-400";
+    return styles[riskLevel] || "bg-secondary0/20 text-muted-foreground";
   };
 
   return (
@@ -1364,7 +1442,7 @@ function PendingReviewCard({
     >
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h3 className="text-lg font-medium">Candidate #{finding.candidateId?.slice(-6)}</h3>
+          <h3 className="text-lg font-medium">{candidateName}</h3>
           <p className="text-sm text-muted-foreground">
             Screened on {new Date(finding.createdAt).toLocaleDateString()}
           </p>
@@ -1394,10 +1472,10 @@ function PendingReviewCard({
       </div>
 
       {finding.aiSummary && (
-        <div className="mb-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+        <div className="mb-6 p-4 rounded-lg bg-muted/10 border border-border/20">
           <div className="flex items-center gap-2 mb-2">
-            <Brain className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span className="font-medium text-blue-600 dark:text-blue-400">AI Summary</span>
+            <Brain className="w-4 h-4 text-foreground dark:text-foreground" />
+            <span className="font-medium text-foreground dark:text-foreground">AI Summary</span>
           </div>
           <p className="text-sm">{finding.aiSummary}</p>
         </div>
@@ -1405,10 +1483,10 @@ function PendingReviewCard({
 
       {finding.redFlags && finding.redFlags.length > 0 && (
         <div className="mb-6">
-          <h4 className="font-medium text-red-600 dark:text-red-400 mb-2">Red Flags ({finding.redFlags.length})</h4>
+          <h4 className="font-medium text-destructive mb-2">Red Flags ({finding.redFlags.length})</h4>
           <div className="space-y-2">
             {finding.redFlags.map((flag: any, i: number) => (
-              <div key={i} className="p-3 rounded bg-red-500/10 border border-red-500/20 text-sm">
+              <div key={i} className="p-3 rounded bg-destructive/10 border border-destructive/20 text-sm">
                 <p className="font-medium">{flag.type}</p>
                 <p className="text-muted-foreground">{flag.description}</p>
               </div>
@@ -1419,10 +1497,10 @@ function PendingReviewCard({
 
       {finding.positiveIndicators && finding.positiveIndicators.length > 0 && (
         <div className="mb-6">
-          <h4 className="font-medium text-green-600 dark:text-green-400 mb-2">Positive Indicators ({finding.positiveIndicators.length})</h4>
+          <h4 className="font-medium text-foreground mb-2">Positive Indicators ({finding.positiveIndicators.length})</h4>
           <div className="space-y-2">
             {finding.positiveIndicators.map((indicator: any, i: number) => (
-              <div key={i} className="p-3 rounded bg-green-500/10 border border-green-500/20 text-sm">
+              <div key={i} className="p-3 rounded bg-muted/10 border border-border/20 text-sm">
                 <p className="font-medium">{indicator.type}</p>
                 <p className="text-muted-foreground">{indicator.description}</p>
               </div>
@@ -1475,7 +1553,7 @@ function PendingReviewCard({
         
         <div className="flex gap-3">
           <Button
-            className="bg-green-500 hover:bg-green-400 text-green-950"
+            className="bg-muted hover:bg-muted text-foreground"
             onClick={() => onSubmitReview('approved', notes, adjustedRiskLevel, adjustedScore)}
             disabled={isSubmitting}
           >

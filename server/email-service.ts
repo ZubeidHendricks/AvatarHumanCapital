@@ -1,17 +1,46 @@
+import nodemailer from "nodemailer";
 import type { IStorage } from "./storage";
+
+interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+}
 
 interface EmailOptions {
   to: string;
   subject: string;
   body: string;
   html?: string;
+  attachments?: EmailAttachment[];
 }
 
 export class EmailService {
   private storage: IStorage;
+  private transporter: nodemailer.Transporter | null = null;
 
   constructor(storage: IStorage) {
     this.storage = storage;
+
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = process.env.SMTP_PORT;
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPassword = process.env.SMTP_PASSWORD;
+
+    if (smtpHost && smtpUser && smtpPassword) {
+      this.transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: parseInt(smtpPort || "587", 10),
+        secure: parseInt(smtpPort || "587", 10) === 465,
+        auth: {
+          user: smtpUser,
+          pass: smtpPassword,
+        },
+      });
+      console.log(`[EmailService] SMTP configured: ${smtpHost}:${smtpPort || 587}`);
+    } else {
+      console.log("[EmailService] SMTP not configured - emails will be logged to console only");
+    }
   }
 
   async getITEmail(): Promise<string | null> {
@@ -24,13 +53,52 @@ export class EmailService {
     return setting?.value || null;
   }
 
+  async getBuildingAccessEmail(): Promise<string | null> {
+    const setting = await this.storage.getSystemSetting("building_access_email");
+    return setting?.value || null;
+  }
+
+  async getDefaultEquipmentList(): Promise<string[]> {
+    const setting = await this.storage.getSystemSetting("default_equipment_list");
+    if (setting?.value) {
+      return setting.value.split(",").map((s: string) => s.trim()).filter(Boolean);
+    }
+    return ["Laptop", "External Monitor", "Keyboard & Mouse"];
+  }
+
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
-      console.log("\n=== EMAIL NOTIFICATION ===");
-      console.log(`To: ${options.to}`);
-      console.log(`Subject: ${options.subject}`);
-      console.log(`Body:\n${options.body}`);
-      console.log("========================\n");
+      // Apply dev override
+      const actualTo = process.env.DEV_TEST_EMAIL || options.to;
+      if (process.env.DEV_TEST_EMAIL && process.env.DEV_TEST_EMAIL !== options.to) {
+        console.log(`[EmailService] DEV_TEST_EMAIL override: ${options.to} -> ${actualTo}`);
+      }
+
+      if (this.transporter) {
+        const mailOptions: any = {
+          from: process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@avatarhuman.capital",
+          to: actualTo,
+          subject: options.subject,
+          text: options.body,
+          html: options.html,
+        };
+        if (options.attachments?.length) {
+          mailOptions.attachments = options.attachments.map(a => ({
+            filename: a.filename,
+            content: a.content,
+            contentType: a.contentType,
+          }));
+        }
+        await this.transporter.sendMail(mailOptions);
+        console.log(`[EmailService] Email sent to ${actualTo}: ${options.subject}${options.attachments?.length ? ` (${options.attachments.length} attachment(s))` : ''}`);
+      } else {
+        console.log("\n=== EMAIL NOTIFICATION (console only - SMTP not configured) ===");
+        console.log(`To: ${actualTo}`);
+        console.log(`Subject: ${options.subject}`);
+        console.log(`Body:\n${options.body}`);
+        if (options.html) console.log(`HTML: (included)`);
+        console.log("========================\n");
+      }
 
       return true;
     } catch (error) {
@@ -39,12 +107,101 @@ export class EmailService {
     }
   }
 
-  async notifyITForProvisioning(candidateName: string, candidateEmail: string, credentials: any): Promise<void> {
+  async sendInterviewInvitation(options: {
+    to: string;
+    candidateName: string;
+    jobTitle: string;
+    interviewUrl: string;
+    interviewType?: "voice" | "video";
+  }): Promise<boolean> {
+    const { to, candidateName, jobTitle, interviewUrl, interviewType = "voice" } = options;
+
+    const isVideo = interviewType === "video";
+    const invitationTitle = isVideo ? "Video Interview Invitation" : "Voice Interview Invitation";
+    const interviewDescription = isVideo
+      ? `a follow up video interview for the ${jobTitle} position`
+      : `an initial voice interview for the ${jobTitle} position`;
+    const accessNote = isVideo
+      ? "allow camera and microphone access in your browser"
+      : "allow microphone access in your browser";
+
+    const subject = `Interview Invitation: ${jobTitle} - AHC Recruiting`;
+
+    const body = `Dear ${candidateName},
+
+We are impressed with your profile and would like to invite you to ${interviewDescription}.
+
+This AI-powered interview allows us to get to know you better at your convenience. Please click the link below to start the session:
+
+${interviewUrl}
+
+This link expires in 7 days. Please ensure you have a quiet environment and ${accessNote}.
+
+Best regards,
+AHC Recruiting Team`;
+
+    const html = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+    <tr>
+      <td bgcolor="#FFCB00" style="background: linear-gradient(135deg, #FFCB00, #FFD633); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: #000000; margin: 0; font-size: 24px;">${invitationTitle}</h1>
+        <p style="color: #333333; margin: 10px 0 0 0; font-weight: bold;">${jobTitle}</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background: #ffffff; border: 1px solid #e5e7eb; border-top: none; padding: 30px; border-radius: 0 0 12px 12px;">
+        <p style="font-size: 16px; color: #374151;">Dear ${candidateName},</p>
+        <p style="font-size: 14px; color: #6b7280; line-height: 1.6;">
+          We are impressed with your profile and would like to invite you to ${interviewDescription.replace(jobTitle, `<strong>${jobTitle}</strong>`)}.
+        </p>
+        <p style="font-size: 14px; color: #6b7280; line-height: 1.6;">
+          This AI-powered interview allows us to get to know you better at your convenience.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 30px 0;">
+          <tr>
+            <td align="center">
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td bgcolor="#FFCB00" style="background: linear-gradient(135deg, #FFCB00, #E6B800); border-radius: 8px; padding: 14px 32px;">
+                    <a href="${interviewUrl}" style="color: #000000; text-decoration: none; font-size: 16px; font-weight: bold; display: inline-block;">
+                      Start Interview
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <p style="font-size: 13px; color: #6b7280; margin: 0 0 8px 0;">
+            <strong style="color: #374151;">Before you start:</strong>
+          </p>
+          <ul style="font-size: 13px; color: #6b7280; margin: 0; padding-left: 20px; line-height: 1.8;">
+            <li>This link expires in 7 days</li>
+            <li>Ensure you have a quiet environment</li>
+            <li>${isVideo ? "Allow camera and microphone access in your browser" : "Allow microphone access in your browser"}</li>
+          </ul>
+        </div>
+        <p style="font-size: 14px; color: #6b7280;">Best regards,<br><strong>AHC Recruiting Team</strong></p>
+      </td>
+    </tr>
+  </table>
+</div>`;
+
+    return this.sendEmail({ to, subject, body, html });
+  }
+
+  async notifyITForProvisioning(candidateName: string, candidateEmail: string, credentials: any, equipmentList?: string[]): Promise<void> {
     const itEmail = await this.getITEmail();
     if (!itEmail) {
       console.log("IT email not configured, skipping notification");
       return;
     }
+
+    const equipmentSection = equipmentList && equipmentList.length > 0
+      ? `Equipment:\n${equipmentList.map(item => `- ${item}`).join("\n")}`
+      : "Equipment: None requested";
 
     const subject = `New Employee IT Provisioning Required: ${candidateName}`;
     const body = `A new employee onboarding has been initiated and requires IT provisioning.
@@ -58,10 +215,7 @@ System Access Required:
 - VPN Access: ${credentials.vpnKey || "Pending"}
 - Slack Workspace: ${credentials.slackInvite || "Pending"}
 
-Equipment:
-- MacBook Pro M3
-- External Monitor
-- Keyboard & Mouse
+${equipmentSection}
 
 Please process these requests and confirm when ready.
 
@@ -72,6 +226,34 @@ This is an automated notification from the AHC Onboarding System.`;
       subject,
       body,
     });
+  }
+
+  async notifyFacilitiesForBuildingAccess(candidateName: string, candidateEmail: string, startDate: string): Promise<void> {
+    const facilityEmail = await this.getBuildingAccessEmail();
+    const toEmail = facilityEmail || await this.getITEmail();
+    if (!toEmail) {
+      console.log("Building access / IT email not configured, skipping building access notification");
+      return;
+    }
+
+    const subject = `Building Access Request: ${candidateName}`;
+    const body = `A new employee requires building access provisioning.
+
+Employee Details:
+- Name: ${candidateName}
+- Email: ${candidateEmail}
+- Start Date: ${startDate}
+
+Please arrange the following:
+- Building access card
+- Floor/zone access permissions
+- Parking allocation (if applicable)
+
+Please process this request and confirm when ready.
+
+This is an automated notification from the AHC Onboarding System.`;
+
+    await this.sendEmail({ to: toEmail, subject, body });
   }
 
   async notifyHRForOnboardingStart(candidateName: string, candidateEmail: string, role: string): Promise<void> {
@@ -92,12 +274,12 @@ Employee Details:
 Workflow Status: In Progress
 
 Tasks Initiated:
-✓ Welcome package sent
-✓ Employee handbook distributed
-✓ Benefits summary provided
-⏳ Tax and banking forms pending
-⏳ IT provisioning in progress
-⏳ Orientation scheduling
+- Welcome package sent
+- Employee handbook distributed
+- Benefits summary provided
+- Tax and banking forms pending
+- IT provisioning in progress
+- Orientation scheduling
 
 You can monitor the onboarding progress in the AHC dashboard.
 
@@ -125,12 +307,12 @@ Employee Details:
 - Email: ${candidateEmail}
 
 Completed Tasks:
-✅ Welcome package sent
-✅ Employee handbook distributed
-✅ Benefits summary provided
-✅ Tax and banking forms processed
-✅ IT provisioning completed
-✅ Orientation scheduled for ${orientationDate}
+- Welcome package sent
+- Employee handbook distributed
+- Benefits summary provided
+- Tax and banking forms processed
+- IT provisioning completed
+- Orientation scheduled for ${orientationDate}
 
 The employee is ready for their first day. Please ensure all final preparations are in place.
 
@@ -164,5 +346,180 @@ This is an automated notification from the AHC Onboarding System.`;
       subject,
       body,
     });
+  }
+
+  async sendOfferNotification(options: {
+    to: string;
+    candidateName: string;
+    jobTitle: string;
+    salary: string;
+    startDate: string;
+    companyName?: string;
+    responseUrl?: string;
+    attachments?: EmailAttachment[];
+  }): Promise<boolean> {
+    const { to, candidateName, jobTitle, salary, startDate, companyName, responseUrl, attachments } = options;
+    const company = companyName || "AHC Recruiting";
+
+    const subject = `Job Offer: ${jobTitle} - ${company}`;
+
+    const body = `Dear ${candidateName},
+
+We are pleased to extend a formal offer for the position of ${jobTitle}.
+
+Offer Details:
+- Position: ${jobTitle}
+- Salary: ${salary}
+- Proposed Start Date: ${startDate}
+${responseUrl ? `\nTo respond to this offer, please visit:\n${responseUrl}\n` : ""}
+Please review the offer and respond at your earliest convenience.
+
+Best regards,
+${company} HR Team`;
+
+    const responseButtonHtml = responseUrl ? `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 24px 0;">
+      <tr>
+        <td align="center">
+          <table cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td bgcolor="#FFCB00" style="background: linear-gradient(135deg, #FFCB00, #E6B800); border-radius: 8px; padding: 14px 32px;">
+                <a href="${responseUrl}" style="color: #000000; text-decoration: none; font-size: 16px; font-weight: 600; display: inline-block;">
+                  Respond to Offer
+                </a>
+              </td>
+            </tr>
+          </table>
+          <p style="font-size: 12px; color: #9ca3af; margin-top: 8px;">Click the button above to accept or decline this offer</p>
+        </td>
+      </tr>
+    </table>` : "";
+
+    const html = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+    <tr>
+      <td bgcolor="#FFCB00" style="background: linear-gradient(135deg, #FFCB00, #FFD633); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: #000000; margin: 0; font-size: 24px;">Job Offer</h1>
+        <p style="color: #333333; margin: 10px 0 0 0; font-weight: bold;">${jobTitle}</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background: #ffffff; border: 1px solid #e5e7eb; border-top: none; padding: 30px; border-radius: 0 0 12px 12px;">
+        <p style="font-size: 16px; color: #374151;">Dear ${candidateName},</p>
+        <p style="font-size: 14px; color: #6b7280; line-height: 1.6;">
+          We are pleased to extend a formal offer for the position of <strong>${jobTitle}</strong>.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+          <tr>
+            <td bgcolor="#f0fdf4" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px;">
+              <h3 style="margin: 0 0 12px 0; color: #166534;">Offer Details</h3>
+              <p style="margin: 4px 0; color: #374151;"><strong>Position:</strong> ${jobTitle}</p>
+              <p style="margin: 4px 0; color: #374151;"><strong>Salary:</strong> ${salary}</p>
+              <p style="margin: 4px 0; color: #374151;"><strong>Start Date:</strong> ${startDate}</p>
+            </td>
+          </tr>
+        </table>${responseButtonHtml}
+        <p style="font-size: 14px; color: #6b7280; line-height: 1.6;">
+          Please review the offer details and respond at your earliest convenience.
+        </p>
+        <p style="font-size: 14px; color: #6b7280;">Best regards,<br><strong>${company} HR Team</strong></p>
+      </td>
+    </tr>
+  </table>
+</div>`;
+
+    return this.sendEmail({ to, subject, body, html, attachments });
+  }
+
+  async sendInterestCheckNotification(options: {
+    to: string;
+    candidateName: string;
+    jobTitle: string;
+    companyName?: string;
+    interestUrl: string;
+    attachments?: EmailAttachment[];
+  }): Promise<boolean> {
+    const { to, candidateName, jobTitle, companyName, interestUrl, attachments } = options;
+    const company = companyName || "AHC Recruiting";
+
+    const subject = `Career Opportunity: ${jobTitle} - ${company}`;
+
+    const body = `Dear ${candidateName},
+
+We have an exciting career opportunity that may interest you!
+
+Position: ${jobTitle}
+Company: ${company}
+
+To view the full job description and express your interest, please visit:
+${interestUrl}
+
+Please review the opportunity and respond at your earliest convenience. The attached document contains the full job specification.
+
+Best regards,
+${company} HR Team`;
+
+    const html = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+    <tr>
+      <td bgcolor="#FFCB00" style="background: linear-gradient(135deg, #FFCB00, #FFD633); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: #000000; margin: 0; font-size: 24px;">Career Opportunity</h1>
+        <p style="color: #333333; margin: 10px 0 0 0; font-weight: bold;">${jobTitle}</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background: #ffffff; border: 1px solid #e5e7eb; border-top: none; padding: 30px; border-radius: 0 0 12px 12px;">
+        <p style="font-size: 16px; color: #374151;">Dear ${candidateName},</p>
+        <p style="font-size: 14px; color: #6b7280; line-height: 1.6;">
+          We have an exciting career opportunity that may interest you for the position of <strong>${jobTitle}</strong> at <strong>${company}</strong>.
+        </p>
+        <p style="font-size: 14px; color: #6b7280; line-height: 1.6;">
+          Please click the button below to view the full job description and let us know if you're interested. The attached document contains the full job specification.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 24px 0;">
+          <tr>
+            <td align="center">
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td bgcolor="#FFCB00" style="background: linear-gradient(135deg, #FFCB00, #E6B800); border-radius: 8px; padding: 14px 32px;">
+                    <a href="${interestUrl}" style="color: #000000; text-decoration: none; font-size: 16px; font-weight: 600; display: inline-block;">
+                      View Opportunity
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-size: 12px; color: #9ca3af; margin-top: 8px;">Click the button above to view the job details and respond</p>
+            </td>
+          </tr>
+        </table>
+        <p style="font-size: 14px; color: #6b7280;">Best regards,<br><strong>${company} HR Team</strong></p>
+      </td>
+    </tr>
+  </table>
+</div>`;
+
+    return this.sendEmail({ to, subject, body, html, attachments });
+  }
+
+  async notifyHROfOfferResponse(candidateName: string, jobTitle: string, response: "accepted" | "declined", declineReason?: string): Promise<void> {
+    const hrEmail = await this.getHRAdminEmail();
+    if (!hrEmail) {
+      console.log("[EmailService] HR admin email not configured, skipping offer response notification");
+      return;
+    }
+
+    const subject = `Offer ${response === "accepted" ? "Accepted" : "Declined"}: ${candidateName} - ${jobTitle}`;
+    const body = `Candidate ${candidateName} has ${response} the offer for ${jobTitle}.
+
+${response === "accepted"
+      ? "Next Steps:\n- Integrity checks will be auto-launched\n- The candidate has been transitioned to the integrity verification stage"
+      : `The candidate has been marked as withdrawn from the pipeline.${declineReason ? `\n\nReason for declining: ${declineReason}` : ""}`
+    }
+
+This is an automated notification from the AHC HR System.`;
+
+    await this.sendEmail({ to: hrEmail, subject, body });
   }
 }

@@ -1,10 +1,81 @@
 import Groq from "groq-sdk";
 import { z } from "zod";
+import axios from "axios";
 import type { Job } from "@shared/schema";
+import { LinkedInJobsScraper, PNetScraper, IndeedScraper, type ScrapedCandidate } from "./web-scraper-agents";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
+
+const APIFY_TOKEN = process.env.APIFY_TOKEN || "";
+
+// Real scraper instances for actual data extraction
+const linkedInScraper = new LinkedInJobsScraper();
+const pnetScraper = new PNetScraper();
+const indeedScraper = new IndeedScraper();
+
+// Apify LinkedIn profile detail scraper (returns real structured profile data)
+async function scrapeLinkedInProfilesViaApify(profileUrls: string[]): Promise<any[]> {
+  if (!APIFY_TOKEN || profileUrls.length === 0) return [];
+
+  try {
+    console.log(`[Apify] Scraping ${profileUrls.length} LinkedIn profiles...`);
+    const response = await axios.post(
+      `https://api.apify.com/v2/acts/apimaestro~linkedin-profile-detail/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=120`,
+      { profileUrls },
+      { headers: { "Content-Type": "application/json" }, timeout: 180000 }
+    );
+
+    if (Array.isArray(response.data)) {
+      console.log(`[Apify] Got ${response.data.length} profile results`);
+      return response.data;
+    }
+    return [];
+  } catch (error: any) {
+    console.error(`[Apify] LinkedIn scrape error:`, error.message);
+    return [];
+  }
+}
+
+// Convert Apify profile data to SpecialistCandidate format
+function apifyProfileToCandidate(profile: any, specialistName: string): SpecialistCandidate | null {
+  const info = profile.basic_info;
+  if (!info?.fullname) return null;
+
+  const skills = [
+    ...(info.top_skills || []),
+    ...(profile.skills || []).map((s: any) => s.name || s).slice(0, 10),
+  ];
+
+  const experience = (profile.experience || [])
+    .slice(0, 2)
+    .map((e: any) => `${e.title} at ${e.company}`)
+    .join("; ");
+
+  return {
+    name: info.fullname,
+    currentRole: info.headline || (profile.experience?.[0]?.title) || "Not specified",
+    company: info.current_company || profile.experience?.[0]?.company || undefined,
+    location: info.location?.full || info.location?.city || undefined,
+    skills,
+    experience: experience || undefined,
+    match: 70, // real profile, baseline match
+    source: "LinkedIn",
+    specialist: specialistName,
+    email: info.email || undefined,
+    phone: undefined,
+    profileUrl: info.profile_url || undefined,
+    rawData: {
+      headline: info.headline,
+      about: info.about?.slice(0, 300),
+      connections: info.connection_count,
+      followers: info.follower_count,
+      education: profile.education,
+      certifications: profile.certifications,
+    },
+  };
+}
 
 const CandidateSchema = z.object({
   name: z.string().min(1),
@@ -124,7 +195,7 @@ Make the outreach script professional and personalized for South African candida
 
     try {
       const completion = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [
           {
             role: "system",
@@ -201,85 +272,156 @@ export class LinkedInSpecialist extends BaseSourcingSpecialist {
   async searchCandidates(job: Job, config: SourcingConfiguration, limit: number = 10): Promise<SpecialistCandidate[]> {
     console.log(`[${this.name}] Searching LinkedIn for: ${job.title}`);
 
-    const prompt = `You are a LinkedIn Recruiter AI specialist sourcing candidates in South Africa.
-
-Search Configuration:
-- Target Profiles: ${config.targetCandidateProfiles.join(', ')}
-- Boolean Search: ${config.booleanSearchStrings[0] || job.title}
-- Target Employers: ${config.targetEmployers.join(', ') || 'Major SA companies'}
-- Filter Keywords: ${config.filterKeywords.join(', ')}
-- Screening Criteria: ${config.screeningCriteria.join(', ')}
-- Salary Range: R${config.salaryRange.min} - R${config.salaryRange.max}
-
-Job Details:
-- Title: ${job.title}
-- Department: ${job.department}
-- Location: ${job.location || 'South Africa'}
-
-Generate ${limit} realistic LinkedIn candidate profiles. For each candidate provide:
-{
-  "name": "<realistic South African name>",
-  "currentRole": "<current job title>",
-  "company": "<realistic SA company from target employers or similar>",
-  "location": "<SA city>",
-  "skills": ["<skill matching screening criteria>", ...],
-  "experience": "<years and summary>",
-  "match": <0-100>,
-  "email": "<realistic professional email based on name and company>",
-  "phone": "<realistic South African mobile number starting with +27 or 0>",
-  "headline": "<LinkedIn headline>",
-  "connections": <number>,
-  "profileSummary": "<brief professional summary>"
-}
-
-Focus on passive candidates who are currently employed at target employers. Every candidate MUST have a phone number and email. Return as JSON array.`;
-
     try {
-      const completion = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          {
-            role: "system",
-            content: "You are a LinkedIn Recruiter specialist for the South African market. Generate realistic professional candidate profiles. IMPORTANT: Return ONLY a valid JSON array, no explanatory text."
-          },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 4000,
-      });
+      // PRIMARY: Use Apify LinkedIn Search if token is available
+      if (APIFY_TOKEN) {
+        console.log(`[${this.name}] Using Apify as primary LinkedIn search method`);
 
-      const response = completion.choices[0]?.message?.content || "";
-      const parsed = safeParseJSON(response, "array");
-
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const candidates: SpecialistCandidate[] = [];
-        for (const c of parsed) {
-          const validated = CandidateSchema.safeParse(c);
-          if (!validated.success) continue;
-          
-          candidates.push({
-            name: validated.data.name,
-            currentRole: validated.data.currentRole,
-            company: validated.data.company || c.company,
-            location: validated.data.location || c.location,
-            skills: validated.data.skills,
-            experience: validated.data.experience || c.experience,
-            match: validated.data.match,
-            source: "LinkedIn",
-            specialist: this.name,
-            email: c.email || undefined,
-            phone: c.phone || undefined,
-            profileUrl: `https://linkedin.com/in/${validated.data.name.toLowerCase().replace(/\s+/g, '-')}`,
-            rawData: { headline: c.headline, connections: c.connections, profileSummary: c.profileSummary },
-          });
+        // Try Apify LinkedIn Search actor to find profiles directly
+        const apifyCandidates = await this.searchViaApify(job, limit);
+        if (apifyCandidates.length > 0) {
+          console.log(`[${this.name}] Found ${apifyCandidates.length} candidates via Apify primary search`);
+          return apifyCandidates;
         }
-        return candidates;
+
+        // If Apify search returned nothing, try Google to find LinkedIn profile URLs, then enrich via Apify
+        console.log(`[${this.name}] Apify search empty, trying Google+Apify fallback`);
+        const googleCandidates = await this.searchViaGoogleApify(job, limit);
+        if (googleCandidates.length > 0) {
+          return googleCandidates;
+        }
       }
+
+      // FALLBACK: Puppeteer scrape (when no Apify token)
+      console.log(`[${this.name}] Falling back to Puppeteer scrape`);
+      const result = await linkedInScraper.search(job, limit);
+      const scrapedCandidates = result.candidates || [];
+
+      // If Apify is available, try to enrich Puppeteer results with profile URLs
+      if (APIFY_TOKEN && scrapedCandidates.length > 0) {
+        const profileUrls = scrapedCandidates
+          .filter(c => c.sourceUrl?.includes("linkedin.com/in/"))
+          .map(c => c.sourceUrl!);
+
+        if (profileUrls.length > 0) {
+          const apifyProfiles = await scrapeLinkedInProfilesViaApify(profileUrls.slice(0, limit));
+          const enriched: SpecialistCandidate[] = [];
+          for (const profile of apifyProfiles) {
+            const candidate = apifyProfileToCandidate(profile, this.name);
+            if (candidate) enriched.push(candidate);
+          }
+          if (enriched.length > 0) return enriched;
+        }
+      }
+
+      if (scrapedCandidates.length > 0) {
+        return scrapedCandidates.map((c: ScrapedCandidate) => ({
+          name: c.name,
+          currentRole: c.title || "Not specified",
+          company: undefined,
+          location: c.location || undefined,
+          skills: c.skills || [],
+          experience: c.experience || undefined,
+          match: c.matchScore || 50,
+          source: "LinkedIn",
+          specialist: this.name,
+          email: c.contact?.includes("@") ? c.contact : undefined,
+          phone: c.contact && !c.contact.includes("@") ? c.contact : undefined,
+          profileUrl: c.sourceUrl || undefined,
+          rawData: { rawText: c.rawText },
+        }));
+      }
+
+      console.log(`[${this.name}] No candidates found from any source`);
+      return [];
     } catch (error) {
       console.error(`[${this.name}] Search error:`, error);
     }
 
     return [];
+  }
+
+  private async searchViaApify(job: Job, limit: number): Promise<SpecialistCandidate[]> {
+    try {
+      const searchQuery = `${job.title} ${job.location || "South Africa"}`;
+      console.log(`[${this.name}] Apify LinkedIn search: ${searchQuery}`);
+
+      const response = await axios.post(
+        `https://api.apify.com/v2/acts/apimaestro~linkedin-search/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=120`,
+        {
+          query: searchQuery,
+          type: "people",
+          limit: limit,
+        },
+        { headers: { "Content-Type": "application/json" }, timeout: 180000 }
+      );
+
+      if (!Array.isArray(response.data) || response.data.length === 0) return [];
+
+      // Extract profile URLs from search results
+      const profileUrls = response.data
+        .map((r: any) => r.profileUrl || r.url || r.profile_url)
+        .filter((url: string) => url?.includes("linkedin.com/in/"))
+        .slice(0, limit);
+
+      if (profileUrls.length === 0) return [];
+
+      // Enrich with full profile data
+      const profiles = await scrapeLinkedInProfilesViaApify(profileUrls);
+      const candidates: SpecialistCandidate[] = [];
+      for (const profile of profiles) {
+        const candidate = apifyProfileToCandidate(profile, this.name);
+        if (candidate) candidates.push(candidate);
+      }
+      return candidates;
+    } catch (err: any) {
+      console.error(`[${this.name}] Apify search error:`, err.message);
+      return [];
+    }
+  }
+
+  private async searchViaGoogleApify(job: Job, limit: number): Promise<SpecialistCandidate[]> {
+    try {
+      const searchQuery = `site:linkedin.com/in ${job.title} ${job.location || "South Africa"}`;
+      const { getBrowser } = await import("./web-scraper-agents");
+      const browser = await getBrowser();
+      const page = await browser.newPage();
+      await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
+      await page.goto(`https://www.google.com/search?q=${encodeURIComponent(searchQuery)}&num=${limit}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 15000
+      });
+      await new Promise(r => setTimeout(r, 2000));
+
+      const googleProfileUrls = await page.evaluate(() => {
+        const links: string[] = [];
+        document.querySelectorAll('a[href*="linkedin.com/in/"]').forEach(a => {
+          const href = (a as HTMLAnchorElement).href;
+          const match = href.match(/https?:\/\/[a-z]+\.linkedin\.com\/in\/[^&?/]+/);
+          if (match && !links.includes(match[0])) links.push(match[0]);
+        });
+        return links;
+      });
+      await page.close();
+
+      if (googleProfileUrls.length === 0) return [];
+
+      console.log(`[${this.name}] Found ${googleProfileUrls.length} LinkedIn profiles via Google`);
+      const apifyProfiles = await scrapeLinkedInProfilesViaApify(googleProfileUrls.slice(0, limit));
+      const candidates: SpecialistCandidate[] = [];
+      for (const profile of apifyProfiles) {
+        const candidate = apifyProfileToCandidate(profile, this.name);
+        if (candidate) candidates.push(candidate);
+      }
+      if (candidates.length > 0) {
+        console.log(`[${this.name}] Enriched ${candidates.length} candidates from Google+Apify`);
+      }
+      return candidates;
+    } catch (err: any) {
+      console.error(`[${this.name}] Google+Apify fallback error:`, err.message);
+      return [];
+    }
   }
 }
 
@@ -306,85 +448,32 @@ export class PNetSpecialist extends BaseSourcingSpecialist {
   }
 
   async searchCandidates(job: Job, config: SourcingConfiguration, limit: number = 10): Promise<SpecialistCandidate[]> {
-    console.log(`[${this.name}] Searching PNet for: ${job.title}`);
-
-    const prompt = `You are a PNet CV Database Search specialist for South African recruitment.
-
-Search Configuration:
-- Target Profiles: ${config.targetCandidateProfiles.join(', ')}
-- Boolean Search: ${config.booleanSearchStrings[0] || job.title}
-- Target Employers: ${config.targetEmployers.join(', ') || 'SA companies'}
-- Filter Keywords: ${config.filterKeywords.join(', ')}
-- Screening Criteria: ${config.screeningCriteria.join(', ')}
-- Salary Range: R${config.salaryRange.min} - R${config.salaryRange.max} per month
-
-Job Details:
-- Title: ${job.title}
-- Department: ${job.department}
-- Location: ${job.location || 'South Africa'}
-
-Generate ${limit} realistic PNet candidate profiles. These are ACTIVE job seekers. For each:
-{
-  "name": "<realistic South African name>",
-  "currentRole": "<current or most recent job title>",
-  "company": "<current or previous SA company>",
-  "location": "<SA city - focus on Gauteng, Cape Town, Durban>",
-  "skills": ["<relevant skill>", ...],
-  "experience": "<years and details>",
-  "match": <0-100>,
-  "email": "<realistic email address based on name>",
-  "phone": "<realistic South African mobile number starting with +27 or 0>",
-  "availability": "<immediate/1 month notice/2 months notice>",
-  "expectedSalary": "<salary expectation in ZAR>",
-  "lastActive": "<days ago on PNet>"
-}
-
-PNet candidates are typically actively looking for work. Include a mix of availability statuses. Every candidate MUST have a phone number and email. Return as JSON array.`;
+    console.log(`[${this.name}] Scraping real PNet data for: ${job.title}`);
 
     try {
-      const completion = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          {
-            role: "system",
-            content: "You are a PNet recruitment specialist for South Africa. Generate realistic job seeker profiles. IMPORTANT: Return ONLY a valid JSON array, no explanatory text."
-          },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 4000,
-      });
+      const result = await pnetScraper.search(job, limit);
 
-      const response = completion.choices[0]?.message?.content || "";
-      const parsed = safeParseJSON(response, "array");
-
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const candidates: SpecialistCandidate[] = [];
-        for (const c of parsed) {
-          const validated = CandidateSchema.safeParse(c);
-          if (!validated.success) continue;
-          
-          candidates.push({
-            name: validated.data.name,
-            currentRole: validated.data.currentRole,
-            company: validated.data.company || c.company,
-            location: validated.data.location || c.location,
-            skills: validated.data.skills,
-            experience: validated.data.experience || c.experience,
-            match: validated.data.match,
-            source: "PNet",
-            specialist: this.name,
-            email: c.email || undefined,
-            phone: c.phone || undefined,
-            rawData: {
-              availability: c.availability,
-              expectedSalary: c.expectedSalary,
-              lastActive: c.lastActive,
-            },
-          });
-        }
-        return candidates;
+      if (result.status === "failed" || result.candidates.length === 0) {
+        console.log(`[${this.name}] PNet scrape returned ${result.candidates.length} candidates (status: ${result.status})`);
+        return [];
       }
+
+      console.log(`[${this.name}] Found ${result.candidates.length} real candidates from PNet`);
+
+      return result.candidates.map((c: ScrapedCandidate) => ({
+        name: c.name,
+        currentRole: c.title || "Not specified",
+        company: undefined,
+        location: c.location || undefined,
+        skills: c.skills || [],
+        experience: c.experience || undefined,
+        match: c.matchScore || 50,
+        source: "PNet",
+        specialist: this.name,
+        email: c.contact?.includes("@") ? c.contact : undefined,
+        phone: c.contact && !c.contact.includes("@") ? c.contact : undefined,
+        rawData: { rawText: c.rawText },
+      }));
     } catch (error) {
       console.error(`[${this.name}] Search error:`, error);
     }
@@ -418,88 +507,86 @@ export class IndeedSpecialist extends BaseSourcingSpecialist {
   async searchCandidates(job: Job, config: SourcingConfiguration, limit: number = 10): Promise<SpecialistCandidate[]> {
     console.log(`[${this.name}] Searching Indeed for: ${job.title}`);
 
-    const prompt = `You are an Indeed Resume Database specialist for South African recruitment.
-
-Search Configuration:
-- Target Profiles: ${config.targetCandidateProfiles.join(', ')}
-- Boolean Search: ${config.booleanSearchStrings[0] || job.title}
-- Target Employers: ${config.targetEmployers.join(', ') || 'Various SA employers'}
-- Filter Keywords: ${config.filterKeywords.join(', ')}
-- Screening Criteria: ${config.screeningCriteria.join(', ')}
-- Salary Range: R${config.salaryRange.min} - R${config.salaryRange.max}
-
-Job Details:
-- Title: ${job.title}
-- Department: ${job.department}
-- Location: ${job.location || 'South Africa'}
-
-Generate ${limit} realistic Indeed candidate profiles. Mix of employed and unemployed job seekers. For each:
-{
-  "name": "<realistic South African name>",
-  "currentRole": "<current or desired job title>",
-  "company": "<current employer or 'Seeking Employment'>",
-  "location": "<SA city>",
-  "skills": ["<skill>", ...],
-  "experience": "<years and summary>",
-  "match": <0-100>,
-  "email": "<realistic email address based on name>",
-  "phone": "<realistic South African mobile number starting with +27 or 0>",
-  "resumeUpdated": "<when resume was last updated>",
-  "willingToRelocate": <true/false>,
-  "education": "<highest qualification>"
-}
-
-Indeed has more entry-level and blue-collar candidates. Include diverse backgrounds. Every candidate MUST have a phone number and email. Return as JSON array.`;
-
     try {
-      const completion = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          {
-            role: "system",
-            content: "You are an Indeed recruitment specialist for South Africa. Generate diverse, realistic job seeker profiles. IMPORTANT: Return ONLY a valid JSON array, no explanatory text."
-          },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 4000,
-      });
-
-      const response = completion.choices[0]?.message?.content || "";
-      const parsed = safeParseJSON(response, "array");
-
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const candidates: SpecialistCandidate[] = [];
-        for (const c of parsed) {
-          const validated = CandidateSchema.safeParse(c);
-          if (!validated.success) continue;
-          
-          candidates.push({
-            name: validated.data.name,
-            currentRole: validated.data.currentRole,
-            company: validated.data.company || c.company,
-            location: validated.data.location || c.location,
-            skills: validated.data.skills,
-            experience: validated.data.experience || c.experience,
-            match: validated.data.match,
-            source: "Indeed",
-            specialist: this.name,
-            email: c.email || undefined,
-            phone: c.phone || undefined,
-            rawData: {
-              resumeUpdated: c.resumeUpdated,
-              willingToRelocate: c.willingToRelocate,
-              education: c.education,
-            },
-          });
+      // PRIMARY: Use Apify Indeed scraper if token is available
+      if (APIFY_TOKEN) {
+        console.log(`[${this.name}] Using Apify as primary Indeed search method`);
+        const apifyCandidates = await this.searchIndeedViaApify(job, limit);
+        if (apifyCandidates.length > 0) {
+          console.log(`[${this.name}] Found ${apifyCandidates.length} candidates via Apify Indeed`);
+          return apifyCandidates;
         }
-        return candidates;
+        console.log(`[${this.name}] Apify Indeed returned no results, falling back to Puppeteer`);
       }
+
+      // FALLBACK: Puppeteer scrape
+      const result = await indeedScraper.search(job, limit);
+
+      if (result.status === "failed" || result.candidates.length === 0) {
+        console.log(`[${this.name}] Indeed scrape returned ${result.candidates.length} candidates (status: ${result.status})`);
+        return [];
+      }
+
+      console.log(`[${this.name}] Found ${result.candidates.length} real candidates from Indeed`);
+
+      return result.candidates.map((c: ScrapedCandidate) => ({
+        name: c.name,
+        currentRole: c.title || "Not specified",
+        company: undefined,
+        location: c.location || undefined,
+        skills: c.skills || [],
+        experience: c.experience || undefined,
+        match: c.matchScore || 50,
+        source: "Indeed",
+        specialist: this.name,
+        email: c.contact?.includes("@") ? c.contact : undefined,
+        phone: c.contact && !c.contact.includes("@") ? c.contact : undefined,
+        rawData: { rawText: c.rawText },
+      }));
     } catch (error) {
       console.error(`[${this.name}] Search error:`, error);
     }
 
     return [];
+  }
+
+  private async searchIndeedViaApify(job: Job, limit: number): Promise<SpecialistCandidate[]> {
+    try {
+      const searchQuery = `${job.title} ${job.location || "South Africa"}`;
+      const response = await axios.post(
+        `https://api.apify.com/v2/acts/apimaestro~indeed-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=120`,
+        {
+          query: searchQuery,
+          location: job.location || "South Africa",
+          maxResults: limit,
+        },
+        { headers: { "Content-Type": "application/json" }, timeout: 180000 }
+      );
+
+      if (!Array.isArray(response.data) || response.data.length === 0) return [];
+
+      return response.data.slice(0, limit).map((item: any) => ({
+        name: item.company || item.title || "Unknown",
+        currentRole: item.title || "Not specified",
+        company: item.company || undefined,
+        location: item.location || undefined,
+        skills: item.skills || [],
+        experience: item.snippet || undefined,
+        match: 60,
+        source: "Indeed",
+        specialist: this.name,
+        email: undefined,
+        phone: undefined,
+        rawData: {
+          salary: item.salary,
+          description: item.description?.slice(0, 500),
+          url: item.url,
+        },
+      }));
+    } catch (err: any) {
+      console.error(`[${this.name}] Apify Indeed error:`, err.message);
+      return [];
+    }
   }
 }
 

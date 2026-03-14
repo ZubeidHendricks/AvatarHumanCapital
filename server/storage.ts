@@ -77,6 +77,11 @@ import {
   type InsertCandidateRecommendation,
   type ModelTrainingEvent,
   type InsertModelTrainingEvent,
+  type Offer,
+  type InsertOffer,
+  type InterestCheck,
+  type InsertInterestCheck,
+  candidateInterestChecks,
   users,
   jobs,
   candidates,
@@ -114,6 +119,7 @@ import {
   interviewFeedback,
   candidateRecommendations,
   modelTrainingEvents,
+  offers,
   dataSources,
   dataSourceSyncHistory,
   dataSourceFields,
@@ -198,9 +204,21 @@ import {
   weighbridgeSlips,
   type WeighbridgeSlip,
   type InsertWeighbridgeSlip,
+  interviewTimelineTags,
+  transcriptJobs,
+  recordingSources,
+  lemurAnalysisResults,
+  type InterviewTimelineTag,
+  type InsertInterviewTimelineTag,
+  type TranscriptJob,
+  type InsertTranscriptJob,
+  type RecordingSource,
+  type InsertRecordingSource,
+  type LemurAnalysisResult,
+  type InsertLemurAnalysisResult,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, lte, sql, isNull, isNotNull, or } from "drizzle-orm";
+import { eq, desc, and, lte, sql, isNull, isNotNull, or, ilike } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -208,6 +226,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   
   getAllJobs(tenantId: string, includeArchived?: boolean): Promise<Job[]>;
+  getJobsPaginated(tenantId: string, page: number, limit: number): Promise<{ data: Job[]; total: number }>;
   getClosedJobs(tenantId: string): Promise<Job[]>;
   getArchivedJobs(tenantId: string): Promise<Job[]>;
   getJob(tenantId: string, id: string): Promise<Job | undefined>;
@@ -218,8 +237,12 @@ export interface IStorage {
   restoreJob(tenantId: string, id: string): Promise<Job | undefined>;
   
   getAllCandidates(tenantId: string): Promise<Candidate[]>;
+  getCandidatesPaginated(tenantId: string, page: number, limit: number): Promise<{ data: Candidate[]; total: number }>;
   getCandidate(tenantId: string, id: string): Promise<Candidate | undefined>;
+  findCandidateByEmailOrName(tenantId: string, email: string | undefined, fullName: string): Promise<Candidate | undefined>;
+  getCandidatesForJob(tenantId: string, jobId: string): Promise<Candidate[]>;
   createCandidate(tenantId: string, candidate: InsertCandidate): Promise<Candidate>;
+  upsertScrapedCandidate(tenantId: string, candidate: InsertCandidate): Promise<{ candidate: Candidate; isNew: boolean; previouslyRejected: boolean }>;
   updateCandidate(tenantId: string, id: string, candidate: Partial<InsertCandidate>): Promise<Candidate | undefined>;
   deleteCandidate(tenantId: string, id: string): Promise<boolean>;
   
@@ -251,14 +274,17 @@ export interface IStorage {
   createOnboardingWorkflow(tenantId: string, workflow: InsertOnboardingWorkflow): Promise<OnboardingWorkflow>;
   updateOnboardingWorkflow(tenantId: string, id: string, workflow: Partial<InsertOnboardingWorkflow>): Promise<OnboardingWorkflow | undefined>;
   deleteOnboardingWorkflow(tenantId: string, id: string): Promise<boolean>;
-  
-  getTenantConfig(): Promise<TenantConfig | undefined>;
+  getOnboardingWorkflowByUploadToken(token: string): Promise<OnboardingWorkflow | undefined>;
+  getIntegrityCheckByUploadToken(token: string): Promise<IntegrityCheck | undefined>;
+
+  getTenantConfig(tenantId?: string): Promise<TenantConfig | undefined>;
   getAllTenantConfigs(): Promise<TenantConfig[]>;
   getTenantById(id: string): Promise<TenantConfig | undefined>;
   createTenantConfig(config: InsertTenantConfig): Promise<TenantConfig>;
   updateTenantConfig(id: string, config: Partial<InsertTenantConfig>): Promise<TenantConfig | undefined>;
   
   getAllInterviews(tenantId: string): Promise<Interview[]>;
+  getInterviewsPaginated(tenantId: string, page: number, limit: number): Promise<{ data: Interview[]; total: number }>;
   getInterview(tenantId: string, id: string): Promise<Interview | undefined>;
   getInterviewsByCandidateId(tenantId: string, candidateId: string): Promise<Interview[]>;
   getInterviewsByJobId(tenantId: string, jobId: string): Promise<Interview[]>;
@@ -341,6 +367,7 @@ export interface IStorage {
   
   // Document Automation
   getAllDocuments(tenantId: string): Promise<Document[]>;
+  getDocumentsPaginated(tenantId: string, page: number, limit: number): Promise<{ data: Document[]; total: number }>;
   getDocumentsByType(tenantId: string, type: string): Promise<Document[]>;
   getDocumentsByBatchId(tenantId: string, batchId: string): Promise<Document[]>;
   getDocument(tenantId: string, id: string): Promise<Document | undefined>;
@@ -356,6 +383,7 @@ export interface IStorage {
   
   // WhatsApp Conversations
   getAllWhatsappConversations(tenantId: string): Promise<WhatsappConversation[]>;
+  getWhatsappConversationsPaginated(tenantId: string, page: number, limit: number): Promise<{ data: WhatsappConversation[]; total: number }>;
   getWhatsappConversation(tenantId: string, id: string): Promise<WhatsappConversation | undefined>;
   getWhatsappConversationByWaId(tenantId: string, waId: string): Promise<WhatsappConversation | undefined>;
   getWhatsappConversationsByCandidateId(tenantId: string, candidateId: string): Promise<WhatsappConversation[]>;
@@ -384,27 +412,28 @@ export interface IStorage {
   // Interview Sessions
   getInterviewSession(tenantId: string, id: string): Promise<InterviewSession | undefined>;
   getInterviewSessionByToken(token: string): Promise<InterviewSession | undefined>;
+  getInterviewSessionByVideoToken(token: string): Promise<InterviewSession | undefined>;
   getInterviewSessionsByCandidateId(tenantId: string, candidateId: string): Promise<InterviewSession[]>;
   getInterviewSessionsByConversationId(tenantId: string, conversationId: string): Promise<InterviewSession[]>;
   getAllInterviewSessions(tenantId: string): Promise<InterviewSession[]>;
   createInterviewSession(tenantId: string, session: InsertInterviewSession): Promise<InterviewSession>;
   updateInterviewSession(tenantId: string, id: string, updates: Partial<InsertInterviewSession>): Promise<InterviewSession | undefined>;
   updateInterviewSessionByToken(token: string, updates: Partial<InsertInterviewSession>): Promise<InterviewSession | undefined>;
-  
+
   // Interview Recordings
-  getInterviewRecordings(tenantId: string, sessionId: string): Promise<InterviewRecording[]>;
+  getInterviewRecordings(tenantId: string, sessionId: string, stage?: string): Promise<InterviewRecording[]>;
   getInterviewRecording(tenantId: string, id: string): Promise<InterviewRecording | undefined>;
   createInterviewRecording(tenantId: string, recording: InsertInterviewRecording): Promise<InterviewRecording>;
   updateInterviewRecording(tenantId: string, id: string, updates: Partial<InsertInterviewRecording>): Promise<InterviewRecording | undefined>;
-  
+
   // Interview Transcripts
-  getInterviewTranscripts(tenantId: string, sessionId: string): Promise<InterviewTranscript[]>;
+  getInterviewTranscripts(tenantId: string, sessionId: string, stage?: string): Promise<InterviewTranscript[]>;
   getInterviewTranscript(tenantId: string, id: string): Promise<InterviewTranscript | undefined>;
   createInterviewTranscript(tenantId: string, transcript: InsertInterviewTranscript): Promise<InterviewTranscript>;
   createInterviewTranscriptsBatch(tenantId: string, transcripts: InsertInterviewTranscript[]): Promise<InterviewTranscript[]>;
-  
+
   // Interview Feedback
-  getInterviewFeedback(tenantId: string, sessionId: string): Promise<InterviewFeedback[]>;
+  getInterviewFeedback(tenantId: string, sessionId: string, stage?: string): Promise<InterviewFeedback[]>;
   getInterviewFeedbackById(tenantId: string, id: string): Promise<InterviewFeedback | undefined>;
   getInterviewFeedbackByCandidate(tenantId: string, candidateId: string): Promise<InterviewFeedback[]>;
   createInterviewFeedback(tenantId: string, feedback: InsertInterviewFeedback): Promise<InterviewFeedback>;
@@ -421,7 +450,32 @@ export interface IStorage {
   getModelTrainingEvents(tenantId: string, sessionId?: string): Promise<ModelTrainingEvent[]>;
   createModelTrainingEvent(tenantId: string, event: InsertModelTrainingEvent): Promise<ModelTrainingEvent>;
   updateModelTrainingEvent(tenantId: string, id: string, updates: Partial<InsertModelTrainingEvent>): Promise<ModelTrainingEvent | undefined>;
-  
+
+  // ViTT Timeline Tags
+  getTimelineTags(tenantId: string, sessionId: string, stage?: string): Promise<InterviewTimelineTag[]>;
+  getTimelineTag(tenantId: string, id: string): Promise<InterviewTimelineTag | undefined>;
+  getTimelineTagsByType(tenantId: string, sessionId: string, tagType: string, stage?: string): Promise<InterviewTimelineTag[]>;
+  createTimelineTag(tenantId: string, tag: InsertInterviewTimelineTag): Promise<InterviewTimelineTag>;
+  updateTimelineTag(tenantId: string, id: string, updates: Partial<InsertInterviewTimelineTag>): Promise<InterviewTimelineTag | undefined>;
+  deleteTimelineTag(tenantId: string, id: string): Promise<void>;
+  clearTimelineTags(tenantId: string, sessionId: string, stage?: string): Promise<number>;
+
+  // Transcript Jobs
+  getTranscriptJobs(tenantId: string, sessionId: string): Promise<TranscriptJob[]>;
+  getTranscriptJob(tenantId: string, id: string): Promise<TranscriptJob | undefined>;
+  createTranscriptJob(tenantId: string, job: InsertTranscriptJob): Promise<TranscriptJob>;
+  updateTranscriptJob(tenantId: string, id: string, updates: Partial<InsertTranscriptJob>): Promise<TranscriptJob | undefined>;
+
+  // Recording Sources
+  getRecordingSources(tenantId: string, sessionId: string): Promise<RecordingSource[]>;
+  getRecordingSource(tenantId: string, id: string): Promise<RecordingSource | undefined>;
+  createRecordingSource(tenantId: string, source: InsertRecordingSource): Promise<RecordingSource>;
+  updateRecordingSource(tenantId: string, id: string, updates: Partial<InsertRecordingSource>): Promise<RecordingSource | undefined>;
+
+  // LeMUR Analysis Results
+  getLemurAnalysisResults(tenantId: string, sessionId: string): Promise<LemurAnalysisResult[]>;
+  createLemurAnalysisResult(tenantId: string, result: InsertLemurAnalysisResult): Promise<LemurAnalysisResult>;
+
   // Onboarding Agent Logs
   getOnboardingAgentLogs(tenantId: string, workflowId?: string): Promise<OnboardingAgentLog[]>;
   getOnboardingAgentLogsByCandidate(tenantId: string, candidateId: string): Promise<OnboardingAgentLog[]>;
@@ -598,7 +652,24 @@ export interface IStorage {
   getActiveDocumentTemplate(tenantId: string, templateType: string): Promise<DocumentTemplate | undefined>;
   createDocumentTemplate(tenantId: string, template: InsertDocumentTemplate): Promise<DocumentTemplate>;
   activateDocumentTemplate(tenantId: string, id: string): Promise<DocumentTemplate | undefined>;
+  deactivateDocumentTemplate(tenantId: string, id: string): Promise<DocumentTemplate | undefined>;
   deleteDocumentTemplate(tenantId: string, id: string): Promise<boolean>;
+
+  // Offers Management
+  getAllOffers(tenantId: string): Promise<Offer[]>;
+  getOffer(tenantId: string, id: string): Promise<Offer | undefined>;
+  getOfferByCandidateId(tenantId: string, candidateId: string): Promise<Offer | undefined>;
+  getOfferByResponseToken(token: string): Promise<Offer | undefined>;
+  createOffer(tenantId: string, offer: InsertOffer): Promise<Offer>;
+  updateOffer(tenantId: string, id: string, offer: Partial<InsertOffer>): Promise<Offer | undefined>;
+  deleteOffer(tenantId: string, id: string): Promise<boolean>;
+
+  // Interest Checks
+  getAllInterestChecks(tenantId: string): Promise<InterestCheck[]>;
+  getInterestCheckByToken(token: string): Promise<InterestCheck | undefined>;
+  getInterestChecksByCandidateId(tenantId: string, candidateId: string): Promise<InterestCheck[]>;
+  createInterestCheck(tenantId: string, data: InsertInterestCheck): Promise<InterestCheck>;
+  updateInterestCheck(tenantId: string, id: string, updates: Partial<InsertInterestCheck>): Promise<InterestCheck | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -638,6 +709,20 @@ export class DatabaseStorage implements IStorage {
         sql`(${jobs.isClosed} IS NULL OR ${jobs.isClosed} = 0)`
       )
     ).orderBy(desc(jobs.createdAt));
+  }
+
+  async getJobsPaginated(tenantId: string, page: number, limit: number): Promise<{ data: Job[]; total: number }> {
+    const offset = (page - 1) * limit;
+    const condition = and(
+      eq(jobs.tenantId, tenantId),
+      sql`${jobs.archivedAt} IS NULL`,
+      sql`(${jobs.isClosed} IS NULL OR ${jobs.isClosed} = 0)`
+    );
+    const [data, countResult] = await Promise.all([
+      db.select().from(jobs).where(condition).orderBy(desc(jobs.createdAt)).limit(limit).offset(offset),
+      db.select({ count: sql<number>`count(*)` }).from(jobs).where(condition),
+    ]);
+    return { data, total: Number(countResult[0].count) };
   }
 
   async getClosedJobs(tenantId: string): Promise<Job[]> {
@@ -713,9 +798,64 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(candidates).where(eq(candidates.tenantId, tenantId)).orderBy(desc(candidates.createdAt));
   }
 
+  async getCandidatesPaginated(tenantId: string, page: number, limit: number): Promise<{ data: Candidate[]; total: number }> {
+    const offset = (page - 1) * limit;
+    const [data, countResult] = await Promise.all([
+      db.select().from(candidates).where(eq(candidates.tenantId, tenantId)).orderBy(desc(candidates.createdAt)).limit(limit).offset(offset),
+      db.select({ count: sql<number>`count(*)` }).from(candidates).where(eq(candidates.tenantId, tenantId)),
+    ]);
+    return { data, total: Number(countResult[0].count) };
+  }
+
   async getCandidate(tenantId: string, id: string): Promise<Candidate | undefined> {
     const [candidate] = await db.select().from(candidates).where(and(eq(candidates.id, id), eq(candidates.tenantId, tenantId)));
     return candidate || undefined;
+  }
+
+  async findCandidateByEmailOrName(tenantId: string, email: string | undefined, fullName: string): Promise<Candidate | undefined> {
+    // Try email match first (most reliable dedup key)
+    if (email) {
+      const [byEmail] = await db.select().from(candidates)
+        .where(and(eq(candidates.tenantId, tenantId), ilike(candidates.email, email)))
+        .limit(1);
+      if (byEmail) return byEmail;
+    }
+    // Fall back to exact name match
+    const [byName] = await db.select().from(candidates)
+      .where(and(eq(candidates.tenantId, tenantId), ilike(candidates.fullName, fullName)))
+      .limit(1);
+    return byName || undefined;
+  }
+
+  async getCandidatesForJob(tenantId: string, jobId: string): Promise<Candidate[]> {
+    return await db.select().from(candidates)
+      .where(and(eq(candidates.tenantId, tenantId), eq(candidates.jobId, jobId)))
+      .orderBy(desc(candidates.match));
+  }
+
+  async upsertScrapedCandidate(tenantId: string, insertCandidate: InsertCandidate): Promise<{ candidate: Candidate; isNew: boolean; previouslyRejected: boolean }> {
+    const email = insertCandidate.email || undefined;
+    const existing = await this.findCandidateByEmailOrName(tenantId, email, insertCandidate.fullName);
+
+    if (existing) {
+      const isRejected = existing.status === "Rejected" || existing.stage === "Lost" || existing.stage === "Rejected";
+
+      // Update metadata to track that this candidate was found again by a scraper
+      const existingMeta = (existing.metadata as Record<string, any>) || {};
+      await this.updateCandidate(tenantId, existing.id, {
+        metadata: {
+          ...existingMeta,
+          lastSeenByScraper: new Date().toISOString(),
+          lastScraperSource: insertCandidate.source,
+        },
+      });
+
+      return { candidate: existing, isNew: false, previouslyRejected: isRejected };
+    }
+
+    // New candidate — save to DB
+    const candidate = await this.createCandidate(tenantId, insertCandidate);
+    return { candidate, isNew: true, previouslyRejected: false };
   }
 
   async createCandidate(tenantId: string, insertCandidate: InsertCandidate): Promise<Candidate> {
@@ -906,7 +1046,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllOnboardingWorkflows(tenantId: string): Promise<OnboardingWorkflow[]> {
-    return await db.select().from(onboardingWorkflows).where(eq(onboardingWorkflows.tenantId, tenantId)).orderBy(desc(onboardingWorkflows.createdAt));
+    const all = await db.select().from(onboardingWorkflows).where(eq(onboardingWorkflows.tenantId, tenantId)).orderBy(desc(onboardingWorkflows.createdAt));
+    // Deduplicate by candidateId — keep only the earliest workflow per candidate
+    const seen = new Set<string>();
+    return all.filter(w => {
+      if (seen.has(w.candidateId)) return false;
+      seen.add(w.candidateId);
+      return true;
+    });
   }
 
   async getOnboardingWorkflow(tenantId: string, id: string): Promise<OnboardingWorkflow | undefined> {
@@ -963,7 +1110,21 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  async getTenantConfig(): Promise<TenantConfig | undefined> {
+  async getOnboardingWorkflowByUploadToken(token: string): Promise<OnboardingWorkflow | undefined> {
+    const [workflow] = await db.select().from(onboardingWorkflows).where(eq(onboardingWorkflows.uploadToken, token));
+    return workflow || undefined;
+  }
+
+  async getIntegrityCheckByUploadToken(token: string): Promise<IntegrityCheck | undefined> {
+    const [check] = await db.select().from(integrityChecks).where(eq(integrityChecks.uploadToken, token));
+    return check || undefined;
+  }
+
+  async getTenantConfig(tenantId?: string): Promise<TenantConfig | undefined> {
+    if (tenantId) {
+      const [config] = await db.select().from(tenantConfig).where(eq(tenantConfig.id, tenantId));
+      return config || undefined;
+    }
     const [config] = await db.select().from(tenantConfig).orderBy(desc(tenantConfig.createdAt)).limit(1);
     return config || undefined;
   }
@@ -991,6 +1152,15 @@ export class DatabaseStorage implements IStorage {
 
   async getAllInterviews(tenantId: string): Promise<Interview[]> {
     return await db.select().from(interviews).where(eq(interviews.tenantId, tenantId)).orderBy(desc(interviews.createdAt));
+  }
+
+  async getInterviewsPaginated(tenantId: string, page: number, limit: number): Promise<{ data: Interview[]; total: number }> {
+    const offset = (page - 1) * limit;
+    const [data, countResult] = await Promise.all([
+      db.select().from(interviews).where(eq(interviews.tenantId, tenantId)).orderBy(desc(interviews.createdAt)).limit(limit).offset(offset),
+      db.select({ count: sql<number>`count(*)` }).from(interviews).where(eq(interviews.tenantId, tenantId)),
+    ]);
+    return { data, total: Number(countResult[0].count) };
   }
 
   async getInterview(tenantId: string, id: string): Promise<Interview | undefined> {
@@ -1208,27 +1378,32 @@ export class DatabaseStorage implements IStorage {
 
   // Workforce Intelligence - Employee Skills (Join queries)
   async getEmployeesWithSkills(tenantId: string): Promise<(Employee & { skills: (EmployeeSkill & { skill: Skill })[] })[]> {
-    const allEmployees = await db.select().from(employees).where(eq(employees.tenantId, tenantId)).orderBy(desc(employees.createdAt));
-    
-    const result: (Employee & { skills: (EmployeeSkill & { skill: Skill })[] })[] = [];
-    
-    for (const employee of allEmployees) {
-      const empSkills = await db
-        .select()
-        .from(employeeSkills)
-        .innerJoin(skills, eq(employeeSkills.skillId, skills.id))
-        .where(and(eq(employeeSkills.employeeId, employee.id), eq(employeeSkills.tenantId, tenantId)));
-      
-      result.push({
-        ...employee,
-        skills: empSkills.map(row => ({
+    // Single query with LEFT JOIN instead of N+1 loop
+    const rows = await db
+      .select()
+      .from(employees)
+      .leftJoin(employeeSkills, and(eq(employeeSkills.employeeId, employees.id), eq(employeeSkills.tenantId, tenantId)))
+      .leftJoin(skills, eq(employeeSkills.skillId, skills.id))
+      .where(eq(employees.tenantId, tenantId))
+      .orderBy(desc(employees.createdAt));
+
+    // Group rows by employee to reconstruct nested structure
+    const employeeMap = new Map<string, Employee & { skills: (EmployeeSkill & { skill: Skill })[] }>();
+
+    for (const row of rows) {
+      const empId = row.employees.id;
+      if (!employeeMap.has(empId)) {
+        employeeMap.set(empId, { ...row.employees, skills: [] });
+      }
+      if (row.employee_skills && row.skills) {
+        employeeMap.get(empId)!.skills.push({
           ...row.employee_skills,
-          skill: row.skills
-        }))
-      });
+          skill: row.skills,
+        });
+      }
     }
-    
-    return result;
+
+    return Array.from(employeeMap.values());
   }
 
   async getEmployeeWithSkills(tenantId: string, employeeId: string): Promise<(Employee & { skills: (EmployeeSkill & { skill: Skill })[] }) | undefined> {
@@ -1543,6 +1718,15 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(documents).where(eq(documents.tenantId, tenantId)).orderBy(desc(documents.createdAt));
   }
 
+  async getDocumentsPaginated(tenantId: string, page: number, limit: number): Promise<{ data: Document[]; total: number }> {
+    const offset = (page - 1) * limit;
+    const [data, countResult] = await Promise.all([
+      db.select().from(documents).where(eq(documents.tenantId, tenantId)).orderBy(desc(documents.createdAt)).limit(limit).offset(offset),
+      db.select({ count: sql<number>`count(*)` }).from(documents).where(eq(documents.tenantId, tenantId)),
+    ]);
+    return { data, total: Number(countResult[0].count) };
+  }
+
   async getDocumentsByType(tenantId: string, type: string): Promise<Document[]> {
     return await db.select().from(documents).where(and(eq(documents.tenantId, tenantId), eq(documents.type, type))).orderBy(desc(documents.createdAt));
   }
@@ -1604,6 +1788,15 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(whatsappConversations)
       .where(eq(whatsappConversations.tenantId, tenantId))
       .orderBy(desc(whatsappConversations.lastMessageAt));
+  }
+
+  async getWhatsappConversationsPaginated(tenantId: string, page: number, limit: number): Promise<{ data: WhatsappConversation[]; total: number }> {
+    const offset = (page - 1) * limit;
+    const [data, countResult] = await Promise.all([
+      db.select().from(whatsappConversations).where(eq(whatsappConversations.tenantId, tenantId)).orderBy(desc(whatsappConversations.lastMessageAt)).limit(limit).offset(offset),
+      db.select({ count: sql<number>`count(*)` }).from(whatsappConversations).where(eq(whatsappConversations.tenantId, tenantId)),
+    ]);
+    return { data, total: Number(countResult[0].count) };
   }
 
   async getWhatsappConversation(tenantId: string, id: string): Promise<WhatsappConversation | undefined> {
@@ -1744,6 +1937,12 @@ export class DatabaseStorage implements IStorage {
     return session || undefined;
   }
 
+  async getInterviewSessionByVideoToken(token: string): Promise<InterviewSession | undefined> {
+    const [session] = await db.select().from(interviewSessions)
+      .where(eq(interviewSessions.videoToken, token));
+    return session || undefined;
+  }
+
   async getInterviewSessionsByCandidateId(tenantId: string, candidateId: string): Promise<InterviewSession[]> {
     return await db.select().from(interviewSessions)
       .where(and(eq(interviewSessions.candidateId, candidateId), eq(interviewSessions.tenantId, tenantId)))
@@ -1784,9 +1983,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Interview Recordings Implementation
-  async getInterviewRecordings(tenantId: string, sessionId: string): Promise<InterviewRecording[]> {
+  async getInterviewRecordings(tenantId: string, sessionId: string, stage?: string): Promise<InterviewRecording[]> {
+    const conditions = [eq(interviewRecordings.tenantId, tenantId), eq(interviewRecordings.sessionId, sessionId)];
+    if (stage) conditions.push(eq(interviewRecordings.interviewStage, stage));
     return await db.select().from(interviewRecordings)
-      .where(and(eq(interviewRecordings.tenantId, tenantId), eq(interviewRecordings.sessionId, sessionId)))
+      .where(and(...conditions))
       .orderBy(desc(interviewRecordings.createdAt));
   }
 
@@ -1810,9 +2011,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Interview Transcripts Implementation
-  async getInterviewTranscripts(tenantId: string, sessionId: string): Promise<InterviewTranscript[]> {
+  async getInterviewTranscripts(tenantId: string, sessionId: string, stage?: string): Promise<InterviewTranscript[]> {
+    const conditions = [eq(interviewTranscripts.tenantId, tenantId), eq(interviewTranscripts.sessionId, sessionId)];
+    if (stage) conditions.push(eq(interviewTranscripts.interviewStage, stage));
     return await db.select().from(interviewTranscripts)
-      .where(and(eq(interviewTranscripts.tenantId, tenantId), eq(interviewTranscripts.sessionId, sessionId)))
+      .where(and(...conditions))
       .orderBy(interviewTranscripts.segmentIndex);
   }
 
@@ -1834,9 +2037,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Interview Feedback Implementation
-  async getInterviewFeedback(tenantId: string, sessionId: string): Promise<InterviewFeedback[]> {
+  async getInterviewFeedback(tenantId: string, sessionId: string, stage?: string): Promise<InterviewFeedback[]> {
+    const conditions = [eq(interviewFeedback.tenantId, tenantId), eq(interviewFeedback.sessionId, sessionId)];
+    if (stage) conditions.push(eq(interviewFeedback.interviewStage, stage));
     return await db.select().from(interviewFeedback)
-      .where(and(eq(interviewFeedback.tenantId, tenantId), eq(interviewFeedback.sessionId, sessionId)))
+      .where(and(...conditions))
       .orderBy(desc(interviewFeedback.createdAt));
   }
 
@@ -1927,6 +2132,136 @@ export class DatabaseStorage implements IStorage {
     return event || undefined;
   }
 
+  // ViTT Timeline Tags Implementation
+  async getTimelineTags(tenantId: string, sessionId: string, stage?: string): Promise<InterviewTimelineTag[]> {
+    const conditions = [
+      eq(interviewTimelineTags.tenantId, tenantId),
+      eq(interviewTimelineTags.sessionId, sessionId),
+    ];
+    if (stage) {
+      conditions.push(eq(interviewTimelineTags.interviewStage, stage));
+    }
+    return await db.select().from(interviewTimelineTags)
+      .where(and(...conditions))
+      .orderBy(interviewTimelineTags.offsetMs);
+  }
+
+  async getTimelineTag(tenantId: string, id: string): Promise<InterviewTimelineTag | undefined> {
+    const [tag] = await db.select().from(interviewTimelineTags)
+      .where(and(eq(interviewTimelineTags.id, id), eq(interviewTimelineTags.tenantId, tenantId)));
+    return tag || undefined;
+  }
+
+  async getTimelineTagsByType(tenantId: string, sessionId: string, tagType: string, stage?: string): Promise<InterviewTimelineTag[]> {
+    const conditions = [
+      eq(interviewTimelineTags.tenantId, tenantId),
+      eq(interviewTimelineTags.sessionId, sessionId),
+      eq(interviewTimelineTags.tagType, tagType),
+    ];
+    if (stage) {
+      conditions.push(eq(interviewTimelineTags.interviewStage, stage));
+    }
+    return await db.select().from(interviewTimelineTags)
+      .where(and(...conditions))
+      .orderBy(interviewTimelineTags.offsetMs);
+  }
+
+  async createTimelineTag(tenantId: string, tag: InsertInterviewTimelineTag): Promise<InterviewTimelineTag> {
+    const [newTag] = await db.insert(interviewTimelineTags).values({ ...tag, tenantId }).returning();
+    return newTag;
+  }
+
+  async updateTimelineTag(tenantId: string, id: string, updates: Partial<InsertInterviewTimelineTag>): Promise<InterviewTimelineTag | undefined> {
+    const [tag] = await db.update(interviewTimelineTags)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(interviewTimelineTags.id, id), eq(interviewTimelineTags.tenantId, tenantId)))
+      .returning();
+    return tag || undefined;
+  }
+
+  async deleteTimelineTag(tenantId: string, id: string): Promise<void> {
+    await db.delete(interviewTimelineTags)
+      .where(and(eq(interviewTimelineTags.id, id), eq(interviewTimelineTags.tenantId, tenantId)));
+  }
+
+  async clearTimelineTags(tenantId: string, sessionId: string, stage?: string): Promise<number> {
+    const conditions = [
+      eq(interviewTimelineTags.tenantId, tenantId),
+      eq(interviewTimelineTags.sessionId, sessionId),
+    ];
+    if (stage) {
+      conditions.push(eq(interviewTimelineTags.interviewStage, stage));
+    }
+    const result = await db.delete(interviewTimelineTags)
+      .where(and(...conditions))
+      .returning();
+    return result.length;
+  }
+
+  // Transcript Jobs Implementation
+  async getTranscriptJobs(tenantId: string, sessionId: string): Promise<TranscriptJob[]> {
+    return await db.select().from(transcriptJobs)
+      .where(and(eq(transcriptJobs.tenantId, tenantId), eq(transcriptJobs.sessionId, sessionId)))
+      .orderBy(desc(transcriptJobs.createdAt));
+  }
+
+  async getTranscriptJob(tenantId: string, id: string): Promise<TranscriptJob | undefined> {
+    const [job] = await db.select().from(transcriptJobs)
+      .where(and(eq(transcriptJobs.id, id), eq(transcriptJobs.tenantId, tenantId)));
+    return job || undefined;
+  }
+
+  async createTranscriptJob(tenantId: string, job: InsertTranscriptJob): Promise<TranscriptJob> {
+    const [newJob] = await db.insert(transcriptJobs).values({ ...job, tenantId }).returning();
+    return newJob;
+  }
+
+  async updateTranscriptJob(tenantId: string, id: string, updates: Partial<InsertTranscriptJob>): Promise<TranscriptJob | undefined> {
+    const [job] = await db.update(transcriptJobs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(transcriptJobs.id, id), eq(transcriptJobs.tenantId, tenantId)))
+      .returning();
+    return job || undefined;
+  }
+
+  // Recording Sources Implementation
+  async getRecordingSources(tenantId: string, sessionId: string): Promise<RecordingSource[]> {
+    return await db.select().from(recordingSources)
+      .where(and(eq(recordingSources.tenantId, tenantId), eq(recordingSources.sessionId, sessionId)))
+      .orderBy(desc(recordingSources.createdAt));
+  }
+
+  async getRecordingSource(tenantId: string, id: string): Promise<RecordingSource | undefined> {
+    const [source] = await db.select().from(recordingSources)
+      .where(and(eq(recordingSources.id, id), eq(recordingSources.tenantId, tenantId)));
+    return source || undefined;
+  }
+
+  async createRecordingSource(tenantId: string, source: InsertRecordingSource): Promise<RecordingSource> {
+    const [newSource] = await db.insert(recordingSources).values({ ...source, tenantId }).returning();
+    return newSource;
+  }
+
+  async updateRecordingSource(tenantId: string, id: string, updates: Partial<InsertRecordingSource>): Promise<RecordingSource | undefined> {
+    const [source] = await db.update(recordingSources)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(recordingSources.id, id), eq(recordingSources.tenantId, tenantId)))
+      .returning();
+    return source || undefined;
+  }
+
+  // LeMUR Analysis Results Implementation
+  async getLemurAnalysisResults(tenantId: string, sessionId: string): Promise<LemurAnalysisResult[]> {
+    return await db.select().from(lemurAnalysisResults)
+      .where(and(eq(lemurAnalysisResults.tenantId, tenantId), eq(lemurAnalysisResults.sessionId, sessionId)))
+      .orderBy(desc(lemurAnalysisResults.createdAt));
+  }
+
+  async createLemurAnalysisResult(tenantId: string, result: InsertLemurAnalysisResult): Promise<LemurAnalysisResult> {
+    const [newResult] = await db.insert(lemurAnalysisResults).values({ ...result, tenantId }).returning();
+    return newResult;
+  }
+
   // Onboarding Agent Logs Implementation
   async getOnboardingAgentLogs(tenantId: string, workflowId?: string): Promise<OnboardingAgentLog[]> {
     if (workflowId) {
@@ -1992,7 +2327,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(onboardingDocumentRequests)
       .where(and(
         eq(onboardingDocumentRequests.tenantId, tenantId),
-        eq(onboardingDocumentRequests.status, 'pending')
+        or(
+          eq(onboardingDocumentRequests.status, 'pending'),
+          eq(onboardingDocumentRequests.status, 'requested')
+        )
       ))
       .orderBy(desc(onboardingDocumentRequests.createdAt));
   }
@@ -2002,7 +2340,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(onboardingDocumentRequests)
       .where(and(
         eq(onboardingDocumentRequests.tenantId, tenantId),
-        eq(onboardingDocumentRequests.status, 'pending'),
+        or(
+          eq(onboardingDocumentRequests.status, 'pending'),
+          eq(onboardingDocumentRequests.status, 'requested')
+        ),
         lte(onboardingDocumentRequests.dueDate, now)
       ))
       .orderBy(desc(onboardingDocumentRequests.dueDate));
@@ -3537,6 +3878,14 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async deactivateDocumentTemplate(tenantId: string, id: string): Promise<DocumentTemplate | undefined> {
+    const [updated] = await db.update(documentTemplates)
+      .set({ isActive: 0, updatedAt: new Date() })
+      .where(and(eq(documentTemplates.id, id), eq(documentTemplates.tenantId, tenantId)))
+      .returning();
+    return updated || undefined;
+  }
+
   async deleteDocumentTemplate(tenantId: string, id: string): Promise<boolean> {
     const result = await db.delete(documentTemplates)
       .where(and(eq(documentTemplates.id, id), eq(documentTemplates.tenantId, tenantId)));
@@ -3594,6 +3943,102 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return true;
+  }
+
+  // ========== OFFERS MANAGEMENT ==========
+
+  async getAllOffers(tenantId: string): Promise<Offer[]> {
+    return await db.select().from(offers).where(eq(offers.tenantId, tenantId)).orderBy(desc(offers.createdAt));
+  }
+
+  async getOffer(tenantId: string, id: string): Promise<Offer | undefined> {
+    const [offer] = await db.select().from(offers).where(and(eq(offers.id, id), eq(offers.tenantId, tenantId)));
+    return offer || undefined;
+  }
+
+  async getOfferByCandidateId(tenantId: string, candidateId: string): Promise<Offer | undefined> {
+    const [offer] = await db.select().from(offers).where(and(eq(offers.candidateId, candidateId), eq(offers.tenantId, tenantId))).orderBy(desc(offers.createdAt));
+    return offer || undefined;
+  }
+
+  async getOfferByResponseToken(token: string): Promise<Offer | undefined> {
+    const [offer] = await db.select().from(offers).where(eq(offers.responseToken, token));
+    return offer || undefined;
+  }
+
+  async createOffer(tenantId: string, insertOffer: InsertOffer): Promise<Offer> {
+    const candidate = await this.getCandidate(tenantId, insertOffer.candidateId);
+    if (!candidate) {
+      throw new Error(`Candidate ${insertOffer.candidateId} not found in tenant ${tenantId}`);
+    }
+
+    const cleanedOffer = Object.fromEntries(
+      Object.entries(insertOffer).filter(([_, v]) => v !== null && v !== undefined)
+    ) as any;
+
+    const [offer] = await db
+      .insert(offers)
+      .values({ ...cleanedOffer, tenantId })
+      .returning();
+    return offer;
+  }
+
+  async updateOffer(tenantId: string, id: string, updates: Partial<InsertOffer>): Promise<Offer | undefined> {
+    const cleanedUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, v]) => v !== null && v !== undefined)
+    ) as any;
+
+    const [offer] = await db
+      .update(offers)
+      .set({ ...cleanedUpdates, updatedAt: new Date() })
+      .where(and(eq(offers.id, id), eq(offers.tenantId, tenantId)))
+      .returning();
+    return offer || undefined;
+  }
+
+  async deleteOffer(tenantId: string, id: string): Promise<boolean> {
+    const result = await db.delete(offers).where(and(eq(offers.id, id), eq(offers.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ========== INTEREST CHECKS ==========
+
+  async getAllInterestChecks(tenantId: string): Promise<InterestCheck[]> {
+    return await db.select().from(candidateInterestChecks).where(eq(candidateInterestChecks.tenantId, tenantId)).orderBy(desc(candidateInterestChecks.createdAt));
+  }
+
+  async getInterestCheckByToken(token: string): Promise<InterestCheck | undefined> {
+    const [check] = await db.select().from(candidateInterestChecks).where(eq(candidateInterestChecks.interestToken, token));
+    return check || undefined;
+  }
+
+  async getInterestChecksByCandidateId(tenantId: string, candidateId: string): Promise<InterestCheck[]> {
+    return await db.select().from(candidateInterestChecks).where(and(eq(candidateInterestChecks.candidateId, candidateId), eq(candidateInterestChecks.tenantId, tenantId))).orderBy(desc(candidateInterestChecks.createdAt));
+  }
+
+  async createInterestCheck(tenantId: string, data: InsertInterestCheck): Promise<InterestCheck> {
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== null && v !== undefined)
+    ) as any;
+
+    const [check] = await db
+      .insert(candidateInterestChecks)
+      .values({ ...cleanedData, tenantId })
+      .returning();
+    return check;
+  }
+
+  async updateInterestCheck(tenantId: string, id: string, updates: Partial<InsertInterestCheck>): Promise<InterestCheck | undefined> {
+    const cleanedUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, v]) => v !== null && v !== undefined)
+    ) as any;
+
+    const [check] = await db
+      .update(candidateInterestChecks)
+      .set({ ...cleanedUpdates, updatedAt: new Date() })
+      .where(and(eq(candidateInterestChecks.id, id), eq(candidateInterestChecks.tenantId, tenantId)))
+      .returning();
+    return check || undefined;
   }
 }
 

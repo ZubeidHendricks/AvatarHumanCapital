@@ -1,5 +1,7 @@
+import { format } from "date-fns";
 import type { IStorage } from "./storage";
 import type { Candidate, OnboardingWorkflow, OnboardingAgentLog, OnboardingDocumentRequest } from "@shared/schema";
+import { EmailService } from "./email-service";
 
 interface DocumentRequirement {
   documentType: string;
@@ -22,9 +24,11 @@ const STANDARD_ONBOARDING_DOCUMENTS: DocumentRequirement[] = [
 
 export class OnboardingAgent {
   private storage: IStorage;
+  private emailService: EmailService;
 
   constructor(storage: IStorage) {
     this.storage = storage;
+    this.emailService = new EmailService(storage);
   }
 
   async logStep(
@@ -77,12 +81,31 @@ export class OnboardingAgent {
     const requests: OnboardingDocumentRequest[] = [];
     const now = new Date();
 
+    // Cross-system dedup: check integrity doc requirements for already-verified docs
+    let integrityDocMap = new Map<string, string>(); // documentType -> status
+    try {
+      const integrityReqs = await this.storage.getIntegrityDocumentRequirements(tenantId, candidateId);
+      for (const req of integrityReqs) {
+        if (req.status === 'verified' || req.status === 'received') {
+          integrityDocMap.set(req.documentType, req.status);
+        }
+      }
+    } catch {
+      // Non-critical, continue without dedup
+    }
+
     for (const doc of documents) {
       const dueDate = new Date(now);
       dueDate.setDate(dueDate.getDate() + doc.dueDays);
-      
+
       const reminderDate = new Date(dueDate);
       reminderDate.setDate(reminderDate.getDate() - 1);
+
+      // If this doc type was already verified/received during integrity, pre-set status
+      const integrityStatus = integrityDocMap.get(doc.documentType);
+      const initialStatus = integrityStatus === 'verified' ? 'verified' as const
+        : integrityStatus === 'received' ? 'received' as const
+        : 'pending' as const;
 
       const request = await this.storage.createOnboardingDocumentRequest(tenantId, {
         workflowId,
@@ -91,17 +114,27 @@ export class OnboardingAgent {
         documentName: doc.documentName,
         description: doc.description,
         isRequired: doc.isRequired ? 1 : 0,
-        status: 'pending',
+        status: initialStatus,
         priority: doc.priority,
         dueDate,
-        nextReminderAt: reminderDate,
+        nextReminderAt: initialStatus === 'pending' ? reminderDate : undefined,
         maxReminders: 3,
+        ...(integrityStatus ? {
+          receivedAt: integrityStatus === 'received' || integrityStatus === 'verified' ? now : undefined,
+          verifiedAt: integrityStatus === 'verified' ? now : undefined,
+          notes: "Pre-verified during integrity checks",
+        } : {}),
       });
       requests.push(request);
 
       await this.logStep(tenantId, workflowId, candidateId, 'document_collector', 'document_request_created', {
         stepName: 'documentation',
-        details: { documentType: doc.documentType, documentName: doc.documentName, dueDate: dueDate.toISOString() },
+        details: {
+          documentType: doc.documentType,
+          documentName: doc.documentName,
+          dueDate: dueDate.toISOString(),
+          ...(integrityStatus ? { preVerified: true, fromIntegrity: integrityStatus } : {}),
+        },
         targetEntity: 'candidate',
         targetEntityId: candidateId,
       });
@@ -184,17 +217,19 @@ export class OnboardingAgent {
     const updated = await this.storage.updateOnboardingDocumentRequest(tenantId, requestId, {
       status: 'verified',
       verifiedAt: new Date(),
-      verifiedBy,
+      metadata: { ...(request.metadata as any || {}), verifiedByName: verifiedBy },
     });
 
     if (updated) {
       await this.logStep(tenantId, request.workflowId, request.candidateId, 'document_collector', 'document_verified', {
         stepName: 'documentation',
-        details: { documentType: request.documentType, verifiedBy },
+        details: { documentType: request.documentType, documentName: request.documentName, verifiedBy },
         targetEntity: 'hr_staff',
         targetEntityId: verifiedBy,
         communicationChannel: 'system',
       });
+
+      await this.checkDocumentCompletion(tenantId, request.workflowId, request.candidateId);
     }
 
     return updated;
@@ -207,6 +242,11 @@ export class OnboardingAgent {
   ): Promise<{ sent: boolean; escalated: boolean }> {
     const request = await this.storage.getOnboardingDocumentRequest(tenantId, requestId);
     if (!request) return { sent: false, escalated: false };
+
+    // Skip reminders for documents already received or verified
+    if (request.status === 'received' || request.status === 'verified') {
+      return { sent: false, escalated: false };
+    }
 
     const reminderCount = (request.reminderCount || 0) + 1;
     const maxReminders = request.maxReminders || 3;
@@ -226,10 +266,68 @@ export class OnboardingAgent {
       nextReminderAt,
     });
 
+    // Send the reminder via the chosen channel
+    try {
+      const candidate = await this.storage.getCandidateById(tenantId, request.candidateId);
+      const workflow = await this.storage.getOnboardingWorkflow(tenantId, request.workflowId);
+      const uploadPortalUrl = workflow?.uploadToken && workflow?.uploadTokenExpiresAt && new Date(workflow.uploadTokenExpiresAt) > new Date()
+        ? `${process.env.BASE_URL || 'http://localhost:5000'}/onboarding-upload/${workflow.uploadToken}`
+        : null;
+
+      if (channel === 'whatsapp') {
+        const candidatePhone = candidate?.phone || (candidate?.metadata as any)?.phone;
+        if (candidatePhone) {
+          const { WhatsAppService } = await import("./whatsapp-service");
+          const whatsappService = new WhatsAppService();
+          const conversation = await whatsappService.getOrCreateConversation(
+            tenantId, candidatePhone, candidatePhone,
+            candidate!.fullName, candidate!.id.toString(), "onboarding"
+          );
+          const uploadInfo = uploadPortalUrl ? `\n\n📤 Upload here: ${uploadPortalUrl}` : '';
+          await whatsappService.sendTextMessage(
+            tenantId, conversation.id, candidatePhone,
+            message + uploadInfo, "ai"
+          );
+        }
+      } else {
+        if (candidate?.email) {
+          const dueInfo = request.dueDate
+            ? `Due date: ${format(new Date(request.dueDate), 'dd MMM yyyy')}`
+            : '';
+          const uploadButtonHtml = uploadPortalUrl
+            ? `<div style="text-align:center;margin:16px 0;">
+        <a href="${uploadPortalUrl}" style="display:inline-block;background:linear-gradient(135deg,#FFCB00,#E6B800);color:#000000;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;">Upload Your Document</a>
+      </div>`
+            : '';
+          const uploadTextInfo = uploadPortalUrl
+            ? `\n\nYou can upload your document here: ${uploadPortalUrl}`
+            : '';
+
+          await this.emailService.sendEmail({
+            to: candidate.email,
+            subject: `Document Reminder: ${request.documentName} - Onboarding`,
+            body: message + uploadTextInfo,
+            html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:20px;">
+    <h2 style="color:#92400e;margin:0 0 10px 0;">Document Reminder</h2>
+    <p style="color:#374151;">Hi ${candidate.fullName},</p>
+    <p style="color:#374151;">${message}</p>
+    ${dueInfo ? `<p style="color:#dc2626;font-weight:bold;">${dueInfo}</p>` : ''}
+    ${uploadButtonHtml}
+    <p style="color:#6b7280;font-size:13px;margin-top:16px;">If you have any questions, please contact HR.</p>
+  </div>
+</div>`,
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`[ONBOARDING AGENT] Failed to send reminder for ${request.documentName}:`, error);
+    }
+
     await this.logStep(tenantId, request.workflowId, request.candidateId, 'reminder', 'reminder_sent', {
       stepName: 'documentation',
       status: 'success',
-      details: { documentType: request.documentType, reminderCount, maxReminders },
+      details: { documentType: request.documentType, documentName: request.documentName, reminderCount, maxReminders },
       targetEntity: 'candidate',
       targetEntityId: request.candidateId,
       communicationChannel: channel,
@@ -237,6 +335,148 @@ export class OnboardingAgent {
     });
 
     return { sent: true, escalated: false };
+  }
+
+  async sendBulkReminder(
+    tenantId: string,
+    workflowId: string,
+    channel: 'whatsapp' | 'email' = 'email'
+  ): Promise<{ sent: number; escalated: number }> {
+    const requests = await this.storage.getOnboardingDocumentRequests(tenantId, workflowId);
+    const outstanding = requests.filter(r => r.status === 'pending' || r.status === 'requested' || r.status === 'overdue');
+
+    if (outstanding.length === 0) {
+      return { sent: 0, escalated: 0 };
+    }
+
+    // Check if any have exceeded max reminders
+    let escalatedCount = 0;
+    const toRemind: typeof outstanding = [];
+    for (const req of outstanding) {
+      const reminderCount = (req.reminderCount || 0) + 1;
+      const maxReminders = req.maxReminders || 3;
+      if (reminderCount > maxReminders) {
+        await this.escalateToHuman(tenantId, req.id, 'Maximum reminders reached without response');
+        escalatedCount++;
+      } else {
+        toRemind.push(req);
+      }
+    }
+
+    if (toRemind.length === 0) {
+      return { sent: 0, escalated: escalatedCount };
+    }
+
+    const candidateId = toRemind[0].candidateId;
+    const candidate = await this.storage.getCandidateById(tenantId, candidateId);
+
+    // Build consolidated message
+    const docListText = toRemind.map(r => {
+      const dueDate = r.dueDate ? format(new Date(r.dueDate), 'dd MMM yyyy') : 'ASAP';
+      return `- ${r.documentName} (Due: ${dueDate})`;
+    }).join('\n');
+
+    const message = `Reminder: We still need the following documents for your onboarding:\n\n${docListText}\n\nPlease submit them as soon as possible.`;
+
+    // Update DB for each request
+    const now = new Date();
+    const nextReminderAt = new Date();
+    nextReminderAt.setDate(nextReminderAt.getDate() + 2);
+
+    for (const req of toRemind) {
+      await this.storage.updateOnboardingDocumentRequest(tenantId, req.id, {
+        reminderCount: (req.reminderCount || 0) + 1,
+        lastReminderAt: now,
+        nextReminderAt,
+      });
+    }
+
+    // Look up workflow for upload portal link
+    const workflow = await this.storage.getOnboardingWorkflow(tenantId, workflowId);
+    const uploadPortalUrl = workflow?.uploadToken && workflow?.uploadTokenExpiresAt && new Date(workflow.uploadTokenExpiresAt) > new Date()
+      ? `${process.env.BASE_URL || 'http://localhost:5000'}/onboarding-upload/${workflow.uploadToken}`
+      : null;
+
+    // Send via the chosen channel
+    if (channel === 'whatsapp') {
+      const candidatePhone = candidate?.phone || (candidate?.metadata as any)?.phone;
+      if (candidatePhone) {
+        try {
+          const { WhatsAppService } = await import("./whatsapp-service");
+          const whatsappService = new WhatsAppService();
+          const conversation = await whatsappService.getOrCreateConversation(
+            tenantId, candidatePhone, candidatePhone,
+            candidate!.fullName, candidate!.id.toString(), "onboarding"
+          );
+          const uploadInfo = uploadPortalUrl ? `\n\n📤 Upload here: ${uploadPortalUrl}` : '';
+          await whatsappService.sendTextMessage(
+            tenantId, conversation.id, candidatePhone,
+            message + uploadInfo, "ai"
+          );
+        } catch (error) {
+          console.error(`[ONBOARDING AGENT] Failed to send bulk reminder via WhatsApp:`, error);
+        }
+      }
+    } else {
+      if (candidate?.email) {
+        const docListHtml = toRemind.map(r => {
+          const dueDate = r.dueDate ? format(new Date(r.dueDate), 'dd MMM yyyy') : 'ASAP';
+          const priorityBadge = r.priority === 'urgent' ? ' <span style="color:#dc2626;">(Urgent)</span>' :
+                               r.priority === 'high' ? ' <span style="color:#ea580c;">(High Priority)</span>' : '';
+          return `<tr>
+            <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${r.documentName}${priorityBadge}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px;">${r.description || ''}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${dueDate}</td>
+          </tr>`;
+        }).join('');
+
+        const uploadButtonHtml = uploadPortalUrl
+          ? `<div style="text-align:center;margin:16px 0;">
+      <a href="${uploadPortalUrl}" style="display:inline-block;background:linear-gradient(135deg,#FFCB00,#E6B800);color:#000000;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;">Upload Your Documents</a>
+    </div>`
+          : '';
+
+        try {
+          await this.emailService.sendEmail({
+            to: candidate.email,
+            subject: `Document Reminder: ${toRemind.length} Outstanding Document${toRemind.length > 1 ? 's' : ''} - Onboarding`,
+            body: `Hi ${candidate.fullName},\n\n${message}${uploadPortalUrl ? `\n\nUpload here: ${uploadPortalUrl}` : ''}`,
+            html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:20px;">
+    <h2 style="color:#92400e;margin:0 0 10px 0;">Document Reminder</h2>
+    <p style="color:#374151;">Hi ${candidate.fullName},</p>
+    <p style="color:#374151;">We still need the following documents for your onboarding:</p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin:12px 0;">
+      <thead><tr style="background:#fef3c7;">
+        <th style="padding:8px 12px;text-align:left;">Document</th>
+        <th style="padding:8px 12px;text-align:left;">Details</th>
+        <th style="padding:8px 12px;text-align:left;">Due Date</th>
+      </tr></thead>
+      <tbody>${docListHtml}</tbody>
+    </table>
+    ${uploadButtonHtml}
+    <p style="color:#6b7280;font-size:13px;">Please reply to this email or contact HR to submit your documents.</p>
+  </div>
+</div>`,
+          });
+        } catch (error) {
+          console.error(`[ONBOARDING AGENT] Failed to send bulk reminder email:`, error);
+        }
+      }
+    }
+
+    // Log one consolidated action
+    await this.logStep(tenantId, workflowId, candidateId, 'reminder', 'bulk_reminder_sent', {
+      stepName: 'documentation',
+      status: 'success',
+      details: { documentCount: toRemind.length, documents: toRemind.map(r => r.documentType) },
+      targetEntity: 'candidate',
+      targetEntityId: candidateId,
+      communicationChannel: channel,
+      messageContent: message,
+    });
+
+    return { sent: toRemind.length, escalated: escalatedCount };
   }
 
   async escalateToHuman(
@@ -292,6 +532,50 @@ export class OnboardingAgent {
         details: { totalRequired: requiredDocs.length, verified },
         communicationChannel: 'system',
       });
+
+      // Auto-complete workflow when all required documents are verified
+      const allVerified = requiredDocs.every(r => r.status === 'verified');
+      if (allVerified) {
+        const workflow = await this.storage.getOnboardingWorkflow(tenantId, workflowId);
+        if (workflow && workflow.status !== 'Completed') {
+          await this.storage.updateOnboardingWorkflow(tenantId, workflowId, {
+            status: 'Completed',
+            completedAt: new Date(),
+          });
+          await this.logStep(tenantId, workflowId, candidateId, 'workflow_manager', 'workflow_completed', {
+            stepName: 'completion',
+            status: 'success',
+            details: { reason: 'All required documents verified' },
+            communicationChannel: 'system',
+          });
+
+          // Notify HR of onboarding completion
+          try {
+            const candidate = await this.storage.getCandidateById(tenantId, candidateId);
+            if (candidate) {
+              await this.emailService.notifyHRForOnboardingCompletion(
+                candidate.fullName,
+                candidate.email || 'N/A',
+                'All documents verified'
+              );
+            }
+          } catch (e) {
+            console.error("Failed to send HR completion notification:", e);
+          }
+
+          // Auto-transition candidate to "hired" stage in the pipeline
+          try {
+            const { pipelineOrchestrator } = await import("./pipeline-orchestrator");
+            await pipelineOrchestrator.transitionCandidate(candidateId, "hired", tenantId, {
+              triggeredBy: "auto",
+              reason: "Onboarding completed - all required documents verified",
+            });
+            console.log(`[Onboarding] Candidate ${candidateId} auto-transitioned to hired stage`);
+          } catch (e) {
+            console.error("Failed to auto-transition candidate to hired:", e);
+          }
+        }
+      }
     }
 
     return { complete, pending, received, verified };
@@ -302,7 +586,7 @@ export class OnboardingAgent {
     let escalated = 0;
 
     for (const request of overdue) {
-      const result = await this.sendReminder(tenantId, request.id, 'whatsapp');
+      const result = await this.sendReminder(tenantId, request.id, 'email');
       if (result.escalated) {
         escalated++;
       }
@@ -318,7 +602,7 @@ export class OnboardingAgent {
 
     for (const request of pending) {
       if (request.nextReminderAt && new Date(request.nextReminderAt) <= now) {
-        await this.sendReminder(tenantId, request.id, 'whatsapp');
+        await this.sendReminder(tenantId, request.id, 'email');
         remindersSent++;
       }
     }

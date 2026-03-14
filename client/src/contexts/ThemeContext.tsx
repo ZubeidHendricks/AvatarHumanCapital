@@ -1,62 +1,50 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-type Theme = "dark" | "light" | "system";
+type Theme = "light" | "dark" | "system";
 
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  actualTheme: "dark" | "light";
+  actualTheme: "light" | "dark";
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: "dark",
+  theme: "system",
   setTheme: () => {},
-  actualTheme: "dark",
+  actualTheme: "light",
 });
+
+function getSystemTheme(): "light" | "dark" {
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem("ahc-theme") as Theme;
-    return stored || "dark";
+    if (typeof window === "undefined") return "system";
+    return (localStorage.getItem("theme") as Theme) || "system";
   });
 
-  const [actualTheme, setActualTheme] = useState<"dark" | "light">("dark");
+  const actualTheme = theme === "system" ? getSystemTheme() : theme;
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove("light", "dark");
+    const otherTheme = actualTheme === "dark" ? "light" : "dark";
+    root.classList.remove(otherTheme);
+    root.classList.add(actualTheme);
+    localStorage.setItem("theme", theme);
+  }, [theme, actualTheme]);
 
-    let resolvedTheme: "dark" | "light" = "dark";
-
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-      resolvedTheme = systemTheme;
-    } else {
-      resolvedTheme = theme;
-    }
-
-    root.classList.add(resolvedTheme);
-    setActualTheme(resolvedTheme);
-    localStorage.setItem("ahc-theme", theme);
-  }, [theme]);
-
-  // Listen for system theme changes
   useEffect(() => {
     if (theme !== "system") return;
-
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = () => {
-      const systemTheme = mediaQuery.matches ? "dark" : "light";
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => {
       const root = window.document.documentElement;
       root.classList.remove("light", "dark");
-      root.classList.add(systemTheme);
-      setActualTheme(systemTheme);
+      root.classList.add(getSystemTheme());
     };
-
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
   }, [theme]);
 
   return (

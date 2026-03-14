@@ -36,10 +36,10 @@ export function Navbar() {
         {/* Logo - Brand guideline: 20mm minimum height with clearspace = height/2 */}
         <Link href="/">
           <div className="flex items-center group cursor-pointer">
-            <img 
-              src="/logos/light-logo.png" 
-              alt="Avatar Human Capital" 
-              className="h-10 md:h-16 w-auto object-contain"
+            <img
+              src="/logos/ahc-logo.svg"
+              alt="AHC - Human Capital"
+              className="h-14 md:h-20 w-auto object-contain"
             />
           </div>
         </Link>
@@ -50,7 +50,7 @@ export function Navbar() {
             <a 
               key={link.name} 
               href={link.href}
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               {link.name}
             </a>
@@ -68,107 +68,107 @@ export function Navbar() {
             <DropdownMenuContent align="end" className="w-56 bg-popover border-border text-popover-foreground">
               {isModuleEnabled("recruitment") && (
                 <Link href="/recruitment-agent">
-                  <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                    <UserSearch className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                  <DropdownMenuItem className="cursor-pointer">
+                    <UserSearch className="w-4 h-4 mr-2 text-muted-foreground" />
                     <span>AI Recruitment</span>
                   </DropdownMenuItem>
                 </Link>
               )}
               <Link href="/external-candidates">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <UserPlus className="w-4 h-4 mr-2 text-teal-600 dark:text-teal-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <UserPlus className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Import Candidates</span>
                 </DropdownMenuItem>
               </Link>
               {isModuleEnabled("integrity") && (
                 <Link href="/integrity-agent">
-                  <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                    <Shield className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Shield className="w-4 h-4 mr-2 text-muted-foreground" />
                     <span>Integrity Checks</span>
                   </DropdownMenuItem>
                 </Link>
               )}
               {isModuleEnabled("onboarding") && (
                 <Link href="/onboarding">
-                  <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                    <Building2 className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" />
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
                     <span>Company Onboarding</span>
                   </DropdownMenuItem>
                 </Link>
               )}
               {isModuleEnabled("hr_management") && (
                 <Link href="/hr-dashboard">
-                  <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                    <LayoutDashboard className="w-4 h-4 mr-2 text-amber-600 dark:text-amber-400" />
+                  <DropdownMenuItem className="cursor-pointer">
+                    <LayoutDashboard className="w-4 h-4 mr-2 text-muted-foreground" />
                     <span>HR Dashboard</span>
                   </DropdownMenuItem>
                 </Link>
               )}
               <Link href="/dashboard-builder">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <LayoutGrid className="w-4 h-4 mr-2 text-pink-600 dark:text-pink-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <LayoutGrid className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Dashboard Builder</span>
                 </DropdownMenuItem>
               </Link>
               <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuLabel className="text-xs text-muted-foreground">HR Management</DropdownMenuLabel>
               <Link href="/kpi-hr-dashboard">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Target className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Target className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Performance</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/hr-dashboard?tab=time-attendance">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Cpu className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Cpu className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Time & Attendance</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/workforce-intelligence">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <TrendingUp className="w-4 h-4 mr-2 text-amber-600 dark:text-amber-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <TrendingUp className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Workforce Intelligence</span>
                 </DropdownMenuItem>
               </Link>
               <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuLabel className="text-xs text-muted-foreground">Documents</DropdownMenuLabel>
               <Link href="/document-automation">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <FileText className="w-4 h-4 mr-2 text-cyan-600 dark:text-cyan-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <FileText className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Document Automation</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/document-library">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <ClipboardList className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <ClipboardList className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Document Library</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/cv-templates">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <FileText className="w-4 h-4 mr-2 text-teal-700 dark:text-teal-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <FileText className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>CV Templates</span>
                 </DropdownMenuItem>
               </Link>
               <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuLabel className="text-xs text-muted-foreground">Communications</DropdownMenuLabel>
               <Link href="/whatsapp-monitor">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <MessageCircle className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <MessageCircle className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>WhatsApp Monitor</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/hr-conversations">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <MessageCircle className="w-4 h-4 mr-2 text-teal-600 dark:text-teal-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <MessageCircle className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Conversations</span>
                 </DropdownMenuItem>
               </Link>
               <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuLabel className="text-xs text-muted-foreground">Support</DropdownMenuLabel>
               <Link href="/ai-support">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Sparkles className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Sparkles className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>AI Support</span>
                 </DropdownMenuItem>
               </Link>
@@ -184,21 +184,21 @@ export function Navbar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 bg-popover border-border text-popover-foreground">
               <Link href="/interview/voice">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Mic className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Mic className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Voice Interview</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/interview/video">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Video className="w-4 h-4 mr-2 text-rose-600 dark:text-rose-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Video className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Video Interview</span>
                 </DropdownMenuItem>
               </Link>
               <DropdownMenuSeparator className="bg-border" />
               <Link href="/interview-console">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <ClipboardList className="w-4 h-4 mr-2 text-amber-600 dark:text-amber-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <ClipboardList className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Interview Console</span>
                 </DropdownMenuItem>
               </Link>
@@ -214,63 +214,63 @@ export function Navbar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 bg-popover border-border text-popover-foreground">
               <Link href="/recruitment-dashboard">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <TrendingUp className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <TrendingUp className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Recruitment Dashboard</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/candidate-pipeline">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Briefcase className="w-4 h-4 mr-2 text-cyan-600 dark:text-cyan-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Briefcase className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Candidate Pipeline</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/pipeline-board">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <LayoutGrid className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <LayoutGrid className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Pipeline Board</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/whatsapp-monitor">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <MessageCircle className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <MessageCircle className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>WhatsApp Monitor</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/kpi-management">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Target className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Target className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>KPI Management</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/kpi-review">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Star className="w-4 h-4 mr-2 text-yellow-600 dark:text-yellow-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Star className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>My KPI Review</span>
                 </DropdownMenuItem>
               </Link>
               <a href="http://165.227.113.197" target="_blank" rel="noopener noreferrer">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <BookOpen className="w-4 h-4 mr-2 text-teal-700 dark:text-teal-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <BookOpen className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Learning Management</span>
                 </DropdownMenuItem>
               </a>
               <Link href="/kpi-manager-review">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <UserCheck className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <UserCheck className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Manager Review</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/kpi-hr-dashboard">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <BarChart3 className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <BarChart3 className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>HR Performance Dashboard</span>
                 </DropdownMenuItem>
               </Link>
               <DropdownMenuSeparator className="bg-border" />
               <Link href="/recommendations">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Sparkles className="w-4 h-4 mr-2 text-amber-600 dark:text-amber-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Sparkles className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>AI Recommendations</span>
                 </DropdownMenuItem>
               </Link>
@@ -287,33 +287,33 @@ export function Navbar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 bg-popover border-border text-popover-foreground">
               <Link href="/admin-dashboard">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Settings className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Settings className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>System Administration</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/tenant-management">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Building2 className="w-4 h-4 mr-2 text-teal-700 dark:text-teal-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Tenant Management</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/tenant-requests">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <FileText className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <FileText className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Tenant Requests</span>
                 </DropdownMenuItem>
               </Link>
               <Link href="/persona-management">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <Users className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Users className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Persona Management</span>
                 </DropdownMenuItem>
               </Link>
               <DropdownMenuSeparator className="bg-border" />
               <Link href="/platform-docs">
-                <DropdownMenuItem className="cursor-pointer hover:bg-accent focus:bg-accent">
-                  <BookOpen className="w-4 h-4 mr-2 text-cyan-600 dark:text-cyan-400" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <BookOpen className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Platform Documentation</span>
                 </DropdownMenuItem>
               </Link>
@@ -325,11 +325,10 @@ export function Navbar() {
             <TenantSelector currentTenant={tenant} />
           )}
 
-          {/* Theme Toggle */}
           <ThemeToggle />
 
           <Link href="/login">
-            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_-5px_hsl(var(--primary)/0.5)]">
+            <Button size="sm" className="bg-black text-white font-semibold hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-secondary">
               Sign In
             </Button>
           </Link>
@@ -456,7 +455,7 @@ export function Navbar() {
               <div className="h-px bg-border my-2" />
               
               <Link href="/login">
-                <Button className="w-full bg-primary text-primary-foreground">Sign In</Button>
+                <Button className="w-full bg-black text-white font-semibold hover:bg-gray-800">Sign In</Button>
               </Link>
             </div>
           </motion.div>

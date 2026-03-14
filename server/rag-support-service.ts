@@ -5,10 +5,10 @@ const groq = new Groq({
 });
 
 const PLATFORM_KNOWLEDGE_BASE = `
-# Avatar Human Capital (AHC) Platform Documentation
+# AHC - Human Capital (AHCHC) Platform Documentation
 
 ## Overview
-Avatar Human Capital is an AI-powered HR Management platform that automates the entire employee lifecycle from recruitment to ongoing HR management.
+AHC - Human Capital is an AI-powered HR Management platform that automates the entire employee lifecycle from recruitment to ongoing HR management.
 
 ## Main Sections and Features
 
@@ -201,7 +201,7 @@ export class RAGSupportService {
       const messages = [
         {
           role: "system" as const,
-          content: `You are an AI support assistant for Avatar Human Capital (AHC), an AI-powered HR Management platform. 
+          content: `You are an AI support assistant for AHC - Human Capital (AHCHC), an AI-powered HR Management platform. 
           
 Your job is to help users understand how to use the platform, navigate to features, and accomplish tasks.
 
@@ -252,7 +252,7 @@ Format your response as JSON:
       ];
 
       const completion = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages,
         temperature: 0.3,
         max_tokens: 1500,
